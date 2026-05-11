@@ -497,6 +497,10 @@ namespace EtiquetaFORNew
                 cmbGrupo.Items.Clear();
                 cmbGrupo.Items.Add(""); // Item vazio
 
+                //CarregarComboDistinto(cmbGrupo, "Grupo");
+                //CarregarComboDistinto(cmbFabricante, "Fabricante");
+                //CarregarComboDistinto(cmbFornecedor, "Fornecedor");
+
                 if (dt != null && dt.Rows.Count > 0)
                 {
                     foreach (DataRow row in dt.Rows)

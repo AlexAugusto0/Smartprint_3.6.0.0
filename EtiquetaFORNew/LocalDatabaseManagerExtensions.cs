@@ -79,7 +79,7 @@ namespace EtiquetaFORNew.Data
         {
             // Por enquanto, ignora subGrupo, produto e datas
             // e chama o método existente do LocalDatabaseManager
-            return LocalDatabaseManager.BuscarMercadoriasPorFiltros(
+            return LocalDatabaseManager.BuscarMercadoriasPorFiltrosManuais(
                 grupo,
                 fabricante,
                 fornecedor,

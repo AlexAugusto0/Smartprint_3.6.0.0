@@ -110,7 +110,7 @@ namespace EtiquetaFORNew.Data
                 if (config.TipoConexaoAtiva == TipoConexao.SoftcomShop)
                 {
                     //string filtro = $"EmPromocao = 1 AND ID_Promocao = {idPromocao}";
-                    return LocalDatabaseManager.BuscarMercadoriasPorFiltros(idPromocao: idPromocao);
+                    return LocalDatabaseManager.BuscarMercadoriasPorFiltrosPromocao(idPromocao: idPromocao);
                 }
 
                 string connectionString = DatabaseConfig.GetConnectionString();

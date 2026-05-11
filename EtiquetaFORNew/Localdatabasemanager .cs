@@ -536,21 +536,63 @@ namespace EtiquetaFORNew.Data
         /// Obtém valores distintos de um campo específico
         /// MANTIDO: Funcionalidade original preservada
         /// </summary>
+        //public static DataTable ObterValoresDistintos(string campo)
+        //{
+        //    try
+        //    {
+        //        using (var conn = new SQLiteConnection(ConnectionString))
+        //        {
+        //            conn.Open();
+
+        //            string query = $@"
+        //                SELECT DISTINCT {campo}
+        //                FROM Mercadorias
+        //                WHERE {campo} IS NOT NULL 
+        //                AND {campo} != ''
+        //                ORDER BY {campo}
+        //            ";
+
+        //            using (var cmd = new SQLiteCommand(query, conn))
+        //            {
+        //                DataTable dt = new DataTable();
+        //                using (var adapter = new SQLiteDataAdapter(cmd))
+        //                {
+        //                    adapter.Fill(dt);
+        //                }
+        //                return dt;
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        System.Diagnostics.Debug.WriteLine($"Erro ao obter valores distintos de {campo}: {ex.Message}");
+        //        return new DataTable();
+        //    }
+        //}
+
         public static DataTable ObterValoresDistintos(string campo)
         {
             try
             {
+                // Se o formulário pedir "Grupo", mas no SQLite for "GRP_DESCRI", ajustamos aqui
+                string nomeColunaReal = campo;
+                //if (campo == "Grupo") nomeColunaReal = "GRP_DESCRI";
+                //if (campo == "Fabricante") nomeColunaReal = "FABRICANTE"; // Verifique no DBeaver se é esse o nome
+
+                if (campo == "Grupo") nomeColunaReal = "Grupo";
+                if (campo == "Fabricante") nomeColunaReal = "Fabricante";
                 using (var conn = new SQLiteConnection(ConnectionString))
                 {
                     conn.Open();
 
+                    // Usando o nome da tabela que você confirmou: Mercadorias
                     string query = $@"
-                        SELECT DISTINCT {campo}
-                        FROM Mercadorias
-                        WHERE {campo} IS NOT NULL 
-                        AND {campo} != ''
-                        ORDER BY {campo}
-                    ";
+                SELECT DISTINCT {nomeColunaReal} AS {campo}
+                FROM Mercadorias 
+                WHERE {nomeColunaReal} IS NOT NULL 
+                AND {nomeColunaReal} != ''
+                ORDER BY {nomeColunaReal}
+            ";
 
                     using (var cmd = new SQLiteCommand(query, conn))
                     {
@@ -565,7 +607,7 @@ namespace EtiquetaFORNew.Data
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Erro ao obter valores distintos de {campo}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Erro no SQLite: {ex.Message}");
                 return new DataTable();
             }
         }
@@ -574,99 +616,7 @@ namespace EtiquetaFORNew.Data
         /// Busca mercadorias por múltiplos filtros
         /// MANTIDO: Funcionalidade original preservada
         /// </summary>
-        //public static DataTable BuscarMercadoriasPorFiltros(string grupo = null, string fabricante = null, string fornecedor = null, bool isConfeccao = false)
-        //{
-        //    try
-        //    {
-        //        using (var conn = new SQLiteConnection(ConnectionString))
-        //        {
-        //            conn.Open();
-
-        //            string query = @"
-        //        SELECT 
-        //            CodigoMercadoria,
-        //            CodFabricante,
-        //            CodBarras,
-        //            Mercadoria,
-        //            PrecoVenda,
-        //            VendaA,
-        //            VendaB,
-        //            VendaC,
-        //            VendaD,         
-        //            VendaE,
-        //            Fornecedor,
-        //            Fabricante,
-        //            Grupo,
-        //            Prateleira,
-        //            Garantia,
-        //            Tam,
-        //            Cores,
-        //            CodBarras_Grade,
-        //            Registro
-        //        FROM Mercadorias
-        //        WHERE 1=1
-        //    ";
-
-        //            List<string> condicoes = new List<string>();
-
-        //            if (!string.IsNullOrEmpty(grupo))
-        //                condicoes.Add("Grupo = @grupo");
-
-        //            if (!string.IsNullOrEmpty(fabricante))
-        //                condicoes.Add("Fabricante = @fabricante");
-
-        //            if (!string.IsNullOrEmpty(fornecedor))
-        //                condicoes.Add("Fornecedor = @fornecedor");
-
-        //            if (condicoes.Count > 0)
-        //                query += " AND " + string.Join(" AND ", condicoes);
-
-        //            if (isConfeccao)
-        //            {
-        //                query += " ORDER BY Mercadoria, Tam, Cores";
-        //            }
-        //            else
-        //            {
-        //                query += " ORDER BY Mercadoria";
-        //            }
-
-        //            using (var cmd = new SQLiteCommand(query, conn))
-        //            {
-        //                if (!string.IsNullOrEmpty(grupo))
-        //                    cmd.Parameters.AddWithValue("@grupo", grupo);
-
-        //                if (!string.IsNullOrEmpty(fabricante))
-        //                    cmd.Parameters.AddWithValue("@fabricante", fabricante);
-
-        //                if (!string.IsNullOrEmpty(fornecedor))
-        //                    cmd.Parameters.AddWithValue("@fornecedor", fornecedor);
-
-        //                DataTable dt = new DataTable();
-        //                using (var adapter = new SQLiteDataAdapter(cmd))
-        //                {
-        //                    adapter.Fill(dt);
-        //                }
-
-        //                System.Diagnostics.Debug.WriteLine($"BuscarMercadoriasPorFiltros (isConfeccao={isConfeccao}): {dt.Rows.Count} linhas");
-
-        //                return dt;
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        System.Diagnostics.Debug.WriteLine($"Erro ao buscar mercadorias por filtros: {ex.Message}");
-        //        return new DataTable();
-        //    }
-        //}
-
-
-        public static DataTable BuscarMercadoriasPorFiltros(
-    string grupo = null,
-    string fabricante = null,
-    string fornecedor = null,
-    bool isConfeccao = false,
-    int? idPromocao = null) // ⭐ Novo parâmetro opcional
+        public static DataTable BuscarMercadoriasPorFiltrosManuais(string grupo = null, string fabricante = null, string fornecedor = null, bool isConfeccao = false)
         {
             try
             {
@@ -674,7 +624,6 @@ namespace EtiquetaFORNew.Data
                 {
                     conn.Open();
 
-                    // Adicionamos PrecoVenda as PrecoOriginal e PrecoPromocional para o Grid reconhecer
                     string query = @"
                 SELECT 
                     CodigoMercadoria,
@@ -682,9 +631,11 @@ namespace EtiquetaFORNew.Data
                     CodBarras,
                     Mercadoria,
                     PrecoVenda,
-                    PrecoVenda as PrecoOriginal, 
-                    PrecoPromocional,
-                    VendaA, VendaB, VendaC, VendaD, VendaE,
+                    VendaA,
+                    VendaB,
+                    VendaC,
+                    VendaD,         
+                    VendaE,
                     Fornecedor,
                     Fabricante,
                     Grupo,
@@ -693,8 +644,7 @@ namespace EtiquetaFORNew.Data
                     Tam,
                     Cores,
                     CodBarras_Grade,
-                    Registro,
-                    ID_Promocao
+                    Registro
                 FROM Mercadorias
                 WHERE 1=1
             ";
@@ -710,22 +660,105 @@ namespace EtiquetaFORNew.Data
                     if (!string.IsNullOrEmpty(fornecedor))
                         condicoes.Add("Fornecedor = @fornecedor");
 
-                    // ⭐ FILTRO DE PROMOÇÃO
+                    if (condicoes.Count > 0)
+                        query += " AND " + string.Join(" AND ", condicoes);
+
+                    if (isConfeccao)
+                    {
+                        query += " ORDER BY Mercadoria, Tam, Cores";
+                    }
+                    else
+                    {
+                        query += " ORDER BY Mercadoria";
+                    }
+
+                    using (var cmd = new SQLiteCommand(query, conn))
+                    {
+                        if (!string.IsNullOrEmpty(grupo))
+                            cmd.Parameters.AddWithValue("@grupo", grupo);
+
+                        if (!string.IsNullOrEmpty(fabricante))
+                            cmd.Parameters.AddWithValue("@fabricante", fabricante);
+
+                        if (!string.IsNullOrEmpty(fornecedor))
+                            cmd.Parameters.AddWithValue("@fornecedor", fornecedor);
+
+                        DataTable dt = new DataTable();
+                        using (var adapter = new SQLiteDataAdapter(cmd))
+                        {
+                            adapter.Fill(dt);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"BuscarMercadoriasPorFiltros (isConfeccao={isConfeccao}): {dt.Rows.Count} linhas");
+
+                        return dt;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao buscar mercadorias por filtros: {ex.Message}");
+                return new DataTable();
+            }
+        }
+
+
+        public static DataTable BuscarMercadoriasPorFiltrosPromocao(
+        string grupo = null,
+        string fabricante = null,
+        string fornecedor = null,
+        bool isConfeccao = false,
+        int? idPromocao = null) // Adicionado o parâmetro opcional
+        {
+            try
+            {
+                using (var conn = new SQLiteConnection(ConnectionString))
+                {
+                    conn.Open();
+
+                    // Mantivemos a estrutura de colunas que você usa no Grid e na Promoção
+                    string query = @"
+                SELECT 
+                    CodigoMercadoria, CodFabricante, CodBarras, Mercadoria,
+                    PrecoVenda, PrecoVenda as PrecoOriginal, PrecoPromocional,
+                    VendaA, VendaB, VendaC, VendaD, VendaE,
+                    Fornecedor, Fabricante, Grupo, Prateleira,
+                    Garantia, Tam, Cores, CodBarras_Grade, Registro,
+                    ID_Promocao, EmPromocao
+                FROM Mercadorias
+                WHERE 1=1
+            ";
+
+                    List<string> condicoes = new List<string>();
+
+                    // Lógica de Filtros (Exatamente como a que você postou que funciona)
+                    if (!string.IsNullOrEmpty(grupo))
+                        condicoes.Add("Grupo = @grupo");
+
+                    if (!string.IsNullOrEmpty(fabricante))
+                        condicoes.Add("Fabricante = @fabricante");
+
+                    if (!string.IsNullOrEmpty(fornecedor))
+                        condicoes.Add("Fornecedor = @fornecedor");
+
+                    // ⭐ Adição da Rotina de Promoção
                     if (idPromocao.HasValue)
                         condicoes.Add("EmPromocao = 1 AND ID_Promocao = @idPromocao");
 
                     if (condicoes.Count > 0)
                         query += " AND " + string.Join(" AND ", condicoes);
 
+                    // Ordenação Original
                     query += isConfeccao ? " ORDER BY Mercadoria, Tam, Cores" : " ORDER BY Mercadoria";
 
                     using (var cmd = new SQLiteCommand(query, conn))
                     {
+                        // Parâmetros (Exatamente como na sua versão funcional)
                         if (!string.IsNullOrEmpty(grupo)) cmd.Parameters.AddWithValue("@grupo", grupo);
                         if (!string.IsNullOrEmpty(fabricante)) cmd.Parameters.AddWithValue("@fabricante", fabricante);
                         if (!string.IsNullOrEmpty(fornecedor)) cmd.Parameters.AddWithValue("@fornecedor", fornecedor);
 
-                        // ⭐ SETA O ID DA PROMOÇÃO
+                        // Parâmetro da Promoção
                         if (idPromocao.HasValue) cmd.Parameters.AddWithValue("@idPromocao", idPromocao.Value);
 
                         DataTable dt = new DataTable();
@@ -740,7 +773,7 @@ namespace EtiquetaFORNew.Data
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Erro ao buscar mercadorias: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Erro: {ex.Message}");
                 return new DataTable();
             }
         }
@@ -1175,35 +1208,80 @@ namespace EtiquetaFORNew.Data
             return LocalDatabaseManagerExtensions.ObterSubGruposPorGrupo(grupo);
         }
 
+        //public static DataTable ObterGruposDoSQLServer()
+        //{
+        //    try
+        //    {
+        //        string connectionString = DatabaseConfig.GetConnectionString();
+
+        //        if (string.IsNullOrEmpty(connectionString))
+        //        {
+        //            System.Diagnostics.Debug.WriteLine("SQL Server não configurado, usando dados locais");
+        //            return ObterValoresDistintos("Grupo");
+        //        }
+
+        //        using (var conn = new System.Data.SqlClient.SqlConnection(connectionString))
+        //        {
+        //            conn.Open();
+
+        //            //string query = @"
+        //            //    SELECT DISTINCT g.GRP_DESCRI AS Grupo
+        //            //    FROM grp g
+        //            //    INNER JOIN memoria_MercadoriasLojas m ON m.GRUPO = g.GRP_DESCRI
+        //            //    WHERE g.GRP_DESCRI IS NOT NULL 
+        //            //    AND g.GRP_DESCRI != ''
+        //            //    ORDER BY g.GRP_DESCRI
+        //            //";
+
+        //            string query = @"
+        //                 SELECT DISTINCT g.GRP_DESCRI AS Grupo
+        //                 FROM grp g
+        //                 INNER JOIN memoria_MercadoriasLojas m ON m.GRUPO = g.GRP_DESCRI
+        //                 WHERE g.GRP_DESCRI IS NOT NULL 
+        //                 ORDER BY g.GRP_DESCRI
+        //            ";
+
+        //            using (var cmd = new System.Data.SqlClient.SqlCommand(query, conn))
+        //            {
+        //                DataTable dt = new DataTable();
+        //                using (var adapter = new System.Data.SqlClient.SqlDataAdapter(cmd))
+        //                {
+        //                    adapter.Fill(dt);
+        //                }
+        //                return dt;
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        System.Diagnostics.Debug.WriteLine($"Erro ao obter grupos do SQL Server: {ex.Message}");
+        //        return ObterValoresDistintos("Grupo");
+        //    }
+        //}
+
+        // Adicione os parâmetros no cabeçalho para o método receber o que você selecionou no Form
+        // Adicione os parâmetros grupo e fabricante aqui no cabeçalho!
         public static DataTable ObterGruposDoSQLServer()
         {
             try
             {
-                string connectionString = DatabaseConfig.GetConnectionString();
-
-                if (string.IsNullOrEmpty(connectionString))
-                {
-                    System.Diagnostics.Debug.WriteLine("SQL Server não configurado, usando dados locais");
-                    return ObterValoresDistintos("Grupo");
-                }
-
-                using (var conn = new System.Data.SqlClient.SqlConnection(connectionString))
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
                     conn.Open();
 
+                    // Busca apenas os grupos únicos que existem no banco local
+                    // 'AS Grupo' é vital para o seu foreach row["Grupo"] não falhar
                     string query = @"
-                        SELECT DISTINCT g.GRP_DESCRI AS Grupo
-                        FROM grp g
-                        INNER JOIN memoria_MercadoriasLojas m ON m.GRUPO = g.GRP_DESCRI
-                        WHERE g.GRP_DESCRI IS NOT NULL 
-                        AND g.GRP_DESCRI != ''
-                        ORDER BY g.GRP_DESCRI
-                    ";
+                SELECT DISTINCT GRUPO AS Grupo 
+                FROM Mercadorias 
+                WHERE GRUPO IS NOT NULL 
+                AND GRUPO != '' 
+                ORDER BY GRUPO";
 
-                    using (var cmd = new System.Data.SqlClient.SqlCommand(query, conn))
+                    using (var cmd = new SQLiteCommand(query, conn))
                     {
                         DataTable dt = new DataTable();
-                        using (var adapter = new System.Data.SqlClient.SqlDataAdapter(cmd))
+                        using (var adapter = new SQLiteDataAdapter(cmd))
                         {
                             adapter.Fill(dt);
                         }
@@ -1213,8 +1291,8 @@ namespace EtiquetaFORNew.Data
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Erro ao obter grupos do SQL Server: {ex.Message}");
-                return ObterValoresDistintos("Grupo");
+                System.Diagnostics.Debug.WriteLine($"Erro ao obter grupos: {ex.Message}");
+                return new DataTable();
             }
         }
 
@@ -1235,12 +1313,11 @@ namespace EtiquetaFORNew.Data
                     conn.Open();
 
                     string query = @"
-                        SELECT DISTINCT f.GRP_DESCRI AS Fabricante
-                        FROM Fabricante f
-                        INNER JOIN memoria_MercadoriasLojas m ON m.FABRICANTE = f.GRP_DESCRI
-                        WHERE f.GRP_DESCRI IS NOT NULL 
-                        AND f.GRP_DESCRI != ''
-                        ORDER BY f.GRP_DESCRI
+                        SELECT DISTINCT FABRICANTE AS Fabricante
+                        FROM memoria_MercadoriasLojas
+                        WHERE FABRICANTE IS NOT NULL
+                        AND FABRICANTE != ''
+                        ORDER BY FABRICANTE
                     ";
 
                     using (var cmd = new System.Data.SqlClient.SqlCommand(query, conn))

@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace EtiquetaFORNew.Data
 {
@@ -94,9 +95,20 @@ namespace EtiquetaFORNew.Data
 
                 case "FILTROS MANUAIS":
                 default:
+
+                    
+                    grupo = LimparFiltro(grupo);
+                    fabricante = LimparFiltro(fabricante);
+                    fornecedor = LimparFiltro(fornecedor);
+
+                    MessageBox.Show(
+                    $"Grupo=[{grupo}]\n" +
+                    $"Fabricante=[{fabricante}]\n" +
+                    $"Fornecedor=[{fornecedor}]");
+
                     // Para filtros manuais, usa o mÃƒÆ’Ã‚Â©todo existente do LocalDatabaseManager
                     // que aceita: grupo, fabricante, fornecedor, isConfeccao
-                    return LocalDatabaseManager.BuscarMercadoriasPorFiltros(
+                    return LocalDatabaseManager.BuscarMercadoriasPorFiltrosManuais(
                         grupo,
                         fabricante,
                         fornecedor,
@@ -744,6 +756,25 @@ namespace EtiquetaFORNew.Data
             }
             catch { }
             return dt;
+        }
+
+        private static string LimparFiltro(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+                return null;
+
+            valor = valor.Trim();
+
+            if (valor.Equals("TODOS", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (valor.Equals("SELECIONE", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (valor.Contains("Selecione"))
+                return null;
+
+            return valor;
         }
 
     }
