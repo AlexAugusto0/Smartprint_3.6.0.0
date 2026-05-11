@@ -101,10 +101,10 @@ namespace EtiquetaFORNew.Data
                     fabricante = LimparFiltro(fabricante);
                     fornecedor = LimparFiltro(fornecedor);
 
-                    MessageBox.Show(
-                    $"Grupo=[{grupo}]\n" +
-                    $"Fabricante=[{fabricante}]\n" +
-                    $"Fornecedor=[{fornecedor}]");
+                    //MessageBox.Show(
+                    //$"Grupo=[{grupo}]\n" +
+                    //$"Fabricante=[{fabricante}]\n" +
+                    //$"Fornecedor=[{fornecedor}]");
 
                     // Para filtros manuais, usa o mÃƒÆ’Ã‚Â©todo existente do LocalDatabaseManager
                     // que aceita: grupo, fabricante, fornecedor, isConfeccao
