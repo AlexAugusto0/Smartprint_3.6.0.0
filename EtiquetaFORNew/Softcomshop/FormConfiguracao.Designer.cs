@@ -17,6 +17,7 @@ namespace EtiquetaFORNew
 
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.label1 = new System.Windows.Forms.Label();
             this.cboTipoConexao = new System.Windows.Forms.ComboBox();
             this.panelSqlServer = new System.Windows.Forms.Panel();
@@ -47,6 +48,8 @@ namespace EtiquetaFORNew
             this.label8 = new System.Windows.Forms.Label();
             this.btnSalvar = new System.Windows.Forms.Button();
             this.btnCancelar = new System.Windows.Forms.Button();
+            this.btnReport = new System.Windows.Forms.Button();
+            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.panelSoftcomShop.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -371,11 +374,23 @@ namespace EtiquetaFORNew
             this.btnCancelar.UseVisualStyleBackColor = true;
             this.btnCancelar.Click += new System.EventHandler(this.btnCancelar_Click);
             // 
+            // btnReport
+            // 
+            this.btnReport.Location = new System.Drawing.Point(20, 542);
+            this.btnReport.Name = "btnReport";
+            this.btnReport.Size = new System.Drawing.Size(83, 27);
+            this.btnReport.TabIndex = 6;
+            this.btnReport.Text = "Report";
+            this.toolTip1.SetToolTip(this.btnReport, "Abertura de Casos");
+            this.btnReport.UseVisualStyleBackColor = true;
+            this.btnReport.Click += new System.EventHandler(this.btnReport_Click);
+            // 
             // FormConfiguracao
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(684, 576);
+            this.Controls.Add(this.btnReport);
             this.Controls.Add(this.btnCancelar);
             this.Controls.Add(this.btnSalvar);
             this.Controls.Add(this.panelSoftcomShop);
@@ -434,5 +449,7 @@ namespace EtiquetaFORNew
         private System.Windows.Forms.Button btnCancelar;
         private System.Windows.Forms.ComboBox comboModuloApp;
         private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.Button btnReport;
+        private System.Windows.Forms.ToolTip toolTip1;
     }
 }

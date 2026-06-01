@@ -406,9 +406,9 @@
             this.lblTitulo.ForeColor = System.Drawing.Color.Black;
             this.lblTitulo.Location = new System.Drawing.Point(80, 6);
             this.lblTitulo.Name = "lblTitulo";
-            this.lblTitulo.Size = new System.Drawing.Size(260, 30);
+            this.lblTitulo.Size = new System.Drawing.Size(421, 30);
             this.lblTitulo.TabIndex = 0;
-            this.lblTitulo.Text = "SISTEMA DE ETIQUETAS";
+            this.lblTitulo.Text = "SMARTPRINT - SISTEMA DE ETIQUETAS";
             // 
             // btnDesigner
             // 

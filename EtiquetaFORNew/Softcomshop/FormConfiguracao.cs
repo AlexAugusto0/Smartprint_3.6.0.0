@@ -1,6 +1,8 @@
 using EtiquetaFORNew.Data;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -567,5 +569,29 @@ namespace EtiquetaFORNew
         }
 
         #endregion
+
+        private void btnReport_Click(object sender, EventArgs e)
+        {
+            string caminhoExe = Path.Combine(
+                AppContext.BaseDirectory,
+                "OPS_HUB.exe"
+            );
+
+            //MessageBox.Show(caminhoExe);
+
+            if (File.Exists(caminhoExe))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = caminhoExe,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                MessageBox.Show("Arquivo não encontrado.");
+            }
+        }
+
     }
 }
