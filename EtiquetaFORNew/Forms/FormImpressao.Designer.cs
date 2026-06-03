@@ -81,7 +81,7 @@
             this.panelVisualizacao.Location = new System.Drawing.Point(0, 60);
             this.panelVisualizacao.Name = "panelVisualizacao";
             this.panelVisualizacao.Padding = new System.Windows.Forms.Padding(20);
-            this.panelVisualizacao.Size = new System.Drawing.Size(900, 570);
+            this.panelVisualizacao.Size = new System.Drawing.Size(900, 433);
             this.panelVisualizacao.TabIndex = 1;
             // 
             // panelBotoes
@@ -93,7 +93,7 @@
             this.panelBotoes.Controls.Add(this.btnProxima);
             this.panelBotoes.Controls.Add(this.btnAnterior);
             this.panelBotoes.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panelBotoes.Location = new System.Drawing.Point(0, 630);
+            this.panelBotoes.Location = new System.Drawing.Point(0, 493);
             this.panelBotoes.Name = "panelBotoes";
             this.panelBotoes.Size = new System.Drawing.Size(900, 70);
             this.panelBotoes.TabIndex = 2;
@@ -162,7 +162,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(900, 700);
+            this.ClientSize = new System.Drawing.Size(900, 563);
             this.Controls.Add(this.panelVisualizacao);
             this.Controls.Add(this.panelBotoes);
             this.Controls.Add(this.panelTopo);

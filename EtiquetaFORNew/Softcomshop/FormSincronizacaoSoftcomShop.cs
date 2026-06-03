@@ -233,10 +233,20 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                //progressBar.Visible = false;
+                //MessageBox.Show(
+                //    $"Erro ao buscar nota fiscal:\n\n{ex.Message}",
+                //    "Erro",
+                //    MessageBoxButtons.OK,
+                //    MessageBoxIcon.Error);
+
+                //lblStatus.Text = "Erro";
+
                 progressBar.Visible = false;
+                // ex.ToString() traz a StackTrace detalhada com a linha do erro
                 MessageBox.Show(
-                    $"Erro ao buscar nota fiscal:\n\n{ex.Message}",
-                    "Erro",
+                    $"Erro detalhado:\n\n{ex.ToString()}",
+                    "Erro de Conversão",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
 
@@ -339,7 +349,7 @@ namespace EtiquetaFORNew
         private void HabilitarBotoes(bool habilitar)
         {
             btnSincronizarProdutos.Enabled = habilitar;
-            btnBuscarNotaFiscal.Enabled = false;
+            btnBuscarNotaFiscal.Enabled = true;
             btnBuscarVenda.Enabled = false;
             btnFechar.Enabled = habilitar;
         }
@@ -505,12 +515,22 @@ namespace EtiquetaFORNew
         {
             DataEntrada = dtpDataEntrada.Value;
 
-            if (!string.IsNullOrWhiteSpace(txtNumeroNota.Text))
+            if (string.IsNullOrWhiteSpace(txtNumeroNota.Text))
             {
-                if (int.TryParse(txtNumeroNota.Text, out int numero))
-                {
-                    NumeroNota = numero;
-                }
+                MessageBox.Show("Por favor, informe o número da Nota Fiscal.", "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                this.DialogResult = DialogResult.None; // Impede o fechamento do Form
+                return;
+            }
+
+            if (int.TryParse(txtNumeroNota.Text, out int numero))
+            {
+                NumeroNota = numero;
+            }
+            else
+            {
+                MessageBox.Show("O número da nota deve conter apenas algarismos numéricos.", "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                this.DialogResult = DialogResult.None;
+                return;
             }
         }
     }
