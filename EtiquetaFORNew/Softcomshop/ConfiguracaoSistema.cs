@@ -6,6 +6,7 @@ namespace EtiquetaFORNew
 {
     /// <summary>
     /// Enumeração dos tipos de conexão disponíveis
+    /// //teste
     /// </summary>
     public enum TipoConexao
     {
