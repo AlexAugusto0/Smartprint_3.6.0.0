@@ -1,0 +1,1 @@
+Codex configurado com sucesso

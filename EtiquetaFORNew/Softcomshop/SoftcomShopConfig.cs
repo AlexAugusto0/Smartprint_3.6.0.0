@@ -103,6 +103,7 @@ namespace EtiquetaFORNew
         public string PromocaoRouter => $"{_baseUrl}/softauth/api/produtos/promocao";
         public string AtualizacaoPrecoRouter => $"{_baseUrl}/softauth/api/produtos/produtos/data_atualizacao_preco/";
         public string DataEntradaNotaFiscal => $"{_baseUrl}/softauth/api/produtos/produtos/data_entrada/";
+        public string ComprasV2Router => $"{_baseUrl}/softauth/api/v2/produtos/compras";
         public string DataEntradaNotaFiscalV2 => $"{_baseUrl}/softauth/api/v2/produtos/compras?data_hora_entrada=";
         public string VendasRouter => $"{_baseUrl}/softauth/api/vendas/vendas/completa/";
     }

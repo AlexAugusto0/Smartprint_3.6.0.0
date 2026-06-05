@@ -181,6 +181,33 @@ namespace EtiquetaFORNew
         }
 
         /// <summary>
+        /// Obtem produtos de uma nota fiscal de entrada pelo numero informado.
+        /// Mantem o fluxo do FormFiltrosCarregamento sem exigir data de entrada.
+        /// </summary>
+        public async Task<string> GetNotaFiscalPorNumeroAsync(int numeroNota, int page = 1)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_currentToken))
+                {
+                    await GetTokenAsync();
+                }
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_currentToken}");
+                _httpClient.DefaultRequestHeaders.Add("Api-Version", "v2");
+
+                string url = $"{_router.ComprasV2Router}?numero_nota_fiscal={numeroNota}&page={page}";
+                var response = await _httpClient.GetAsync(url);
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao obter nota fiscal por numero: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Obtem produtos por venda
         /// </summary>
         public async Task<string> GetVendaAsync(int numeroVenda)

@@ -607,16 +607,20 @@ namespace EtiquetaFORNew
         private void AplicarPermissoesFiltros()
         {
             string tipoSelecionado = cmbTipo.Text;
+            bool modoSoftcomShop = EstaEmModoSoftcomShop();
 
             // Reset
             cmbGrupo.Enabled = true;
             cmbFabricante.Enabled = true;
             cmbFornecedor.Enabled = true;
+            chkUsarFiltroData.Enabled = true;
             lblPromocao.Visible = false;
             cmbPromocao.Visible = false;
             lblDocumento.Visible = false;
             txtDocumento.Visible = false;
             chkUsarFiltroData.Visible = true;
+            lblDataInicial.Text = "Data Inicial:";
+            lblDataFinal.Text = "Data Final:";
 
             switch (tipoSelecionado)
             {
@@ -643,8 +647,19 @@ namespace EtiquetaFORNew
                     cmbGrupo.Enabled = false;
                     cmbFabricante.Enabled = false;
                     cmbFornecedor.Enabled = false;
-                    chkUsarFiltroData.Visible = false;
-                    chkUsarFiltroData.Checked = false;
+                    chkUsarFiltroData.Visible = modoSoftcomShop;
+                    chkUsarFiltroData.Checked = modoSoftcomShop;
+                    chkUsarFiltroData.Enabled = !modoSoftcomShop;
+                    dtpDataInicial.Enabled = modoSoftcomShop;
+                    dtpDataFinal.Enabled = modoSoftcomShop;
+
+                    if (modoSoftcomShop)
+                    {
+                        lblDataInicial.Text = "Data de Entrada:";
+                        lblDataFinal.Text = "Data Final:";
+                        dtpDataInicial.Value = DateTime.Now;
+                        dtpDataFinal.Value = DateTime.Now;
+                    }
 
                     lblDocumento.Text = "Número da NF:";
                     lblDocumento.Visible = true;
@@ -785,6 +800,14 @@ namespace EtiquetaFORNew
                         txtDocumento.Focus();
                         return;
                     }
+
+                    if (EstaEmModoSoftcomShop() && !chkUsarFiltroData.Checked)
+                    {
+                        MessageBox.Show("Informe a data de entrada da nota fiscal para consulta no SoftcomShop!",
+                            "Atencao", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        chkUsarFiltroData.Focus();
+                        return;
+                    }
                     break;
 
                 case "PREÇOS ALTERADOS":
@@ -850,6 +873,21 @@ namespace EtiquetaFORNew
 
             this.DialogResult = DialogResult.OK;
             this.Close();
+        }
+
+        private bool EstaEmModoSoftcomShop()
+        {
+            try
+            {
+                var config = ConfiguracaoSistema.Carregar();
+                return config != null &&
+                       config.TipoConexaoAtiva == TipoConexao.SoftcomShop &&
+                       config.SoftcomShopConfigurado();
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void Control_KeyDown_EnterParaCarregar(object sender, KeyEventArgs e)

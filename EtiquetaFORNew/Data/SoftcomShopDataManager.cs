@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Linq;
 using Newtonsoft.Json;
@@ -170,16 +171,17 @@ namespace EtiquetaFORNew
             0, 1
         )", conn);
 
-            long produtoId = produto["produto_id"]?.ToObject<long>() ?? 0;
+            long produtoId = LerLong(produto["produto_id"]);
+            string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
 
             cmd.Parameters.AddWithValue("@id", produtoId);
-            cmd.Parameters.AddWithValue("@codMerc", produtoId);
+            cmd.Parameters.AddWithValue("@codMerc", codigoMercadoria);
 
             // Referência
             string referencia = produto["referencia"]?.ToString() ?? "";
             if (string.IsNullOrWhiteSpace(referencia))
             {
-                referencia = produtoId.ToString();
+                referencia = codigoMercadoria;
             }
             cmd.Parameters.AddWithValue("@codFabricante", referencia);
 
@@ -214,15 +216,13 @@ namespace EtiquetaFORNew
             {
                 nomeProduto = !string.IsNullOrWhiteSpace(referencia)
                     ? referencia
-                    : $"Produto {produtoId}";
+                    : $"Produto {codigoMercadoria}";
             }
 
             cmd.Parameters.AddWithValue("@mercadoria", nomeProduto);
 
             // Preço
-            decimal preco = decimal.TryParse(
-                produto["preco_venda"]?.ToString().Replace(".", ","),
-                out decimal p) ? p : 0;
+            decimal preco = LerDecimal(produto["preco_venda"], 0m);
             cmd.Parameters.AddWithValue("@preco", preco);
 
             cmd.Parameters.AddWithValue("@fabricante", produto["marca_nome"]?.ToString() ?? "");
@@ -443,12 +443,12 @@ namespace EtiquetaFORNew
                 string jsonResponse = await _service.GetNotaFiscalAsync(dataFormatada, numeroNota, 1, versao);
                 
                 var response = JObject.Parse(jsonResponse);
-                var produtos = response["data"] as JArray;
+                var produtos = ExtrairProdutosNotaFiscal(response);
 
                 if (produtos == null || produtos.Count == 0)
                 {
                     result.Sucesso = false;
-                    result.MensagemErro = "Nenhum produto encontrado para esta nota fiscal.";
+                    result.MensagemErro = "A nota fiscal foi consultada, mas a resposta da API nao contem itens de produto no formato esperado.";
                     return result;
                 }
 
@@ -457,6 +457,13 @@ namespace EtiquetaFORNew
 
                 // Processar produtos marcando para impressão
                 result.ProdutosAdicionados = ProcessarProdutosNotaFiscal(produtos, versao);
+
+                if (result.ProdutosAdicionados == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A nota fiscal foi consultada, mas nenhum item possuia identificador suficiente para atualizar ou inserir no banco local.";
+                    return result;
+                }
 
                 progress?.Report($"{result.ProdutosAdicionados} produtos carregados!");
                 result.Sucesso = true;
@@ -481,10 +488,19 @@ namespace EtiquetaFORNew
                 foreach (var produto in produtos)
                 {
                     // Verificar se produto já existe
-                    long produtoId = produto["produto_id"].ToObject<long>();
-                    string codBarrasGrade = produto["codigo_barras_grade"]?.ToString() ?? "";
+                    long produtoId = LerLong(produto["produto_id"]);
+                    string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
+                    string codBarras = ObterTexto(produto["codigo_barras"]);
+                    string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
+                    int quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
 
-                    if (ProdutoExiste(conn, produtoId, codBarrasGrade))
+                    if (!TemIdentificacaoProduto(produtoId, codigoMercadoria, codBarras, codBarrasGrade))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[ProcessarProdutosNotaFiscal] Item ignorado: sem produto_id, codigo de mercadoria ou codigo de barras.");
+                        continue;
+                    }
+
+                    if (ProdutoExiste(conn, produtoId, codBarrasGrade, codigoMercadoria, codBarras))
                     {
                         // Atualizar e marcar para impressão
                         AtualizarProdutoNF(conn, produto, versao);
@@ -493,8 +509,7 @@ namespace EtiquetaFORNew
                     {
                         // Inserir novo produto
                         InserirProduto(conn, produto, versao);
-                        MarcarParaImpressao(conn, produtoId, codBarrasGrade, 
-                            produto["compra_item_quantidade"]?.ToObject<int>() ?? 1);
+                        MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade, codigoMercadoria, codBarras);
                     }
 
                     count++;
@@ -502,6 +517,236 @@ namespace EtiquetaFORNew
             }
 
             return count;
+        }
+
+        private JArray ExtrairProdutosNotaFiscal(JObject response)
+        {
+            var produtos = new JArray();
+            AdicionarProdutosNotaFiscal(produtos, response["data"]);
+            return produtos;
+        }
+
+        private void AdicionarProdutosNotaFiscal(JArray destino, JToken token)
+        {
+            if (token == null || token.Type == JTokenType.Null)
+                return;
+
+            if (token is JArray array)
+            {
+                foreach (var item in array)
+                    AdicionarProdutosNotaFiscal(destino, item);
+
+                return;
+            }
+
+            if (!(token is JObject obj))
+                return;
+
+            if (TemCampoProdutoNotaFiscal(obj))
+            {
+                destino.Add(NormalizarItemNotaFiscal(obj));
+                return;
+            }
+
+            var itens = obj["itens"] ?? obj["items"] ?? obj["produtos"] ?? obj["mercadorias"];
+            if (itens != null)
+                AdicionarProdutosNotaFiscal(destino, itens);
+        }
+
+        private bool TemCampoProdutoNotaFiscal(JObject item)
+        {
+            return item["produto_id"] != null ||
+                   item["codigo_barras_grade"] != null ||
+                   item["compra_item_quantidade"] != null ||
+                   item["quantidade_item"] != null ||
+                   item["produto"] is JObject ||
+                   item["mercadoria"] is JObject;
+        }
+
+        private JObject NormalizarItemNotaFiscal(JObject item)
+        {
+            var produto = item["produto"] as JObject
+                          ?? item["mercadoria"] as JObject
+                          ?? item["produto_empresa"] as JObject
+                          ?? item["produto_grade"] as JObject
+                          ?? item["sku"] as JObject;
+
+            var normalizado = new JObject();
+
+            CopiarCampos(normalizado, produto);
+            CopiarCampos(normalizado, item);
+
+            DefinirSeVazio(normalizado, "produto_id",
+                item["produto_id"],
+                item["id_produto"],
+                item["mercadoria_id"],
+                item["codigo_produto"],
+                produto?["produto_id"],
+                produto?["id"],
+                produto?["codigo"]);
+
+            DefinirSeVazio(normalizado, "codigo_mercadoria",
+                item["codigo_mercadoria"],
+                item["codigo_produto"],
+                item["mercadoria_codigo"],
+                item["codigo"],
+                produto?["codigo_mercadoria"],
+                produto?["codigo_produto"],
+                produto?["mercadoria_codigo"],
+                produto?["codigo"]);
+
+            DefinirSeVazio(normalizado, "codigo_barras_grade",
+                item["codigo_barras_grade"],
+                item["cod_barras_grade"],
+                item["codigo_barras_sku"],
+                produto?["codigo_barras_grade"],
+                produto?["cod_barras_grade"],
+                produto?["codigo_barras_sku"]);
+
+            DefinirSeVazio(normalizado, "codigo_barras",
+                item["codigo_barras"],
+                item["cod_barras"],
+                produto?["codigo_barras"],
+                produto?["cod_barras"]);
+
+            DefinirSeVazio(normalizado, "compra_item_quantidade",
+                item["compra_item_quantidade"],
+                item["quantidade"],
+                item["qtd"],
+                item["quantidade_item"],
+                item["qtde"]);
+
+            DefinirSeVazio(normalizado, "produto_nome",
+                item["produto_nome"],
+                item["descricao"],
+                item["nome"],
+                item["produto_descricao"],
+                produto?["produto_nome"],
+                produto?["descricao"],
+                produto?["nome"],
+                produto?["produto_descricao"]);
+
+            DefinirSeVazio(normalizado, "preco_venda",
+                item["preco_venda"],
+                item["valor_unitario"],
+                item["preco_unitario"],
+                produto?["preco_venda"],
+                produto?["valor_unitario"],
+                produto?["preco"]);
+
+            DefinirSeVazio(normalizado, "referencia",
+                item["referencia"],
+                item["codigo_referencia"],
+                produto?["referencia"],
+                produto?["codigo_referencia"]);
+
+            DefinirSeVazio(normalizado, "marca_nome",
+                item["marca_nome"],
+                item["fabricante"],
+                produto?["marca_nome"],
+                produto?["fabricante"]);
+
+            DefinirSeVazio(normalizado, "grupo_nome",
+                item["grupo_nome"],
+                item["grupo"],
+                produto?["grupo_nome"],
+                produto?["grupo"]);
+
+            return normalizado;
+        }
+
+        private void CopiarCampos(JObject destino, JObject origem)
+        {
+            if (origem == null)
+                return;
+
+            foreach (var prop in origem.Properties())
+            {
+                if (destino[prop.Name] == null)
+                    destino[prop.Name] = prop.Value.DeepClone();
+            }
+        }
+
+        private void DefinirSeVazio(JObject destino, string campo, params JToken[] valores)
+        {
+            if (!string.IsNullOrWhiteSpace(destino[campo]?.ToString()))
+                return;
+
+            foreach (var valor in valores)
+            {
+                if (valor == null || valor.Type == JTokenType.Null)
+                    continue;
+
+                string texto = valor.ToString();
+                if (string.IsNullOrWhiteSpace(texto))
+                    continue;
+
+                destino[campo] = valor.DeepClone();
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Busca produtos por numero da nota fiscal de entrada no SoftcomShop.
+        /// Usado pelo fluxo principal de carregamento para retornar dados ao painel de impressao.
+        /// </summary>
+        public async Task<SyncResult> BuscarPorNumeroNotaFiscalAsync(int numeroNota, IProgress<string> progress = null)
+        {
+            var result = new SyncResult();
+            int paginaAtual = 1;
+            bool temMaisPaginas = true;
+
+            try
+            {
+                progress?.Report($"Buscando nota fiscal {numeroNota}...");
+
+                LimparEtiquetas();
+
+                while (temMaisPaginas)
+                {
+                    string jsonResponse = await _service.GetNotaFiscalPorNumeroAsync(numeroNota, paginaAtual);
+                    var response = JObject.Parse(jsonResponse);
+                    var produtos = ExtrairProdutosNotaFiscal(response);
+
+                    if (produtos == null || produtos.Count == 0)
+                    {
+                        temMaisPaginas = false;
+                        continue;
+                    }
+
+                    result.ProdutosAdicionados += ProcessarProdutosNotaFiscal(produtos, "v2");
+
+                    int totalPaginas = 1;
+                    if (response["meta"]?["last_page"] != null)
+                    {
+                        totalPaginas = response["meta"]["last_page"].ToObject<int>();
+                    }
+                    else if (response["meta"]?["page"]?["count"] != null)
+                    {
+                        totalPaginas = response["meta"]["page"]["count"].ToObject<int>();
+                    }
+
+                    temMaisPaginas = paginaAtual < totalPaginas;
+                    paginaAtual++;
+                }
+
+                if (result.ProdutosAdicionados == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A nota fiscal foi consultada, mas a resposta da API nao contem itens de produto no formato esperado.";
+                    return result;
+                }
+
+                progress?.Report($"{result.ProdutosAdicionados} produtos carregados!");
+                result.Sucesso = true;
+            }
+            catch (Exception ex)
+            {
+                result.Sucesso = false;
+                result.MensagemErro = ex.Message;
+            }
+
+            return result;
         }
 
         #endregion
@@ -623,59 +868,221 @@ namespace EtiquetaFORNew
 
         private bool ProdutoExiste(SQLiteConnection conn, long produtoId, string codBarrasGrade)
         {
-            var cmd = new SQLiteCommand(@"
-                SELECT COUNT(*) FROM Mercadorias 
-                WHERE ID_SoftcomShop = @id 
-                " + (string.IsNullOrEmpty(codBarrasGrade) ? "" : "OR CodBarras_Grade = @codBarrasGrade"), conn);
-
-            cmd.Parameters.AddWithValue("@id", produtoId);
-            if (!string.IsNullOrEmpty(codBarrasGrade))
-                cmd.Parameters.AddWithValue("@codBarrasGrade", codBarrasGrade);
-
-            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            return ProdutoExiste(conn, produtoId, codBarrasGrade, null, null);
         }
 
-        private void MarcarParaImpressao(SQLiteConnection conn, long produtoId, string codBarrasGrade, int quantidade)
+        private bool ProdutoExiste(SQLiteConnection conn, long produtoId, string codBarrasGrade, string codigoMercadoria, string codBarras)
         {
-            var cmd = new SQLiteCommand(@"
+            using (var cmd = new SQLiteCommand(conn))
+            {
+                var condicoes = new List<string>();
+                AdicionarCondicoesProduto(cmd, condicoes, produtoId, codBarrasGrade, codigoMercadoria, codBarras);
+
+                if (condicoes.Count == 0)
+                    return false;
+
+                cmd.CommandText = "SELECT COUNT(*) FROM Mercadorias WHERE " + string.Join(" OR ", condicoes);
+                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            }
+        }
+
+        private int MarcarParaImpressao(SQLiteConnection conn, long produtoId, string codBarrasGrade, int quantidade)
+        {
+            return MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade, null, null);
+        }
+
+        private int MarcarParaImpressao(SQLiteConnection conn, long produtoId, string codBarrasGrade, int quantidade, string codigoMercadoria, string codBarras)
+        {
+            using (var cmd = new SQLiteCommand(conn))
+            {
+                var condicoes = new List<string>();
+                AdicionarCondicoesProduto(cmd, condicoes, produtoId, codBarrasGrade, codigoMercadoria, codBarras);
+
+                if (condicoes.Count == 0)
+                    return 0;
+
+                cmd.CommandText = @"
                 UPDATE Mercadorias 
                 SET GerarEtiqueta = 1, QuantidadeEtiqueta = @qtd
-                WHERE ID_SoftcomShop = @id 
-                " + (string.IsNullOrEmpty(codBarrasGrade) ? "" : "OR CodBarras_Grade = @codBarrasGrade"), conn);
+                WHERE " + string.Join(" OR ", condicoes);
 
-            cmd.Parameters.AddWithValue("@qtd", quantidade);
-            cmd.Parameters.AddWithValue("@id", produtoId);
-            if (!string.IsNullOrEmpty(codBarrasGrade))
-                cmd.Parameters.AddWithValue("@codBarrasGrade", codBarrasGrade);
-
-            cmd.ExecuteNonQuery();
+                cmd.Parameters.AddWithValue("@qtd", Math.Max(1, quantidade));
+                return cmd.ExecuteNonQuery();
+            }
         }
 
-        private void AtualizarProdutoNF(SQLiteConnection conn, JToken produto, string versao)
+        private int AtualizarProdutoNF(SQLiteConnection conn, JToken produto, string versao)
         {
-            long produtoId = produto["produto_id"].ToObject<long>();
-            string codBarrasGrade = produto["codigo_barras_grade"]?.ToString() ?? "";
-            int quantidade = produto["compra_item_quantidade"]?.ToObject<int>() ?? 1;
+            long produtoId = LerLong(produto["produto_id"]);
+            string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
+            string codBarras = ObterTexto(produto["codigo_barras"]);
+            string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
+            int quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+            decimal preco = LerDecimal(produto["preco_venda"], 0m);
 
-            decimal preco = decimal.TryParse(produto["preco_venda"]?.ToString().Replace(".", ","), out decimal p) ? p : 0;
+            using (var cmd = new SQLiteCommand(conn))
+            {
+                var condicoes = new List<string>();
+                AdicionarCondicoesProduto(cmd, condicoes, produtoId, codBarrasGrade, codigoMercadoria, codBarras);
 
-            var cmd = new SQLiteCommand(@"
+                if (condicoes.Count == 0)
+                    return 0;
+
+                cmd.CommandText = @"
                 UPDATE Mercadorias 
                 SET PrecoVenda = @preco, 
                     UltimaAtualizacao = @data,
                     GerarEtiqueta = 1,
                     QuantidadeEtiqueta = @qtd
-                WHERE ID_SoftcomShop = @id 
-                " + (string.IsNullOrEmpty(codBarrasGrade) ? "" : "OR CodBarras_Grade = @codBarrasGrade"), conn);
+                WHERE " + string.Join(" OR ", condicoes);
 
-            cmd.Parameters.AddWithValue("@preco", preco);
-            cmd.Parameters.AddWithValue("@data", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            cmd.Parameters.AddWithValue("@qtd", quantidade);
-            cmd.Parameters.AddWithValue("@id", produtoId);
-            if (!string.IsNullOrEmpty(codBarrasGrade))
-                cmd.Parameters.AddWithValue("@codBarrasGrade", codBarrasGrade);
+                cmd.Parameters.AddWithValue("@preco", preco);
+                cmd.Parameters.AddWithValue("@data", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                cmd.Parameters.AddWithValue("@qtd", quantidade);
 
-            cmd.ExecuteNonQuery();
+                return cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static bool TemIdentificacaoProduto(long produtoId, string codigoMercadoria, string codBarras, string codBarrasGrade)
+        {
+            return produtoId > 0 ||
+                   !string.IsNullOrWhiteSpace(codigoMercadoria) ||
+                   !string.IsNullOrWhiteSpace(codBarras) ||
+                   !string.IsNullOrWhiteSpace(codBarrasGrade);
+        }
+
+        private static string ObterCodigoMercadoria(JToken produto, long produtoId)
+        {
+            string codigo = PrimeiroTexto(
+                produto?["codigo_mercadoria"],
+                produto?["codigo_produto"],
+                produto?["mercadoria_codigo"],
+                produto?["produto_id"],
+                produto?["id_produto"],
+                produto?["mercadoria_id"],
+                produto?["id"]);
+
+            if (string.IsNullOrWhiteSpace(codigo) && produtoId > 0)
+                codigo = produtoId.ToString(CultureInfo.InvariantCulture);
+
+            return codigo ?? "";
+        }
+
+        private static string PrimeiroTexto(params JToken[] valores)
+        {
+            foreach (var valor in valores)
+            {
+                string texto = ObterTexto(valor);
+                if (!string.IsNullOrWhiteSpace(texto))
+                    return texto;
+            }
+
+            return "";
+        }
+
+        private static string ObterTexto(JToken token)
+        {
+            return token == null || token.Type == JTokenType.Null
+                ? ""
+                : token.ToString().Trim();
+        }
+
+        private static long LerLong(JToken token, long valorPadrao = 0)
+        {
+            string texto = ObterTexto(token);
+            if (string.IsNullOrWhiteSpace(texto))
+                return valorPadrao;
+
+            if (long.TryParse(texto, NumberStyles.Integer, CultureInfo.InvariantCulture, out long valor))
+                return valor;
+
+            if (decimal.TryParse(NormalizarNumeroDecimal(texto), NumberStyles.Number, CultureInfo.InvariantCulture, out decimal valorDecimal) &&
+                valorDecimal >= long.MinValue &&
+                valorDecimal <= long.MaxValue)
+            {
+                return Convert.ToInt64(Math.Truncate(valorDecimal));
+            }
+
+            return valorPadrao;
+        }
+
+        private static int LerInteiro(JToken token, int valorPadrao = 0)
+        {
+            decimal valorDecimal = LerDecimal(token, valorPadrao);
+            if (valorDecimal <= 0)
+                return valorPadrao;
+
+            if (valorDecimal > int.MaxValue)
+                return int.MaxValue;
+
+            return Convert.ToInt32(Math.Ceiling(valorDecimal));
+        }
+
+        private static decimal LerDecimal(JToken token, decimal valorPadrao = 0m)
+        {
+            string texto = ObterTexto(token);
+            if (string.IsNullOrWhiteSpace(texto))
+                return valorPadrao;
+
+            string normalizado = NormalizarNumeroDecimal(texto);
+            return decimal.TryParse(normalizado, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal valor)
+                ? valor
+                : valorPadrao;
+        }
+
+        private static string NormalizarNumeroDecimal(string texto)
+        {
+            texto = (texto ?? "").Trim();
+            int ultimoPonto = texto.LastIndexOf('.');
+            int ultimaVirgula = texto.LastIndexOf(',');
+
+            if (ultimoPonto >= 0 && ultimaVirgula >= 0)
+            {
+                return ultimoPonto > ultimaVirgula
+                    ? texto.Replace(",", "")
+                    : texto.Replace(".", "").Replace(",", ".");
+            }
+
+            if (ultimaVirgula >= 0)
+                return texto.Replace(".", "").Replace(",", ".");
+
+            return texto;
+        }
+
+        private static void AdicionarCondicoesProduto(SQLiteCommand cmd, List<string> condicoes, long produtoId, string codBarrasGrade, string codigoMercadoria, string codBarras)
+        {
+            if (!string.IsNullOrWhiteSpace(codBarrasGrade))
+            {
+                condicoes.Add("CodBarras_Grade = @codBarrasGrade");
+                cmd.Parameters.AddWithValue("@codBarrasGrade", codBarrasGrade.Trim());
+                return;
+            }
+
+            if (produtoId > 0)
+            {
+                condicoes.Add("ID_SoftcomShop = @id");
+                cmd.Parameters.AddWithValue("@id", produtoId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(codigoMercadoria))
+            {
+                condicoes.Add("CAST(CodigoMercadoria AS TEXT) = @codigoMercadoria");
+                cmd.Parameters.AddWithValue("@codigoMercadoria", codigoMercadoria.Trim());
+
+                long codigoNumerico = LerLong(new JValue(codigoMercadoria));
+                if (codigoNumerico > 0)
+                {
+                    condicoes.Add("CodigoMercadoria = @codigoMercadoriaNumero");
+                    cmd.Parameters.AddWithValue("@codigoMercadoriaNumero", codigoNumerico);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(codBarras))
+            {
+                condicoes.Add("CodBarras = @codBarras");
+                cmd.Parameters.AddWithValue("@codBarras", codBarras.Trim());
+            }
         }
 
         private void AtualizarTimestamp(string timestamp)
