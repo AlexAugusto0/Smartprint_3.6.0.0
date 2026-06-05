@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using EtiquetaFORNew.OPS_HUB;
+
 
 namespace EtiquetaFORNew
 {
@@ -14,6 +16,7 @@ namespace EtiquetaFORNew
         private ConfiguracaoSistema _config;
         private SoftcomShopService _service;
         private ConfigForm _configFormSql;
+        private Ops_Hub _gerenciadorOpsHub = new Ops_Hub();
 
         public FormConfiguracao()
         {
@@ -23,6 +26,7 @@ namespace EtiquetaFORNew
             txtUrlDispositivo.KeyDown += txtUrlDispositivo_KeyDown;
 
             this.FormClosing += FormConfiguracao_FormClosing;
+
         }
 
         //private void FormConfiguracao_Load(object sender, EventArgs e)
@@ -566,31 +570,14 @@ namespace EtiquetaFORNew
         private void FormConfiguracao_FormClosing(object sender, FormClosingEventArgs e)
         {
             RemoverConfigFormSql();
+            _gerenciadorOpsHub.TerminarProcesso();
         }
 
         #endregion
 
         private void btnReport_Click(object sender, EventArgs e)
         {
-            string caminhoExe = Path.Combine(
-                AppContext.BaseDirectory,
-                "OPS_HUB.exe"
-            );
-
-            //MessageBox.Show(caminhoExe);
-
-            if (File.Exists(caminhoExe))
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = caminhoExe,
-                    UseShellExecute = true
-                });
-            }
-            else
-            {
-                MessageBox.Show("Arquivo não encontrado.");
-            }
+            _gerenciadorOpsHub.IniciarProvedor(this);
         }
 
     }

@@ -350,6 +350,7 @@
     <Compile Include="IntegracaoExterna.cs" />
     <Compile Include="Localdatabasemanager .cs" />
     <Compile Include="LocalDatabaseManagerExtensions.cs" />
+    <Compile Include="OPS_HUB\Ops_Hub.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Softcomshop\ConfiguracaoSistema.cs" />
