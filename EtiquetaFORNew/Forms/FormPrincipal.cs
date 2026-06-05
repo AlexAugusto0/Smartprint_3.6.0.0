@@ -2970,6 +2970,8 @@ namespace EtiquetaFORNew
         {
             try
             {
+                int quantidade = ObterQuantidadeDoCarregamento(row);
+
                 var produto = new Produto
                 {
                     // ⭐ NOMES CORRETOS DAS COLUNAS DA SUA TABELA:
@@ -2977,7 +2979,7 @@ namespace EtiquetaFORNew
                     Nome = row["Mercadoria"]?.ToString() ?? "",               // Era "Descricao"
                     CodFabricante = row["CodFabricante"]?.ToString() ?? "",  // Era "Referencia"
                     CodBarras = row["CodBarras"]?.ToString() ?? "",           // Era "CodBarra"
-                    Quantidade = 1
+                    Quantidade = quantidade
                 };
 
                 // ⭐ PREÇO: Tentar PrecoVenda primeiro, depois VendaD como fallback
@@ -3110,6 +3112,28 @@ namespace EtiquetaFORNew
             }
             return null;
         }
+        private int ObterQuantidadeDoCarregamento(DataRow row)
+        {
+            try
+            {
+                if (row != null &&
+                    row.Table != null &&
+                    row.Table.Columns.Contains("Quantidade") &&
+                    row["Quantidade"] != DBNull.Value)
+                {
+                    int quantidade = Convert.ToInt32(row["Quantidade"]);
+                    if (quantidade > 0)
+                        return quantidade;
+                }
+            }
+            catch
+            {
+                // Mantem o padrao atual quando a origem nao informa quantidade valida.
+            }
+
+            return 1;
+        }
+
         private string ObterDescricaoTipo(string tipo)
         {
             switch (tipo.ToUpper())
@@ -3149,13 +3173,14 @@ namespace EtiquetaFORNew
             string codigo = row["CodigoMercadoria"]?.ToString();
             string nome = row["Mercadoria"]?.ToString();
             decimal precoVenda = row["PrecoVenda"] != DBNull.Value ? Convert.ToDecimal(row["PrecoVenda"]) : 0m;
+            int quantidade = ObterQuantidadeDoCarregamento(row);
 
             var produto = new Produto
             {
                 Nome = nome,
                 Codigo = codigo,
                 Preco = precoVenda,
-                Quantidade = 1
+                Quantidade = quantidade
             };
 
             // ========================================

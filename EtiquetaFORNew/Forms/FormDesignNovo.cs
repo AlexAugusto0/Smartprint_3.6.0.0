@@ -44,6 +44,8 @@ namespace EtiquetaFORNew.Forms
         private Button btnAlinharEsquerda;
         private Button btnAlinharCentro;
         private Button btnAlinharDireita;
+        private NumericUpDown numElementoLargura;
+        private NumericUpDown numElementoAltura;
         private NumericUpDown numTamanhoFonte;
         private CheckBox chkNegrito;
         private CheckBox chkItalico;
@@ -75,6 +77,7 @@ namespace EtiquetaFORNew.Forms
 
         private List<ElementoEtiqueta> elementosSelecionados = new List<ElementoEtiqueta>();
         private bool selecionandoComRetangulo = false;
+        private bool atualizandoPropriedades = false;
         private Point pontoInicialSelecao;
         private Rectangle retanguloSelecao;
 
@@ -395,7 +398,7 @@ namespace EtiquetaFORNew.Forms
             panelToolbox = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 200,
+                Width = 220,
                 BackColor = Color.FromArgb(236, 240, 241),
                 Padding = new Padding(10),
                 AutoScroll = true,
@@ -785,8 +788,8 @@ namespace EtiquetaFORNew.Forms
         {
             panelPropriedades = new Panel
             {
-                Location = new Point(10, 400),
-                Size = new Size(180, 600),
+                Location = new Point(1, 400),
+                Size = new Size(210, 600),
                 AutoScroll = true,
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -824,6 +827,40 @@ namespace EtiquetaFORNew.Forms
             panelPropriedades.Controls.Add(lblNomeElemento);
             yPos += 42;
 
+            Label lblDimensoesElemento = new Label
+            {
+                Text = "Dimensoes (mm):",
+                Location = new Point(10, yPos),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray
+            };
+            panelPropriedades.Controls.Add(lblDimensoesElemento);
+            yPos += 25;
+
+            numElementoLargura = new NumericUpDown
+            {
+                Location = new Point(10, yPos),
+                Size = new Size(75, 23),
+                Minimum = 1,
+                Maximum = 500,
+                Value = 1
+            };
+            numElementoLargura.ValueChanged += (s, e) => AlterarLarguraElementosSelecionados();
+            panelPropriedades.Controls.Add(numElementoLargura);
+
+            numElementoAltura = new NumericUpDown
+            {
+                Location = new Point(95, yPos),
+                Size = new Size(75, 23),
+                Minimum = 1,
+                Maximum = 500,
+                Value = 1
+            };
+            numElementoAltura.ValueChanged += (s, e) => AlterarAlturaElementosSelecionados();
+            panelPropriedades.Controls.Add(numElementoAltura);
+            yPos += 35;
+
             Label lblConteudo = new Label
             {
                 Name = "lblConteudoTexto",
@@ -847,9 +884,10 @@ namespace EtiquetaFORNew.Forms
             };
             txtConteudo.TextChanged += (s, e) =>
             {
-                if (elementoSelecionado != null && elementoSelecionado.Tipo == TipoElemento.Texto)
+                if (!atualizandoPropriedades && elementoSelecionado != null && elementoSelecionado.Tipo == TipoElemento.Texto)
                 {
                     elementoSelecionado.Conteudo = txtConteudo.Text;
+                    SalvarEstadoHistorico();
                     pbCanvas.Invalidate();
                 }
             };
@@ -951,7 +989,7 @@ namespace EtiquetaFORNew.Forms
             {
                 Location = new Point(10, yPos),
                 Size = new Size(70, 23),
-                Minimum = 6,
+                Minimum = 3,
                 Maximum = 72,
                 Value = 10
             };
@@ -1181,6 +1219,8 @@ namespace EtiquetaFORNew.Forms
 
             template.Elementos.Add(elemento);
             elementoSelecionado = elemento;
+            elementosSelecionados.Clear();
+            SalvarEstadoHistorico();
             AtualizarPainelPropriedades();
             pbCanvas.Invalidate();
             
@@ -1208,6 +1248,8 @@ namespace EtiquetaFORNew.Forms
 
             template.Elementos.Add(elemento);
             elementoSelecionado = elemento;
+            elementosSelecionados.Clear();
+            SalvarEstadoHistorico();
             AtualizarPainelPropriedades();
             pbCanvas.Invalidate();
             
@@ -1230,6 +1272,8 @@ namespace EtiquetaFORNew.Forms
             elemento.Bounds = new Rectangle(1, 1, largura, altura);
             template.Elementos.Add(elemento);
             elementoSelecionado = elemento;
+            elementosSelecionados.Clear();
+            SalvarEstadoHistorico();
             AtualizarPainelPropriedades();
             pbCanvas.Invalidate();
             
@@ -1252,6 +1296,8 @@ namespace EtiquetaFORNew.Forms
 
                     template.Elementos.Add(elemento);
                     elementoSelecionado = elemento;
+                    elementosSelecionados.Clear();
+                    SalvarEstadoHistorico();
                     AtualizarPainelPropriedades();
                     pbCanvas.Invalidate();
                 }
@@ -1262,18 +1308,25 @@ namespace EtiquetaFORNew.Forms
         private void RemoverElementoSelecionado()
         {
             SalvarEstadoHistorico();
-            if (elementoSelecionado != null)
+            var elementosParaRemover = ObterElementosParaEdicao();
+            if (elementosParaRemover.Count > 0)
             {
                 var resultado = MessageBox.Show(
-                    "Deseja remover o elemento selecionado?",
+                    elementosParaRemover.Count == 1
+                        ? "Deseja remover o elemento selecionado?"
+                        : $"Deseja remover os {elementosParaRemover.Count} elementos selecionados?",
                     "Confirmar Remoção",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
 
                 if (resultado == DialogResult.Yes)
                 {
-                    template.Elementos.Remove(elementoSelecionado);
+                    foreach (var elemento in elementosParaRemover)
+                        template.Elementos.Remove(elemento);
+
                     elementoSelecionado = null;
+                    elementosSelecionados.Clear();
+                    SalvarEstadoHistorico();
                     AtualizarPainelPropriedades();
                     pbCanvas.Invalidate();
                 }
@@ -1287,95 +1340,200 @@ namespace EtiquetaFORNew.Forms
 
         private void AtualizarPainelPropriedades()
         {
-            SalvarEstadoHistorico();
-            if (elementoSelecionado == null)
+            var elementosEdicao = ObterElementosParaEdicao();
+            if (elementosEdicao.Count == 0)
             {
                 panelPropriedades.Visible = false;
                 return;
             }
 
-            panelPropriedades.Visible = true;
-
-            var lblNomeAtual = panelPropriedades.Controls.Find("lblNomeElementoAtual", false).FirstOrDefault() as Label;
-            if (lblNomeAtual != null)
+            atualizandoPropriedades = true;
+            try
             {
-                string tipoNome;
-                switch (elementoSelecionado.Tipo)
+                panelPropriedades.Visible = true;
+
+                bool selecaoMultipla = elementosEdicao.Count > 1;
+                bool edicaoIndividual = elementoSelecionado != null && elementosEdicao.Count == 1;
+                ElementoEtiqueta elementoReferencia = edicaoIndividual ? elementoSelecionado : elementosEdicao[0];
+
+                var lblNomeAtual = panelPropriedades.Controls.Find("lblNomeElementoAtual", false).FirstOrDefault() as Label;
+                if (lblNomeAtual != null)
                 {
-                    case TipoElemento.Texto:
-                        string textoResumido = elementoSelecionado.Conteudo ?? "";
-                        if (textoResumido.Length > 18) textoResumido = textoResumido.Substring(0, 18) + "…";
-                        tipoNome = "📝 Texto: \"" + textoResumido + "\"";
-                        break;
-                    case TipoElemento.Campo:
-                        tipoNome = "🏷️ Campo: " + (elementoSelecionado.Conteudo ?? "");
-                        break;
-                    case TipoElemento.CodigoBarras:
-                        tipoNome = "▌ ▌ ▌ Cód.Barras: " + (elementoSelecionado.Conteudo ?? "");
-                        break;
-                    case TipoElemento.Imagem:
-                        tipoNome = "🖼️ Imagem";
-                        break;
-                    default:
-                        tipoNome = elementoSelecionado.Tipo.ToString();
-                        break;
+                    string tipoNome;
+                    if (selecaoMultipla)
+                    {
+                        tipoNome = $"{elementosEdicao.Count} elementos selecionados";
+                    }
+                    else
+                    {
+                        switch (elementoReferencia.Tipo)
+                        {
+                            case TipoElemento.Texto:
+                                string textoResumido = elementoReferencia.Conteudo ?? "";
+                                if (textoResumido.Length > 18) textoResumido = textoResumido.Substring(0, 18) + "…";
+                                tipoNome = "📝 Texto: \"" + textoResumido + "\"";
+                                break;
+                            case TipoElemento.Campo:
+                                tipoNome = "🏷️ Campo: " + (elementoReferencia.Conteudo ?? "");
+                                break;
+                            case TipoElemento.CodigoBarras:
+                                tipoNome = "▌ ▌ ▌ Cód.Barras: " + (elementoReferencia.Conteudo ?? "");
+                                break;
+                            case TipoElemento.Imagem:
+                                tipoNome = "🖼️ Imagem";
+                                break;
+                            default:
+                                tipoNome = elementoReferencia.Tipo.ToString();
+                                break;
+                        }
+                    }
+
+                    lblNomeAtual.Text = tipoNome;
+                    lblNomeAtual.Visible = true;
                 }
-                lblNomeAtual.Text = tipoNome;
-                lblNomeAtual.Visible = true;
-            }
 
-            if (elementoSelecionado.Fonte != null)
-            {
-                numTamanhoFonte.Value = (decimal)elementoSelecionado.Fonte.Size;
-                chkNegrito.Checked = elementoSelecionado.Fonte.Bold;
-                chkItalico.Checked = elementoSelecionado.Fonte.Italic;
+                DefinirValorNumerico(numElementoLargura, Math.Max(1, elementoReferencia.Bounds.Width));
+                DefinirValorNumerico(numElementoAltura, Math.Max(1, elementoReferencia.Bounds.Height));
 
-                string nomeFonte = elementoSelecionado.NomeFonte ?? elementoSelecionado.Fonte.FontFamily.Name;
-                if (cmbFonte.Items.Contains(nomeFonte))
-                    cmbFonte.SelectedItem = nomeFonte;
+                btnAlinharEsquerda.Enabled = edicaoIndividual;
+                btnAlinharCentro.Enabled = edicaoIndividual;
+                btnAlinharDireita.Enabled = edicaoIndividual;
+                cmbFonte.Enabled = edicaoIndividual;
+                numTamanhoFonte.Enabled = edicaoIndividual;
+                chkNegrito.Enabled = edicaoIndividual;
+                chkItalico.Enabled = edicaoIndividual;
+
+                if (edicaoIndividual && elementoSelecionado.Fonte != null)
+                {
+                    DefinirValorNumerico(numTamanhoFonte, (decimal)elementoSelecionado.Fonte.Size);
+                    chkNegrito.Checked = elementoSelecionado.Fonte.Bold;
+                    chkItalico.Checked = elementoSelecionado.Fonte.Italic;
+
+                    string nomeFonte = elementoSelecionado.NomeFonte ?? elementoSelecionado.Fonte.FontFamily.Name;
+                    if (cmbFonte.Items.Contains(nomeFonte))
+                        cmbFonte.SelectedItem = nomeFonte;
+                    else
+                        cmbFonte.SelectedIndex = -1;
+                }
+
+                btnCor.BackColor = elementoReferencia.Cor;
+                btnCor.ForeColor = elementoReferencia.Cor.GetBrightness() > 0.5 ? Color.Black : Color.White;
+
+                if (elementoReferencia.CorFundo.HasValue)
+                {
+                    btnCorFundo.BackColor = elementoReferencia.CorFundo.Value;
+                    btnCorFundo.ForeColor = elementoReferencia.CorFundo.Value.GetBrightness() > 0.5 ? Color.Black : Color.White;
+                }
                 else
-                    cmbFonte.SelectedIndex = -1;
+                {
+                    btnCorFundo.BackColor = Color.Transparent;
+                    btnCorFundo.ForeColor = Color.Black;
+                }
+
+                AtualizarBotoesAlinhamento();
+                panelToolbox.ScrollControlIntoView(panelPropriedades);
+
+                var txtConteudo = panelPropriedades.Controls.Find("txtConteudoElemento", false).FirstOrDefault() as TextBox;
+                var lblConteudo = panelPropriedades.Controls.Find("lblConteudoTexto", false).FirstOrDefault() as Label;
+
+                if (edicaoIndividual && elementoSelecionado.Tipo == TipoElemento.Texto)
+                {
+                    if (txtConteudo != null) { txtConteudo.Visible = true; txtConteudo.Text = elementoSelecionado.Conteudo ?? "Texto"; }
+                    if (lblConteudo != null) lblConteudo.Visible = true;
+                }
+                else
+                {
+                    if (txtConteudo != null) txtConteudo.Visible = false;
+                    if (lblConteudo != null) lblConteudo.Visible = false;
+                }
+            }
+            finally
+            {
+                atualizandoPropriedades = false;
+            }
+        }
+
+        private List<ElementoEtiqueta> ObterElementosParaEdicao()
+        {
+            if (elementosSelecionados.Count > 0)
+                return elementosSelecionados.Where(el => el != null).Distinct().ToList();
+
+            if (elementoSelecionado != null)
+                return new List<ElementoEtiqueta> { elementoSelecionado };
+
+            return new List<ElementoEtiqueta>();
+        }
+
+        private void DefinirValorNumerico(NumericUpDown controle, decimal valor)
+        {
+            if (controle == null) return;
+
+            if (valor < controle.Minimum) valor = controle.Minimum;
+            if (valor > controle.Maximum) valor = controle.Maximum;
+            controle.Value = valor;
+        }
+
+        private void AlterarLarguraElementosSelecionados()
+        {
+            if (atualizandoPropriedades) return;
+
+            var elementosEdicao = ObterElementosParaEdicao();
+            if (elementosEdicao.Count == 0) return;
+
+            int novaLargura = (int)numElementoLargura.Value;
+            bool alterou = false;
+
+            foreach (var elemento in elementosEdicao)
+            {
+                if (elemento.Bounds.Width == novaLargura) continue;
+
+                var bounds = elemento.Bounds;
+                bounds.Width = novaLargura;
+                elemento.Bounds = bounds;
+                alterou = true;
             }
 
-            btnCor.BackColor = elementoSelecionado.Cor;
-            btnCor.ForeColor = elementoSelecionado.Cor.GetBrightness() > 0.5 ? Color.Black : Color.White;
-
-            if (elementoSelecionado.CorFundo.HasValue)
+            if (alterou)
             {
-                btnCorFundo.BackColor = elementoSelecionado.CorFundo.Value;
-                btnCorFundo.ForeColor = elementoSelecionado.CorFundo.Value.GetBrightness() > 0.5 ? Color.Black : Color.White;
+                SalvarEstadoHistorico();
+                pbCanvas.Invalidate();
             }
-            else
+        }
+
+        private void AlterarAlturaElementosSelecionados()
+        {
+            if (atualizandoPropriedades) return;
+
+            var elementosEdicao = ObterElementosParaEdicao();
+            if (elementosEdicao.Count == 0) return;
+
+            int novaAltura = (int)numElementoAltura.Value;
+            bool alterou = false;
+
+            foreach (var elemento in elementosEdicao)
             {
-                btnCorFundo.BackColor = Color.Transparent;
-                btnCorFundo.ForeColor = Color.Black;
+                if (elemento.Bounds.Height == novaAltura) continue;
+
+                var bounds = elemento.Bounds;
+                bounds.Height = novaAltura;
+                elemento.Bounds = bounds;
+                alterou = true;
             }
 
-            AtualizarBotoesAlinhamento();
-            panelToolbox.ScrollControlIntoView(panelPropriedades);
-
-            var txtConteudo = panelPropriedades.Controls.Find("txtConteudoElemento", false).FirstOrDefault() as TextBox;
-            var lblConteudo = panelPropriedades.Controls.Find("lblConteudoTexto", false).FirstOrDefault() as Label;
-
-            if (elementoSelecionado.Tipo == TipoElemento.Texto)
+            if (alterou)
             {
-                if (txtConteudo != null) { txtConteudo.Visible = true; txtConteudo.Text = elementoSelecionado.Conteudo ?? "Texto"; }
-                if (lblConteudo != null) lblConteudo.Visible = true;
+                SalvarEstadoHistorico();
+                pbCanvas.Invalidate();
             }
-            else
-            {
-                if (txtConteudo != null) txtConteudo.Visible = false;
-                if (lblConteudo != null) lblConteudo.Visible = false;
-            }            
         }
 
         private void AtualizarBotoesAlinhamento()
         {
-            if (elementoSelecionado == null) return;
-
             btnAlinharEsquerda.BackColor = Color.FromArgb(236, 240, 241);
             btnAlinharCentro.BackColor = Color.FromArgb(236, 240, 241);
             btnAlinharDireita.BackColor = Color.FromArgb(236, 240, 241);
+
+            if (elementoSelecionado == null) return;
 
             StringAlignment alinhamento = elementoSelecionado.Alinhamento;
             if (alinhamento == StringAlignment.Near)
@@ -1388,21 +1546,27 @@ namespace EtiquetaFORNew.Forms
 
         private void AlterarAlinhamento(StringAlignment novoAlinhamento)
         {
-            SalvarEstadoHistorico();
+            if (atualizandoPropriedades) return;
             if (elementoSelecionado == null) return;
+            if (elementoSelecionado.Alinhamento == novoAlinhamento) return;
+
             elementoSelecionado.Alinhamento = novoAlinhamento;
             AtualizarBotoesAlinhamento();
+            SalvarEstadoHistorico();
             pbCanvas.Invalidate();
             
         }
 
         private void CmbFonte_SelectedIndexChanged(object sender, EventArgs e)
         {
-            SalvarEstadoHistorico();
+            if (atualizandoPropriedades) return;
             if (elementoSelecionado == null || elementoSelecionado.Fonte == null) return;
             if (cmbFonte.SelectedItem == null) return;
 
             string nomeFonte = cmbFonte.SelectedItem.ToString();
+            string nomeAtual = elementoSelecionado.NomeFonte ?? elementoSelecionado.Fonte.FontFamily.Name;
+            if (string.Equals(nomeAtual, nomeFonte, StringComparison.OrdinalIgnoreCase)) return;
+
             float tamanho = elementoSelecionado.Fonte.Size;
             FontStyle estilo = elementoSelecionado.Fonte.Style;
 
@@ -1410,6 +1574,7 @@ namespace EtiquetaFORNew.Forms
             {
                 elementoSelecionado.NomeFonte = nomeFonte;
                 elementoSelecionado.Fonte = new Font(nomeFonte, tamanho, estilo);
+                SalvarEstadoHistorico();
                 pbCanvas.Invalidate();
             }
             catch (Exception ex)
@@ -1421,34 +1586,40 @@ namespace EtiquetaFORNew.Forms
 
         private void AlterarTamanhoFonte()
         {
-            SalvarEstadoHistorico();
+            if (atualizandoPropriedades) return;
             if (elementoSelecionado == null || elementoSelecionado.Fonte == null) return;
             float novoTamanho = (float)numTamanhoFonte.Value;
+            if (Math.Abs(elementoSelecionado.Fonte.Size - novoTamanho) < 0.01f) return;
+
             FontStyle estilo = elementoSelecionado.Fonte.Style;
             string nomeFonte = elementoSelecionado.NomeFonte ?? elementoSelecionado.Fonte.FontFamily.Name;
             elementoSelecionado.Fonte = new Font(nomeFonte, novoTamanho, estilo);
+            SalvarEstadoHistorico();
             pbCanvas.Invalidate();            
         }
 
         private void AlterarEstiloFonte()
         {
-            SalvarEstadoHistorico();
+            if (atualizandoPropriedades) return;
             if (elementoSelecionado == null || elementoSelecionado.Fonte == null) return;
 
             FontStyle estilo = FontStyle.Regular;
             if (chkNegrito.Checked) estilo |= FontStyle.Bold;
             if (chkItalico.Checked) estilo |= FontStyle.Italic;
+            if (elementoSelecionado.Fonte.Style == estilo &&
+                elementoSelecionado.Negrito == chkNegrito.Checked &&
+                elementoSelecionado.Italico == chkItalico.Checked) return;
 
             string nomeFonte = elementoSelecionado.NomeFonte ?? elementoSelecionado.Fonte.FontFamily.Name;
             elementoSelecionado.Fonte = new Font(nomeFonte, elementoSelecionado.Fonte.Size, estilo);
             elementoSelecionado.Negrito = chkNegrito.Checked;
             elementoSelecionado.Italico = chkItalico.Checked;
+            SalvarEstadoHistorico();
             pbCanvas.Invalidate();            
         }
 
         private void BtnCor_Click(object sender, EventArgs e)
         {
-            SalvarEstadoHistorico();
             if (elementoSelecionado == null && elementosSelecionados.Count == 0) return;
             using (ColorDialog colorDialog = new ColorDialog())
             {
@@ -1461,7 +1632,6 @@ namespace EtiquetaFORNew.Forms
 
         private void BtnCorFundo_Click(object sender, EventArgs e)
         {
-            SalvarEstadoHistorico();
             if (elementoSelecionado == null && elementosSelecionados.Count == 0) return;
             using (ColorDialog colorDialog = new ColorDialog())
             {
@@ -1474,25 +1644,28 @@ namespace EtiquetaFORNew.Forms
 
         private void AplicarCorTexto(Color cor)
         {
-            SalvarEstadoHistorico();
             if (elementosSelecionados.Count > 0)
                 foreach (var elem in elementosSelecionados) elem.Cor = cor;
             else if (elementoSelecionado != null)
                 elementoSelecionado.Cor = cor;
+            else
+                return;
 
             btnCor.BackColor = cor;
             btnCor.ForeColor = cor.GetBrightness() > 0.5 ? Color.Black : Color.White;
+            SalvarEstadoHistorico();
             pbCanvas.Invalidate();
             
         }
 
         private void AplicarCorFundo(Color? cor)
         {
-            SalvarEstadoHistorico();
             if (elementosSelecionados.Count > 0)
                 foreach (var elem in elementosSelecionados) elem.CorFundo = cor;
             else if (elementoSelecionado != null)
                 elementoSelecionado.CorFundo = cor;
+            else
+                return;
 
             if (cor.HasValue)
             {
@@ -1504,6 +1677,7 @@ namespace EtiquetaFORNew.Forms
                 btnCorFundo.BackColor = Color.Transparent;
                 btnCorFundo.ForeColor = Color.Black;
             }
+            SalvarEstadoHistorico();
             pbCanvas.Invalidate();            
         }
 
@@ -1763,7 +1937,6 @@ namespace EtiquetaFORNew.Forms
 
         private void PbCanvas_Paint(object sender, PaintEventArgs e)
         {
-            SalvarEstadoHistorico();
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.White);
@@ -1803,7 +1976,6 @@ namespace EtiquetaFORNew.Forms
 
         private void DesenharGrid(Graphics g, RectangleF rect)
         {
-            SalvarEstadoHistorico();
             using (Pen penGrid = new Pen(Color.FromArgb(100, 189, 195, 199), 1))
             {
                 penGrid.DashStyle = DashStyle.Dash;
@@ -1848,7 +2020,6 @@ namespace EtiquetaFORNew.Forms
 
             foreach (var elem in template.Elementos)
             {
-                SalvarEstadoHistorico();
                 DesenharElemento(g, elem, rectEtiqueta, null);
 
                 bool estaSelecionado = (elem == elementoSelecionado) || elementosSelecionados.Contains(elem);
@@ -1890,7 +2061,6 @@ namespace EtiquetaFORNew.Forms
 
         private void DesenharElemento(Graphics g, ElementoEtiqueta elem, RectangleF rectEtiqueta, Produto produto)
         {
-            SalvarEstadoHistorico();
             Rectangle bounds = ConverterParaPixels(elem.Bounds, rectEtiqueta);
             if (elem == elementoSelecionado && arrastando && deltaArrasto != Point.Empty)
             {
@@ -1977,7 +2147,6 @@ namespace EtiquetaFORNew.Forms
 
         private Rectangle ConverterParaPixels(Rectangle boundsEmMM, RectangleF rectEtiqueta)
         {
-            SalvarEstadoHistorico();
             return new Rectangle(
                 (int)(rectEtiqueta.X + boundsEmMM.X * MM_PARA_PIXEL * zoom),
                 (int)(rectEtiqueta.Y + boundsEmMM.Y * MM_PARA_PIXEL * zoom),
@@ -2036,7 +2205,6 @@ namespace EtiquetaFORNew.Forms
 
         private void DesenharCodigoBarras(Graphics g, string codigo, Rectangle bounds)
         {
-            SalvarEstadoHistorico();
             string codigoLimpo = new string(Array.FindAll(codigo.ToCharArray(), c => char.IsDigit(c)));
             if (string.IsNullOrEmpty(codigoLimpo)) codigoLimpo = "0000000000";
             if (codigoLimpo.Length < 8) codigoLimpo = codigoLimpo.PadLeft(8, '0');
@@ -2090,7 +2258,6 @@ namespace EtiquetaFORNew.Forms
 
         private void DesenharHandles(Graphics g, Rectangle bounds)
         {
-            SalvarEstadoHistorico();
             const int handleSize = 6;
             Color handleColor    = Color.FromArgb(0, 120, 215);
             Color rotateHandleColor = Color.Black;
@@ -2570,6 +2737,7 @@ namespace EtiquetaFORNew.Forms
             RectangleF rectEtiqueta = new RectangleF(25, 25,
                 configuracao.LarguraEtiqueta * MM_PARA_PIXEL * zoom,
                 configuracao.AlturaEtiqueta * MM_PARA_PIXEL * zoom);
+            bool finalizouRedimensionamentoOuRotacao = redimensionando || rotacionando;
 
             if (selecionandoComRetangulo)
             {
@@ -2581,6 +2749,8 @@ namespace EtiquetaFORNew.Forms
                     if (retanguloSelecao.IntersectsWith(bounds))
                         elementosSelecionados.Add(elemento);
                 }
+                elementoSelecionado = null;
+                AtualizarPainelPropriedades();
                 pbCanvas.Invalidate();
                 return;
             }
@@ -2623,6 +2793,12 @@ namespace EtiquetaFORNew.Forms
                 linhasGuiaAtivas.Clear();
 
                 pbCanvas.Invalidate();
+            }
+
+            if (finalizouRedimensionamentoOuRotacao)
+            {
+                SalvarEstadoHistorico();
+                AtualizarPainelPropriedades();
             }
 
             // Limpeza final
@@ -2779,19 +2955,20 @@ namespace EtiquetaFORNew.Forms
 
         private void FormDesignNovo_KeyDown(object sender, KeyEventArgs e)
         {
-            
+            if (e.Control && e.KeyCode == Keys.Z)
+            {
+                Desfazer();
+                e.Handled = true;
+                e.SuppressKeyPress = true; // Evita o som de "erro" do Windows
+                return;
+            }
+
             List<ElementoEtiqueta> elementosParaMover = new List<ElementoEtiqueta>();
 
             if (elementosSelecionados.Count > 0) elementosParaMover.AddRange(elementosSelecionados);
             else if (elementoSelecionado != null) elementosParaMover.Add(elementoSelecionado);
 
             if (elementosParaMover.Count == 0) return;
-
-            if (e.Control && e.KeyCode == Keys.Z)
-            {
-                Desfazer();
-                e.SuppressKeyPress = true; // Evita o som de "erro" do Windows
-            }
 
             bool houveAlteracao = false;
             int passo = 1;
@@ -2806,6 +2983,7 @@ namespace EtiquetaFORNew.Forms
                     foreach (var el in elementosParaMover) template.Elementos.Remove(el);
                     elementoSelecionado = null;
                     elementosSelecionados.Clear();
+                    SalvarEstadoHistorico();
                     AtualizarPainelPropriedades();
                     pbCanvas.Invalidate();
                     e.Handled = true;
@@ -2815,6 +2993,7 @@ namespace EtiquetaFORNew.Forms
 
             if (houveAlteracao)
             {
+                SalvarEstadoHistorico();
                 pbCanvas.Invalidate();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
@@ -2925,7 +3104,11 @@ namespace EtiquetaFORNew.Forms
 
                 if (historicoUndo.Count > Max_Undo_Steps)
                 {
-                    // Lógica para remover o item mais antigo se necessário
+                    var snapshots = historicoUndo.Reverse().ToList();
+                    while (snapshots.Count > Max_Undo_Steps)
+                        snapshots.RemoveAt(0);
+
+                    historicoUndo = new Stack<string>(snapshots);
                 }
             }
             catch (Exception ex)
@@ -2960,6 +3143,7 @@ namespace EtiquetaFORNew.Forms
 
                 // 6. Atualizar a interface
                 pbCanvas.Invalidate();
+                AtualizarPainelPropriedades();
                 CarregarDadosNaInterface();
             }
             catch (Exception ex)

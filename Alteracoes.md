@@ -195,3 +195,80 @@ O erro era compativel com conversoes numericas diretas em campos vindos da API S
 
 - Validar novamente uma NF real do SoftcomShop informando numero da nota e data de entrada.
 - Se uma nota real retornar itens paginados na busca por data, implementar paginacao em `BuscarPorNotaFiscalAsync(...)`.
+
+## 2026-06-05 11:29:35 -03:00
+
+### Objetivo da alteracao
+
+Corrigir a quantidade de etiquetas carregadas por Nota de Entrada/SQL e ampliar o `FormDesignNovo` para redimensionamento em lote, historico de desfazer mais estavel e fonte minima 3.
+
+### Arquivos modificados
+
+- `Alteracoes.md`
+- `EtiquetaFORNew/CarregadorDados.cs`
+- `EtiquetaFORNew/Forms/FormPrincipal.cs`
+- `EtiquetaFORNew/Forms/FormDesignNovo.cs`
+
+### Metodos criados ou alterados
+
+- Alterado `CarregadorDados.CarregarNotasEntrada(...)`
+  - Passa a converter `Quantidade_Item` por helper centralizado antes de montar a linha de retorno.
+
+- Alterado `CarregadorDados.CarregarNotasEntradaSoftcomShop(...)`
+  - Passa a ler `QuantidadeEtiqueta` pelo mesmo helper, preservando a quantidade marcada pela rotina SoftcomShop.
+
+- Alterado `CarregadorDados.AdicionarRowCompleto(...)`
+  - Garante que a coluna `Quantidade` do `DataTable` receba a quantidade carregada e nunca seja menor que 1.
+
+- Criado `CarregadorDados.ConverterQuantidadeEtiqueta(...)`
+  - Centraliza leitura tolerante de quantidade numerica para carregamento de etiquetas.
+
+- Alterado `FormPrincipal.AdicionarProdutoAoPanel(...)`
+  - Deixa de forcar `Quantidade = 1`.
+  - Usa a coluna `Quantidade` quando presente no `DataTable`, mantendo fallback 1 para origens que nao informam quantidade.
+
+- Alterado `FormPrincipal.ConverterDataRowParaProduto(...)`
+  - Passa a preservar a quantidade informada na linha carregada.
+
+- Criado `FormPrincipal.ObterQuantidadeDoCarregamento(...)`
+  - Le a quantidade da origem carregada de forma segura e positiva.
+
+- Alterado `FormDesignNovo`
+  - Adicionados controles de largura e altura do elemento no painel de propriedades.
+  - O painel de propriedades agora permanece ativo para selecao multipla e aplica largura/altura a todos os elementos selecionados.
+  - A selecao por retangulo atualiza o painel de propriedades para permitir edicao em lote.
+  - O botao de remover passa a remover tambem multiplos elementos selecionados.
+  - `Ctrl + Z` passa a funcionar mesmo sem elemento selecionado.
+  - Movimentacao por teclado, exclusao, redimensionamento, rotacao, propriedades, inclusao e remocao passam a registrar historico apos a alteracao real.
+  - Removidas gravacoes de historico durante rotinas de desenho/repaint.
+  - Implementada poda real do historico com limite de 50 snapshots.
+  - O tamanho minimo visual da fonte passou de 6 para 3.
+
+### Resumo tecnico
+
+O carregamento de Nota de Entrada SQL ja consultava `Quantidade_Item`, mas a quantidade era perdida no momento em que `FormPrincipal.AdicionarProdutoAoPanel(...)` recriava o produto com `Quantidade = 1`. Agora a quantidade segue do carregador ate a lista de impressao.
+
+No SoftcomShop, a rotina que marca `QuantidadeEtiqueta` no SQLite continua preservada. O carregador agora le essa coluna por helper centralizado e o painel respeita a quantidade recebida.
+
+No designer, a edicao em lote usa a lista `elementosSelecionados`. Ao alterar largura ou altura no painel, todos os elementos selecionados recebem o mesmo valor em `Bounds`, que ja e persistido pelo `TemplateManager`.
+
+O historico de desfazer foi estabilizado para armazenar snapshots apos mudancas reais e nao mais durante desenho do canvas. O limite permanece maior que o solicitado, com 50 snapshots.
+
+### Impactos identificados
+
+- Fluxos que nao informam coluna `Quantidade` continuam usando fallback 1.
+- O comportamento de selecao individual no designer foi mantido.
+- A serializacao existente de layouts ja grava `Largura`, `Altura` e `FonteTamanho`, portanto as novas dimensoes em lote e fontes 3, 4 e 5 usam o fluxo de salvamento existente.
+
+### Validacao realizada
+
+- Build executado com MSBuild:
+  - Comando: `C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe EtiquetaFORNew\EtiquetaFORNew.csproj /t:Build /p:Configuration=Debug /p:Platform=AnyCPU /v:minimal`
+  - Resultado: build concluido com sucesso.
+  - Observacao: permaneceram warnings preexistentes de `using` duplicado, variaveis/campos nao usados e metodo async sem await.
+
+### Pendencias ou pontos para validacao
+
+- Validar em ambiente com banco SQL real uma Nota de Entrada com quantidades diferentes de 1.
+- Validar em ambiente SoftcomShop real uma Nota de Entrada com `QuantidadeEtiqueta` maior que 1.
+- Validar manualmente no `FormDesignNovo` selecao multipla, alteracao de largura/altura, `Ctrl + Z` em sequencia, salvamento/carregamento de layout e fontes 3, 4 e 5.

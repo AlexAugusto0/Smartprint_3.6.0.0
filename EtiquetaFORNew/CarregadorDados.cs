@@ -346,9 +346,7 @@ namespace EtiquetaFORNew.Data
                                 linhasLidas++;
                                 string codigoMercadoria = reader["Codigo_Mercadoria"]?.ToString()?.Trim() ?? "";
                                 string codBarras = reader["CodBarras"]?.ToString()?.Trim() ?? "";
-                                int qtd = reader["Quantidade_Item"] != DBNull.Value
-                                    ? Convert.ToInt32(reader["Quantidade_Item"])
-                                    : 1;
+                                int qtd = ConverterQuantidadeEtiqueta(reader["Quantidade_Item"]);
 
                                 // Log temporário para depuração
                                 System.Diagnostics.Debug.WriteLine($"[CarregarNotasEntrada] NF={numeroNotaParam} Item #{linhasLidas}: Codigo='{codigoMercadoria}' CodBarras='{codBarras}' Qtd={qtd}");
@@ -430,13 +428,7 @@ namespace EtiquetaFORNew.Data
                         {
                             while (reader.Read())
                             {
-                                int quantidade = 1;
-                                try
-                                {
-                                    if (reader["QuantidadeEtiqueta"] != DBNull.Value)
-                                        quantidade = Convert.ToInt32(reader["QuantidadeEtiqueta"]);
-                                }
-                                catch { quantidade = 1; }
+                                int quantidade = ConverterQuantidadeEtiqueta(reader["QuantidadeEtiqueta"]);
 
                                 AdicionarRowCompleto(resultado, reader, Math.Max(1, quantidade));
                             }
@@ -497,13 +489,7 @@ namespace EtiquetaFORNew.Data
                             {
                                 while (reader2.Read())
                                 {
-                                    int quantidade = 1;
-                                    try
-                                    {
-                                        if (reader2["QuantidadeEtiqueta"] != DBNull.Value)
-                                            quantidade = Convert.ToInt32(reader2["QuantidadeEtiqueta"]);
-                                    }
-                                    catch { quantidade = 1; }
+                                    int quantidade = ConverterQuantidadeEtiqueta(reader2["QuantidadeEtiqueta"]);
 
                                     AdicionarRowCompleto(resultado, reader2, Math.Max(1, quantidade));
                                 }
@@ -646,7 +632,7 @@ namespace EtiquetaFORNew.Data
             row["Prateleira"] = GetValue<string>("Prateleira", "");
             row["Garantia"] = GetValue<string>("Garantia", "");
             row["Registro"] = GetValue<int>("Registro", 0);
-            row["Quantidade"] = quantidade;
+            row["Quantidade"] = Math.Max(1, quantidade);
 
             dt.Rows.Add(row);
         }
@@ -919,6 +905,23 @@ namespace EtiquetaFORNew.Data
                 return DBNull.Value;
             }
         }
+
+        private static int ConverterQuantidadeEtiqueta(object valor, int padrao = 1)
+        {
+            try
+            {
+                if (valor == null || valor == DBNull.Value)
+                    return padrao;
+
+                int quantidade = Convert.ToInt32(valor);
+                return quantidade > 0 ? quantidade : padrao;
+            }
+            catch
+            {
+                return padrao;
+            }
+        }
+
         private static DataTable CarregarPromocoesSoftcomShopLocal(string grupo, string fabricante, string produto)
         {
             DataTable dt = CriarTabelaResultadoPadrao();
