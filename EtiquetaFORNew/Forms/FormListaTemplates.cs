@@ -33,7 +33,7 @@ namespace EtiquetaFORNew
             {
                 Text = "Selecione um template para carregar:",
                 Location = new Point(20, 20),
-                Size = new Size(450, 20),
+                Size = new Size(300, 20),
                 Font = new Font("Segoe UI", 10, FontStyle.Bold)
             };
 
@@ -119,9 +119,27 @@ namespace EtiquetaFORNew
             };
             btnCancelar.FlatAppearance.BorderSize = 0;
 
+            Button btnTemplateApi = new Button
+            {
+                Text = "Nuvem API",
+                Location = new Point(370, 15),
+                Size = new Size(100, 30),
+                BackColor = Color.FromArgb(0, 162, 232),
+                ForeColor = Color.Black,
+                FlatStyle = FlatStyle.Flat                
+            };
+            btnTemplateApi.FlatAppearance.BorderSize = 0;
+            btnTemplateApi.Click += (s, e) =>
+            {
+                using (var formNuvem = new FormTemplateApi())
+                {
+                    formNuvem.ShowDialog(this);
+                }
+            };
+
             this.Controls.AddRange(new Control[] {
                 lblInstrucao, lstTemplates, chkDefinirPadrao, lblInfo,
-                btnNovo, btnExcluir, btnCarregar, btnCancelar
+                btnNovo, btnExcluir, btnCarregar, btnCancelar, btnTemplateApi
             });
         }
 
