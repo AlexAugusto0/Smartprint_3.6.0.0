@@ -32,15 +32,22 @@ namespace EtiquetaFORNew
             Label lblInstrucao = new Label
             {
                 Text = "Selecione um template para carregar:",
-                Location = new Point(20, 20),
+                Location = new Point(20, 10),
                 Size = new Size(300, 20),
                 Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+            Label lblInstrucao2 = new Label
+            {
+                Text = "*Dê dois cliques para carregar:",
+                Location = new Point(25, 30),
+                Size = new Size(200, 20),
+                Font = new Font("Segoe UI", 7, FontStyle.Bold)
             };
 
             lstTemplates = new ListBox
             {
                 Name = "lstTemplates",
-                Location = new Point(20, 50),
+                Location = new Point(30, 50),
                 Size = new Size(440, 230),
                 Font = new Font("Segoe UI", 10),
                 DrawMode = DrawMode.OwnerDrawFixed,
@@ -75,8 +82,8 @@ namespace EtiquetaFORNew
                 Text = "Nova Etiqueta",
                 Location = new Point(20, 355),
                 Size = new Size(100, 30),
-                BackColor = Color.FromArgb(149, 165, 166),
-                ForeColor = Color.White,
+                BackColor = Color.FromArgb(255, 143, 0),
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat
             };
             btnNovo.FlatAppearance.BorderSize = 0;
@@ -88,7 +95,7 @@ namespace EtiquetaFORNew
                 Location = new Point(130, 355),
                 Size = new Size(100, 30),
                 BackColor = Color.FromArgb(231, 76, 60),
-                ForeColor = Color.White,
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat
             };
             btnExcluir.FlatAppearance.BorderSize = 0;
@@ -97,27 +104,28 @@ namespace EtiquetaFORNew
             Button btnCarregar = new Button
             {
                 Text = "Carregar",
-                Location = new Point(260, 355),
+                //Location = new Point(260, 355),
+                Location = new Point(370, 355),
                 Size = new Size(100, 30),
-                BackColor = Color.FromArgb(46, 204, 113),
-                ForeColor = Color.White,
+                BackColor = Color.FromArgb(161, 179, 179),
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 DialogResult = DialogResult.OK
             };
             btnCarregar.FlatAppearance.BorderSize = 0;
             btnCarregar.Click += (s, e) => CarregarSelecionado();
 
-            Button btnCancelar = new Button
-            {
-                Text = "Cancelar",
-                Location = new Point(370, 355),
-                Size = new Size(90, 30),
-                BackColor = Color.FromArgb(149, 165, 166),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                DialogResult = DialogResult.Cancel
-            };
-            btnCancelar.FlatAppearance.BorderSize = 0;
+            //Button btnCancelar = new Button
+            //{
+            //    Text = "Cancelar",
+            //    Location = new Point(370, 355),
+            //    Size = new Size(90, 30),
+            //    BackColor = Color.FromArgb(149, 165, 166),
+            //    ForeColor = Color.Black,
+            //    FlatStyle = FlatStyle.Flat,
+            //    DialogResult = DialogResult.Cancel
+            //};
+            //btnCancelar.FlatAppearance.BorderSize = 0;
 
             Button btnTemplateApi = new Button
             {
@@ -138,8 +146,8 @@ namespace EtiquetaFORNew
             };
 
             this.Controls.AddRange(new Control[] {
-                lblInstrucao, lstTemplates, chkDefinirPadrao, lblInfo,
-                btnNovo, btnExcluir, btnCarregar, btnCancelar, btnTemplateApi
+                lblInstrucao, lblInstrucao2, lstTemplates, chkDefinirPadrao, lblInfo,
+                btnNovo, btnExcluir, btnCarregar,// btnTemplateApi, // btnCancelar
             });
         }
 

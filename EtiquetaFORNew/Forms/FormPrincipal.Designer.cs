@@ -569,7 +569,7 @@
             this.btnLimparTodos.FlatAppearance.BorderSize = 0;
             this.btnLimparTodos.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLimparTodos.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.btnLimparTodos.ForeColor = System.Drawing.Color.White;
+            this.btnLimparTodos.ForeColor = System.Drawing.Color.Black;
             this.btnLimparTodos.Location = new System.Drawing.Point(912, 136);
             this.btnLimparTodos.Name = "btnLimparTodos";
             this.btnLimparTodos.Size = new System.Drawing.Size(104, 25);

@@ -54,7 +54,7 @@ namespace EtiquetaFORNew
             // Descrição do Terminal
             Label lblDescricao = new Label
             {
-                Text = "Descrição do Terminal (Ex: Caixa 01, Escritório):",
+                Text = "Nome do Cliente (Ex: Softcom Tecnologia):",
                 Location = new Point(20, 85),
                 Size = new Size(340, 20),
                 Font = new Font("Segoe UI", 9, FontStyle.Bold)
@@ -70,11 +70,11 @@ namespace EtiquetaFORNew
             // Botão Fazer Backup (Enviar)
             btnBackup = new Button
             {
-                Text = "📤 Fazer Backup na Nuvem",
+                Text = "📤 Enviar Configurações para Nuvem",
                 Location = new Point(20, 170),
                 Size = new Size(340, 35),
                 BackColor = Color.FromArgb(52, 152, 219),
-                ForeColor = Color.White,
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold)
             };
@@ -87,8 +87,8 @@ namespace EtiquetaFORNew
                 Text = "📥 Baixar Configurações da Nuvem",
                 Location = new Point(20, 215),
                 Size = new Size(340, 35),
-                BackColor = Color.FromArgb(46, 204, 113),
-                ForeColor = Color.White,
+                BackColor = Color.FromArgb(255, 143, 0),
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold)
             };
