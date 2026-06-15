@@ -187,7 +187,7 @@ namespace EtiquetaFORNew
         {
             if (string.IsNullOrWhiteSpace(txtCodigoCliente.Text))
             {
-                MessageBox.Show("Informe o Código do Cliente para buscar o backup.", "Validação", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Informe o Código do Cliente para buscar a configuração.", "Validação", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -205,7 +205,7 @@ namespace EtiquetaFORNew
 
                     if (response.StatusCode == HttpStatusCode.NotFound)
                     {
-                        MessageBox.Show("Nenhum backup encontrado para este cliente.", "Não Encontrado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Nenhuma configuração encontrada para este cliente.", "Não Encontrado", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
 
