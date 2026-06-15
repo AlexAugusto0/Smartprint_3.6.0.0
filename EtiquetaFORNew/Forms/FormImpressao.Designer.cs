@@ -47,7 +47,7 @@
             this.panelTopo.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelTopo.Location = new System.Drawing.Point(0, 0);
             this.panelTopo.Name = "panelTopo";
-            this.panelTopo.Size = new System.Drawing.Size(900, 60);
+            this.panelTopo.Size = new System.Drawing.Size(829, 60);
             this.panelTopo.TabIndex = 0;
             // 
             // lblInfo
@@ -56,7 +56,7 @@
             this.lblInfo.AutoSize = true;
             this.lblInfo.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblInfo.ForeColor = System.Drawing.Color.Black;
-            this.lblInfo.Location = new System.Drawing.Point(748, 20);
+            this.lblInfo.Location = new System.Drawing.Point(677, 20);
             this.lblInfo.Name = "lblInfo";
             this.lblInfo.Size = new System.Drawing.Size(93, 19);
             this.lblInfo.TabIndex = 1;
@@ -81,7 +81,7 @@
             this.panelVisualizacao.Location = new System.Drawing.Point(0, 60);
             this.panelVisualizacao.Name = "panelVisualizacao";
             this.panelVisualizacao.Padding = new System.Windows.Forms.Padding(20);
-            this.panelVisualizacao.Size = new System.Drawing.Size(900, 433);
+            this.panelVisualizacao.Size = new System.Drawing.Size(829, 391);
             this.panelVisualizacao.TabIndex = 1;
             // 
             // panelBotoes
@@ -93,9 +93,9 @@
             this.panelBotoes.Controls.Add(this.btnProxima);
             this.panelBotoes.Controls.Add(this.btnAnterior);
             this.panelBotoes.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panelBotoes.Location = new System.Drawing.Point(0, 493);
+            this.panelBotoes.Location = new System.Drawing.Point(0, 451);
             this.panelBotoes.Name = "panelBotoes";
-            this.panelBotoes.Size = new System.Drawing.Size(900, 70);
+            this.panelBotoes.Size = new System.Drawing.Size(829, 70);
             this.panelBotoes.TabIndex = 2;
             // 
             // btnFechar
@@ -105,7 +105,7 @@
             this.btnFechar.FlatAppearance.BorderSize = 0;
             this.btnFechar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFechar.ForeColor = System.Drawing.Color.Black;
-            this.btnFechar.Location = new System.Drawing.Point(758, 18);
+            this.btnFechar.Location = new System.Drawing.Point(687, 18);
             this.btnFechar.Name = "btnFechar";
             this.btnFechar.Size = new System.Drawing.Size(120, 35);
             this.btnFechar.TabIndex = 3;
@@ -121,7 +121,7 @@
             this.btnImprimir.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnImprimir.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnImprimir.ForeColor = System.Drawing.Color.Black;
-            this.btnImprimir.Location = new System.Drawing.Point(618, 18);
+            this.btnImprimir.Location = new System.Drawing.Point(547, 18);
             this.btnImprimir.Name = "btnImprimir";
             this.btnImprimir.Size = new System.Drawing.Size(130, 35);
             this.btnImprimir.TabIndex = 2;
@@ -162,7 +162,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(900, 563);
+            this.ClientSize = new System.Drawing.Size(829, 521);
             this.Controls.Add(this.panelVisualizacao);
             this.Controls.Add(this.panelBotoes);
             this.Controls.Add(this.panelTopo);
