@@ -1847,8 +1847,24 @@ namespace EtiquetaFORNew
                 AdicionarProdutoSelecionado(termoCompleto, nomeCampo, cmb);
 
                 // Move o foco para a quantidade ou próximo campo
-                numQtd.Focus();
-                numQtd.Select(0, numQtd.Text.Length);
+                //numQtd.Focus();
+                //numQtd.Select(0, numQtd.Text.Length);
+                if (cmb == cmbBuscaReferencia)
+                {
+                    // Se o usuário bipou/digitou na combo de REFERÊNCIA, lança direto no grid
+                    AdicionarProdutoPelaBusca();
+
+                    // Devolve o foco para ela mesma continuar bipando em sequência
+                    cmbBuscaReferencia.Focus();
+                }
+                else
+                {
+                    // Se for QUALQUEER OUTRA combobox (Nome, Código, etc.), mantém o comportamento padrão:
+                    // Move o foco para a quantidade para o usuário digitar antes de adicionar
+                    numQtd.Focus();
+                    numQtd.Select(0, numQtd.Text.Length);
+                }
+
             }
         }
 
