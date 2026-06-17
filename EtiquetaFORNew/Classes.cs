@@ -66,12 +66,17 @@ namespace EtiquetaFORNew
         // ⭐ NOVA PROPRIEDADE: Cor de fundo do elemento (espaço ao redor do texto)
         public Color? CorFundo { get; set; }
 
+        public string OperadorCalculoPreco { get; set; }
+        public decimal ValorCalculoPreco { get; set; }
+
         public ElementoEtiqueta()
         {
             Fonte = new Font("Arial", 10);
             Cor = Color.Black;
             Alinhamento = StringAlignment.Near;  // Padrão: esquerda
             Rotacao = 0f;
+            OperadorCalculoPreco = string.Empty;
+            ValorCalculoPreco = 0m;
         }
     }
 

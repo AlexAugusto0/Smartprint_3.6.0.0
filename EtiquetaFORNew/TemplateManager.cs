@@ -177,7 +177,9 @@ namespace EtiquetaFORNew
                     CorG = elem.Cor.G,
                     CorB = elem.Cor.B,
                     Alinhamento = elem.Alinhamento.ToString(),
-                    Rotacao = elem.Rotacao
+                    Rotacao = elem.Rotacao,
+                    OperadorCalculoPreco = elem.OperadorCalculoPreco,
+                    ValorCalculoPreco = elem.ValorCalculoPreco
                 };
 
                 // ⭐ NOVA: Salvar cor de fundo se definida
@@ -223,7 +225,9 @@ namespace EtiquetaFORNew
                     Bounds = new System.Drawing.Rectangle(elemSer.X, elemSer.Y, elemSer.Largura, elemSer.Altura),
                     Negrito = elemSer.Negrito,
                     Italico = elemSer.Italico,
-                    Cor = System.Drawing.Color.FromArgb(elemSer.CorR, elemSer.CorG, elemSer.CorB)
+                    Cor = System.Drawing.Color.FromArgb(elemSer.CorR, elemSer.CorG, elemSer.CorB),
+                    OperadorCalculoPreco = elemSer.OperadorCalculoPreco,
+                    ValorCalculoPreco = elemSer.ValorCalculoPreco
                 };
 
                 // Alinhamento
@@ -319,5 +323,7 @@ namespace EtiquetaFORNew
         public int? CorFundoG { get; set; }
         public int? CorFundoB { get; set; }
         public float Rotacao { get; set; }
+        public string OperadorCalculoPreco { get; set; }
+        public decimal ValorCalculoPreco { get; set; }
     }
 }

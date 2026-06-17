@@ -56,6 +56,9 @@ namespace EtiquetaFORNew.Forms
         private Button btnFundoTransparente;
         private Label lblPropriedadesElemento;
         private ComboBox cmbFonte;
+        private Label lblCalculoPreco;
+        private ComboBox cmbOperadorCalculoPreco;
+        private NumericUpDown numValorCalculoPreco;
 
         // Toolbox de elementos
         private Panel panelToolbox;
@@ -894,6 +897,45 @@ namespace EtiquetaFORNew.Forms
             panelPropriedades.Controls.Add(txtConteudo);
             yPos += 35;
 
+            lblCalculoPreco = new Label
+            {
+                Text = "Calculo de Preco:",
+                Location = new Point(10, yPos),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+            panelPropriedades.Controls.Add(lblCalculoPreco);
+            yPos += 25;
+
+            cmbOperadorCalculoPreco = new ComboBox
+            {
+                Location = new Point(10, yPos),
+                Size = new Size(70, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9),
+                Visible = false
+            };
+            cmbOperadorCalculoPreco.Items.AddRange(new object[] { "Nenhum", "+", "-", "*", "/" });
+            cmbOperadorCalculoPreco.SelectedIndexChanged += (s, e) => AlterarCalculoPreco();
+            panelPropriedades.Controls.Add(cmbOperadorCalculoPreco);
+
+            numValorCalculoPreco = new NumericUpDown
+            {
+                Location = new Point(90, yPos),
+                Size = new Size(80, 23),
+                Minimum = 0m,
+                Maximum = 999999m,
+                DecimalPlaces = 4,
+                Increment = 0.01m,
+                Value = 0m,
+                Visible = false
+            };
+            numValorCalculoPreco.ValueChanged += (s, e) => AlterarCalculoPreco();
+            panelPropriedades.Controls.Add(numValorCalculoPreco);
+            yPos += 35;
+
             Label lblAlinhamento = new Label
             {
                 Text = "Alinhamento:",
@@ -1446,6 +1488,32 @@ namespace EtiquetaFORNew.Forms
                     if (txtConteudo != null) txtConteudo.Visible = false;
                     if (lblConteudo != null) lblConteudo.Visible = false;
                 }
+
+                bool campoPreco = edicaoIndividual
+                    && elementoSelecionado.Tipo == TipoElemento.Campo
+                    && CalculadoraCamposEtiqueta.CampoPermiteCalculo(elementoSelecionado.Conteudo);
+
+                if (lblCalculoPreco != null) lblCalculoPreco.Visible = campoPreco;
+                if (cmbOperadorCalculoPreco != null)
+                {
+                    cmbOperadorCalculoPreco.Visible = campoPreco;
+                    string operador = string.IsNullOrWhiteSpace(elementoSelecionado?.OperadorCalculoPreco)
+                        ? "Nenhum"
+                        : elementoSelecionado.OperadorCalculoPreco;
+                    cmbOperadorCalculoPreco.SelectedItem = cmbOperadorCalculoPreco.Items.Contains(operador)
+                        ? operador
+                        : "Nenhum";
+                }
+
+                if (numValorCalculoPreco != null)
+                {
+                    numValorCalculoPreco.Visible = campoPreco;
+                    DefinirValorNumerico(numValorCalculoPreco, elementoSelecionado?.ValorCalculoPreco ?? 0m);
+                    numValorCalculoPreco.Enabled = campoPreco
+                        && cmbOperadorCalculoPreco != null
+                        && cmbOperadorCalculoPreco.SelectedItem != null
+                        && cmbOperadorCalculoPreco.SelectedItem.ToString() != "Nenhum";
+                }
             }
             finally
             {
@@ -1471,6 +1539,30 @@ namespace EtiquetaFORNew.Forms
             if (valor < controle.Minimum) valor = controle.Minimum;
             if (valor > controle.Maximum) valor = controle.Maximum;
             controle.Value = valor;
+        }
+
+        private void AlterarCalculoPreco()
+        {
+            if (atualizandoPropriedades) return;
+            if (elementoSelecionado == null || elementoSelecionado.Tipo != TipoElemento.Campo) return;
+            if (!CalculadoraCamposEtiqueta.CampoPermiteCalculo(elementoSelecionado.Conteudo)) return;
+            if (cmbOperadorCalculoPreco == null || numValorCalculoPreco == null) return;
+
+            string operadorSelecionado = cmbOperadorCalculoPreco.SelectedItem?.ToString() ?? "Nenhum";
+            string novoOperador = operadorSelecionado == "Nenhum" ? string.Empty : operadorSelecionado;
+            decimal novoValor = numValorCalculoPreco.Value;
+
+            numValorCalculoPreco.Enabled = operadorSelecionado != "Nenhum";
+
+            string operadorAtual = elementoSelecionado.OperadorCalculoPreco ?? string.Empty;
+            if (operadorAtual == novoOperador && elementoSelecionado.ValorCalculoPreco == novoValor)
+                return;
+
+            elementoSelecionado.OperadorCalculoPreco = novoOperador;
+            elementoSelecionado.ValorCalculoPreco = novoValor;
+
+            SalvarEstadoHistorico();
+            pbCanvas.Invalidate();
         }
 
         private void AlterarLarguraElementosSelecionados()
@@ -2102,7 +2194,7 @@ namespace EtiquetaFORNew.Forms
                     break;
 
                 case TipoElemento.Campo:
-                    string valor = ObterValorCampo(elem.Conteudo, produto);
+                    string valor = ObterValorCampo(elem.Conteudo, produto, elem);
                     using (SolidBrush brush = new SolidBrush(elem.Cor))
                     using (Font fonteComZoom = new Font(elem.Fonte.FontFamily, elem.Fonte.Size * zoom, elem.Fonte.Style))
                     {
@@ -2167,9 +2259,16 @@ namespace EtiquetaFORNew.Forms
             );
         }
 
-        private string ObterValorCampo(string campo, Produto produto)
+        private string ObterValorCampo(string campo, Produto produto, ElementoEtiqueta elemento = null)
         {
-            if (produto == null) return $"[{campo}]";
+            if (produto == null) return $"[{CalculadoraCamposEtiqueta.ObterDescricaoCalculo(campo, elemento)}]";
+
+            decimal valorCalculado;
+            if (CalculadoraCamposEtiqueta.CalculoAtivo(elemento)
+                && CalculadoraCamposEtiqueta.TryCalcularValorCampo(produto, campo, elemento, out valorCalculado))
+            {
+                return valorCalculado.ToString("F2");
+            }
 
             switch (campo)
             {
@@ -2177,19 +2276,19 @@ namespace EtiquetaFORNew.Forms
                 case "CodigoMercadoria": return produto.Codigo ?? "";
                 case "CodFabricante":    return produto.CodFabricante ?? "";
                 case "CodBarras":        return produto.CodBarras ?? "";
-                case "PrecoVenda":       return produto.Preco.ToString("F2");
-                case "VendaA":           return produto.Preco.ToString("F2");
-                case "VendaB":           return produto.Preco.ToString("F2");
-                case "VendaC":           return produto.Preco.ToString("F2");
-                case "VendaD":           return produto.Preco.ToString("F2");
-                case "VendaE":           return produto.Preco.ToString("F2");
-                case "Fornecedor":       return produto.Nome ?? "";
-                case "Fabricante":       return produto.Nome ?? "";
-                case "Grupo":            return "";
-                case "Prateleira":       return "";
-                case "Garantia":         return "";
-                case "Tam":              return "";
-                case "Cores":            return "";
+                case "PrecoVenda":       return produto.PrecoVenda > 0 ? produto.PrecoVenda.ToString("F2") : produto.Preco.ToString("F2");
+                case "VendaA":           return produto.VendaA > 0 ? produto.VendaA.ToString("F2") : "-";
+                case "VendaB":           return produto.VendaB > 0 ? produto.VendaB.ToString("F2") : "-";
+                case "VendaC":           return produto.VendaC > 0 ? produto.VendaC.ToString("F2") : "-";
+                case "VendaD":           return produto.VendaD > 0 ? produto.VendaD.ToString("F2") : "-";
+                case "VendaE":           return produto.VendaE > 0 ? produto.VendaE.ToString("F2") : "-";
+                case "Fornecedor":       return produto.Fornecedor ?? "";
+                case "Fabricante":       return produto.Fabricante ?? "";
+                case "Grupo":            return produto.Grupo ?? "";
+                case "Prateleira":       return produto.Prateleira ?? "";
+                case "Garantia":         return produto.Garantia ?? "";
+                case "Tam":              return produto.Tam ?? "";
+                case "Cores":            return produto.Cores ?? "";
                 case "CodBarras_Grade":  return produto.CodBarras_Grade ?? "";
                 case "PrecoOriginal":
                     return produto.PrecoOriginal.HasValue

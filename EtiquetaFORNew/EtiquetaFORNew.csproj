@@ -252,6 +252,7 @@
   <ItemGroup>
     <Compile Include="CalibracaoManager.cs" />
     <Compile Include="CarregadorDados.cs" />
+    <Compile Include="CalculadoraCamposEtiqueta.cs" />
     <Compile Include="Classes.cs" />
     <Compile Include="ConfiguracaoManager.cs" />
     <Compile Include="Data\Funcoes.cs" />

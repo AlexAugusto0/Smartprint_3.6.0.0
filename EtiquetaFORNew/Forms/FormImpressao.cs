@@ -490,7 +490,7 @@ namespace EtiquetaFORNew
                         break;
 
                     case TipoElemento.Campo:
-                        string valor = ObterValorCampo(elem.Conteudo, produto);
+                        string valor = ObterValorCampo(elem.Conteudo, produto, elem);
                         g.DrawString(valor, fonte, brush, bounds, sf);
                         break;
 
@@ -535,9 +535,16 @@ namespace EtiquetaFORNew
         }
 
         // ... (Seu código original ObterValorCampo)
-        private string ObterValorCampo(string campo, Produto produto)
+        private string ObterValorCampo(string campo, Produto produto, ElementoEtiqueta elemento = null)
         {
             if (produto == null) return $"[{campo}]";
+
+            decimal valorCalculado;
+            if (CalculadoraCamposEtiqueta.CalculoAtivo(elemento)
+                && CalculadoraCamposEtiqueta.TryCalcularValorCampo(produto, campo, elemento, out valorCalculado))
+            {
+                return valorCalculado.ToString("F2");
+            }
 
             switch (campo)
             {
