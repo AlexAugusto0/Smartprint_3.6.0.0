@@ -240,7 +240,7 @@ namespace EtiquetaFORNew
             lstTemplates.Invalidate();
         }
 
-        private void CarregarLista()
+        public void CarregarLista()
         {
             lstTemplates.Items.Clear();
             var templates = TemplateManager.ListarTemplates();

@@ -19,7 +19,8 @@ namespace EtiquetaFORNew
         private Button btnRestaurar;
 
         // URL da sua API local (Ajuste a porta se a sua for diferente)
-        private const string UrlApi = "https://localhost:7106/api/ConfigEtiqueta";
+        //private const string UrlApi = "https://localhost:7106/api/ConfigEtiqueta";
+        private const string UrlApi = "https://templateapi-0e8j.onrender.com/api/ConfigEtiqueta";
 
         public FormTemplateApi()
         {
@@ -233,6 +234,14 @@ namespace EtiquetaFORNew
                     }
 
                     MessageBox.Show("Configurações e templates restaurados com sucesso na sua máquina!", "Sucesso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // === ATUALIZAÇÃO DA LISTA EM SEGUNDO PLANO ===
+                    // Verifica se o formulário que abriu este é o FormListaTemplates e força o "requery"
+                    if (this.Owner is FormListaTemplates formLista)
+                    {
+                        formLista.CarregarLista();
+                    }
+                    // ============================================
                 }
             }
             catch (Exception ex)
