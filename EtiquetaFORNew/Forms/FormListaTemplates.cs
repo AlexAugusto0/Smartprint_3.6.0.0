@@ -147,7 +147,7 @@ namespace EtiquetaFORNew
 
             this.Controls.AddRange(new Control[] {
                 lblInstrucao, lblInstrucao2, lstTemplates, chkDefinirPadrao, lblInfo,
-                btnNovo, btnExcluir, btnCarregar,// btnTemplateApi, // btnCancelar
+                btnNovo, btnExcluir, btnCarregar, btnTemplateApi, // btnCancelar
             });
         }
 
