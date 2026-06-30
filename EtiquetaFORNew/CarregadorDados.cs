@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
@@ -38,7 +39,8 @@ namespace EtiquetaFORNew.Data
             string fornecedor = null,
             string produto = null,
             bool isConfeccao = false,
-            int? idPromocao = null) // ÃƒÂ¢Ã‚Â­Ã‚Â NOVO parÃƒÆ’Ã‚Â¢metro
+            int? idPromocao = null, // ÃƒÂ¢Ã‚Â­Ã‚Â NOVO parÃƒÆ’Ã‚Â¢metro
+            bool usarQuantidadeEstoque = false)
         {
             switch (tipo.ToUpper())
             {
@@ -57,7 +59,10 @@ namespace EtiquetaFORNew.Data
                     return CarregarNotasEntrada(documento, dataInicial, dataFinal);
 
                 case "PREÇOS ALTERADOS":
-                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value);
+                    if (!dataInicial.HasValue || !dataFinal.HasValue)
+                        throw new Exception("Informe o período para carregar preços alterados.");
+
+                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque);
 
                 //case "PROMOÇÕES":
                 //    // ÃƒÂ¢Ã‚Â­Ã‚Â Usa o mÃƒÆ’Ã‚Â©todo do PromocoesManager com ID da promoÃ§ÃƒÆ’Ã‚Â£o
@@ -133,78 +138,28 @@ namespace EtiquetaFORNew.Data
         {
             try
             {
-                using (var conn = new SQLiteConnection(ConnectionString))
-                {
-                    conn.Open();
-
-                    string query = @"
-                        SELECT DISTINCT
-                            m.CodigoMercadoria,
-                            m.Mercadoria,
-                            m.PrecoVenda,
-                            m.Grupo,
-                            m.SubGrupo,
-                            m.Fabricante,
-                            m.Fornecedor,
-                            m.CodBarras,
-                            m.CodFabricante,
-                            m.Tam,
-                            m.Cores,
-                            m.CodBarras_Grade,
-                            m.Registro,
-                            1 as Quantidade
-                        FROM Mercadorias m
-                        WHERE 1=1
-                    ";
-
-                    List<string> condicoes = new List<string>();
-                    var parametros = new List<SQLiteParameter>();
-
-                    // Filtro por nÃºmero do ajuste (se implementado em campo especÃƒÆ’Ã‚Â­fico)
-                    if (!string.IsNullOrEmpty(numeroAjuste))
+                return CarregarMovimentoEstoqueSql(
+                    descricao: "ajustes",
+                    numeroDocumento: numeroAjuste,
+                    dataInicial: dataInicial,
+                    dataFinal: dataFinal,
+                    tabelasCabecalho: new[] { "Inventário", "Inventario" },
+                    tabelasItens: new[] { "Sub Inventário", "Sub Inventario" },
+                    colunasDocumentoCabecalho: new[]
                     {
-                        // TODO: Implementar quando houver campo de controle de ajustes
-                        // condicoes.Add("m.NumeroAjuste = @numeroAjuste");
-                        // parametros.Add(new SQLiteParameter("@numeroAjuste", numeroAjuste));
-                    }
-
-                    // Filtro por data
-                    if (dataInicial.HasValue)
+                        "Código da Compra", "Codigo da Compra", "Código do Inventário", "Codigo do Inventario",
+                        "Número do Ajuste", "Numero do Ajuste", "NumeroAjuste", "Ajuste"
+                    },
+                    colunasDocumentoItens: new[]
                     {
-                        // TODO: Implementar quando houver campo de data de ajuste
-                        // condicoes.Add("DATE(m.DataAjuste) >= DATE(@dataInicial)");
-                        // parametros.Add(new SQLiteParameter("@dataInicial", dataInicial.Value.ToString("yyyy-MM-dd")));
-                    }
-
-                    if (dataFinal.HasValue)
+                        "Código da Compra", "Codigo da Compra", "Código do Inventário", "Codigo do Inventario",
+                        "Número do Ajuste", "Numero do Ajuste", "NumeroAjuste", "Ajuste"
+                    },
+                    colunasData: new[]
                     {
-                        // TODO: Implementar quando houver campo de data de ajuste
-                        // condicoes.Add("DATE(m.DataAjuste) <= DATE(@dataFinal)");
-                        // parametros.Add(new SQLiteParameter("@dataFinal", dataFinal.Value.ToString("yyyy-MM-dd")));
-                    }
-
-                    if (condicoes.Count > 0)
-                    {
-                        query += " AND " + string.Join(" AND ", condicoes);
-                    }
-
-                    query += " ORDER BY m.Mercadoria";
-
-                    using (var cmd = new SQLiteCommand(query, conn))
-                    {
-                        foreach (var param in parametros)
-                        {
-                            cmd.Parameters.Add(param);
-                        }
-
-                        using (var adapter = new SQLiteDataAdapter(cmd))
-                        {
-                            DataTable dt = new DataTable();
-                            adapter.Fill(dt);
-                            return dt;
-                        }
-                    }
-                }
+                        "Data", "Data da Compra", "Data Compra", "Data do Inventário", "Data do Inventario",
+                        "Data do Ajuste", "DataAjuste", "Emissão", "Emissao"
+                    });
             }
             catch (Exception ex)
             {
@@ -223,79 +178,363 @@ namespace EtiquetaFORNew.Data
         {
             try
             {
-                using (var conn = new SQLiteConnection(ConnectionString))
-                {
-                    conn.Open();
-
-                    string query = @"
-                        SELECT DISTINCT
-                            m.CodigoMercadoria,
-                            m.Mercadoria,
-                            m.PrecoVenda,
-                            m.Grupo,
-                            m.SubGrupo,
-                            m.Fabricante,
-                            m.Fornecedor,
-                            m.CodBarras,
-                            m.CodFabricante,
-                            m.Tam,
-                            m.Cores,
-                            m.CodBarras_Grade,
-                            m.Registro,
-                            1 as Quantidade
-                        FROM Mercadorias m
-                        WHERE 1=1
-                    ";
-
-                    List<string> condicoes = new List<string>();
-                    var parametros = new List<SQLiteParameter>();
-
-                    // Filtro por nÃºmero do balanÃ§o
-                    if (!string.IsNullOrEmpty(numeroBalanco))
+                return CarregarMovimentoEstoqueSql(
+                    descricao: "balanços",
+                    numeroDocumento: numeroBalanco,
+                    dataInicial: dataInicial,
+                    dataFinal: dataFinal,
+                    tabelasCabecalho: new[] { "Balanço", "Balanco" },
+                    tabelasItens: new[] { "Sub Balanço", "Sub Balanco" },
+                    colunasDocumentoCabecalho: new[]
                     {
-                        // TODO: Implementar quando houver campo de controle de balanÃ§os
-                        // condicoes.Add("m.NumeroBalanco = @numeroBalanco");
-                        // parametros.Add(new SQLiteParameter("@numeroBalanco", numeroBalanco));
-                    }
-
-                    // Filtro por data
-                    if (dataInicial.HasValue)
+                        "Código da Compra", "Codigo da Compra", "Código do Balanço", "Codigo do Balanco",
+                        "Número do Balanço", "Numero do Balanco", "NumeroBalanco", "Balanço", "Balanco"
+                    },
+                    colunasDocumentoItens: new[]
                     {
-                        // TODO: Implementar quando houver campo de data de balanÃ§o
-                    }
-
-                    if (dataFinal.HasValue)
+                        "Código da Compra", "Codigo da Compra", "Código do Balanço", "Codigo do Balanco",
+                        "Número do Balanço", "Numero do Balanco", "NumeroBalanco", "Balanço", "Balanco"
+                    },
+                    colunasData: new[]
                     {
-                        // TODO: Implementar quando houver campo de data de balanÃ§o
-                    }
-
-                    if (condicoes.Count > 0)
-                    {
-                        query += " AND " + string.Join(" AND ", condicoes);
-                    }
-
-                    query += " ORDER BY m.Mercadoria";
-
-                    using (var cmd = new SQLiteCommand(query, conn))
-                    {
-                        foreach (var param in parametros)
-                        {
-                            cmd.Parameters.Add(param);
-                        }
-
-                        using (var adapter = new SQLiteDataAdapter(cmd))
-                        {
-                            DataTable dt = new DataTable();
-                            adapter.Fill(dt);
-                            return dt;
-                        }
-                    }
-                }
+                        "Data", "Data da Compra", "Data Compra", "Data do Balanço", "Data do Balanco",
+                        "DataBalanco", "Emissão", "Emissao"
+                    });
             }
             catch (Exception ex)
             {
                 throw new Exception($"Erro ao carregar balanÃ§os: {ex.Message}", ex);
             }
+        }
+
+        private sealed class TabelaSqlInfo
+        {
+            public string Schema { get; set; }
+            public string Nome { get; set; }
+
+            public string NomeQualificado
+            {
+                get { return DelimitarIdentificador(Schema) + "." + DelimitarIdentificador(Nome); }
+            }
+        }
+
+        private static DataTable CarregarMovimentoEstoqueSql(
+            string descricao,
+            string numeroDocumento,
+            DateTime? dataInicial,
+            DateTime? dataFinal,
+            string[] tabelasCabecalho,
+            string[] tabelasItens,
+            string[] colunasDocumentoCabecalho,
+            string[] colunasDocumentoItens,
+            string[] colunasData)
+        {
+            string connectionStringSQLServer = DatabaseConfig.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionStringSQLServer))
+                throw new Exception("Conexão SQL Server não configurada!");
+
+            string loja = ObterLojaConfigurada();
+
+            using (var conn = new SqlConnection(connectionStringSQLServer))
+            {
+                conn.Open();
+
+                TabelaSqlInfo tabelaCabecalho = ObterTabelaSql(conn, true, tabelasCabecalho);
+                TabelaSqlInfo tabelaItens = ObterTabelaSql(conn, true, tabelasItens);
+                TabelaSqlInfo tabelaProdutos = ObterTabelaSql(conn, true, "memoria_MercadoriasLojas");
+
+                Dictionary<string, string> colCabecalho = ObterMapaColunasSql(conn, tabelaCabecalho);
+                Dictionary<string, string> colItens = ObterMapaColunasSql(conn, tabelaItens);
+                Dictionary<string, string> colProdutos = ObterMapaColunasSql(conn, tabelaProdutos);
+
+                string docCabecalho = ObterColunaSql(tabelaCabecalho, colCabecalho, true, colunasDocumentoCabecalho);
+                string docItens = ObterColunaSql(tabelaItens, colItens, true, colunasDocumentoItens);
+                string lojaCabecalho = ObterColunaSql(tabelaCabecalho, colCabecalho, false,
+                    "Loja Origem", "LojaOrigem", "Loja", "Código da Loja", "Codigo da Loja");
+                string dataCabecalho = ObterColunaSql(tabelaCabecalho, colCabecalho,
+                    dataInicial.HasValue || dataFinal.HasValue, colunasData);
+
+                string itemCodigo = ObterColunaSql(tabelaItens, colItens, true,
+                    "Código da Mercadoria", "Codigo da Mercadoria", "CodigoMercadoria", "CodMercadoria");
+                string itemCodBarras = ObterColunaSql(tabelaItens, colItens, false,
+                    "Código de Barras", "Codigo de Barras", "Cód Barra", "Cod Barra", "CodBarras", "CodBarras_Grade");
+                string itemTam = ObterColunaSql(tabelaItens, colItens, false, "Tam", "Tamanho");
+                string itemCores = ObterColunaSql(tabelaItens, colItens, false, "Cores", "Cor");
+                string itemQuantidade = ObterColunaSql(tabelaItens, colItens, false,
+                    "Quantidade", "Qtd", "Qtde", "Quantidade_Item");
+
+                string prodCodigo = ObterColunaSql(tabelaProdutos, colProdutos, true,
+                    "Código da Mercadoria", "Codigo da Mercadoria", "CodigoMercadoria");
+                string prodLoja = ObterColunaSql(tabelaProdutos, colProdutos, false, "Loja");
+                string prodDesativado = ObterColunaSql(tabelaProdutos, colProdutos, false, "Desativado");
+                string prodCodFabricante = ObterColunaSql(tabelaProdutos, colProdutos, false,
+                    "Cód Fabricante", "Cod Fabricante", "CodFabricante");
+                string prodCodBarras = ObterColunaSql(tabelaProdutos, colProdutos, false,
+                    "Cód Barra", "Cod Barra", "CodBarras", "Código de Barras", "Codigo de Barras");
+                string prodMercadoria = ObterColunaSql(tabelaProdutos, colProdutos, true, "Mercadoria");
+                string prodPrecoVenda = ObterColunaSql(tabelaProdutos, colProdutos, false,
+                    "Preço de Venda", "Preco de Venda", "PrecoVenda");
+                string prodVendaA = ObterColunaSql(tabelaProdutos, colProdutos, false, "VendaA");
+                string prodVendaB = ObterColunaSql(tabelaProdutos, colProdutos, false, "VendaB");
+                string prodVendaC = ObterColunaSql(tabelaProdutos, colProdutos, false, "VendaC");
+                string prodVendaD = ObterColunaSql(tabelaProdutos, colProdutos, false, "VendaD");
+                string prodVendaE = ObterColunaSql(tabelaProdutos, colProdutos, false, "VendaE");
+                string prodFornecedor = ObterColunaSql(tabelaProdutos, colProdutos, false, "Fornecedor");
+                string prodFabricante = ObterColunaSql(tabelaProdutos, colProdutos, false, "Fabricante");
+                string prodGrupo = ObterColunaSql(tabelaProdutos, colProdutos, false, "Grupo");
+                string prodSubGrupo = ObterColunaSql(tabelaProdutos, colProdutos, false, "SubGrupo", "Sub Grupo");
+                string prodPrateleira = ObterColunaSql(tabelaProdutos, colProdutos, false, "Prateleira");
+                string prodGarantia = ObterColunaSql(tabelaProdutos, colProdutos, false, "Garantia");
+                string prodTam = ObterColunaSql(tabelaProdutos, colProdutos, false, "Tam", "Tamanho");
+                string prodCores = ObterColunaSql(tabelaProdutos, colProdutos, false, "Cores", "Cor");
+                string prodCodBarrasGrade = ObterColunaSql(tabelaProdutos, colProdutos, false,
+                    "CodBarras", "CodBarras_Grade", "Código de Barras", "Codigo de Barras");
+
+                List<string> condicoes = new List<string>();
+                if (!string.IsNullOrWhiteSpace(loja))
+                {
+                    if (string.IsNullOrEmpty(lojaCabecalho))
+                        throw new Exception($"A tabela {tabelaCabecalho.Nome} não possui coluna de loja para filtrar {descricao}.");
+
+                    condicoes.Add("CAST(h." + DelimitarIdentificador(lojaCabecalho) + " AS NVARCHAR(50)) = @loja");
+                }
+
+                if (!string.IsNullOrWhiteSpace(numeroDocumento))
+                {
+                    condicoes.Add("CAST(h." + DelimitarIdentificador(docCabecalho) + " AS NVARCHAR(50)) = @numeroDocumento");
+                }
+
+                if (dataInicial.HasValue)
+                {
+                    condicoes.Add("CAST(h." + DelimitarIdentificador(dataCabecalho) + " AS DATE) >= @dataInicial");
+                }
+
+                if (dataFinal.HasValue)
+                {
+                    condicoes.Add("CAST(h." + DelimitarIdentificador(dataCabecalho) + " AS DATE) <= @dataFinal");
+                }
+
+                string whereMovimento = condicoes.Count > 0
+                    ? "WHERE " + string.Join(" AND ", condicoes)
+                    : "";
+
+                string codigoMovimento = "CAST(s." + DelimitarIdentificador(itemCodigo) + " AS NVARCHAR(50))";
+                string codBarrasMovimento = string.IsNullOrEmpty(itemCodBarras)
+                    ? "CAST('' AS NVARCHAR(100))"
+                    : "ISNULL(CAST(s." + DelimitarIdentificador(itemCodBarras) + " AS NVARCHAR(100)), '')";
+                string tamMovimento = string.IsNullOrEmpty(itemTam)
+                    ? "CAST('' AS NVARCHAR(50))"
+                    : "ISNULL(CAST(s." + DelimitarIdentificador(itemTam) + " AS NVARCHAR(50)), '')";
+                string coresMovimento = string.IsNullOrEmpty(itemCores)
+                    ? "CAST('' AS NVARCHAR(50))"
+                    : "ISNULL(CAST(s." + DelimitarIdentificador(itemCores) + " AS NVARCHAR(50)), '')";
+
+                string quantidadeMovimento = "CAST(1 AS INT)";
+                if (!string.IsNullOrEmpty(itemQuantidade))
+                {
+                    string colQtd = "s." + DelimitarIdentificador(itemQuantidade);
+                    string somaQtd = "SUM(CASE WHEN " + colQtd + " IS NULL THEN 0 WHEN " + colQtd +
+                                     " > 0 THEN CAST(" + colQtd + " AS INT) ELSE 0 END)";
+                    quantidadeMovimento = "CASE WHEN " + somaQtd + " > 0 THEN " + somaQtd + " ELSE 1 END";
+                }
+
+                string produtoLojaFiltro = "";
+                if (!string.IsNullOrWhiteSpace(loja) && !string.IsNullOrEmpty(prodLoja))
+                {
+                    produtoLojaFiltro = " AND CAST(p." + DelimitarIdentificador(prodLoja) + " AS NVARCHAR(50)) = @loja";
+                }
+
+                string produtoAtivoFiltro = "";
+                if (!string.IsNullOrEmpty(prodDesativado))
+                {
+                    produtoAtivoFiltro = " AND ISNULL(p." + DelimitarIdentificador(prodDesativado) + ", 0) = 0";
+                }
+
+                string query = @"
+                    WITH Movimento AS
+                    (
+                        SELECT
+                            " + codigoMovimento + @" AS CodigoMercadoria,
+                            " + codBarrasMovimento + @" AS CodBarras,
+                            " + tamMovimento + @" AS Tam,
+                            " + coresMovimento + @" AS Cores,
+                            " + quantidadeMovimento + @" AS Quantidade
+                        FROM " + tabelaCabecalho.NomeQualificado + @" h
+                        INNER JOIN " + tabelaItens.NomeQualificado + @" s
+                            ON h." + DelimitarIdentificador(docCabecalho) + @" = s." + DelimitarIdentificador(docItens) + @"
+                        " + whereMovimento + @"
+                        GROUP BY
+                            " + codigoMovimento + @",
+                            " + codBarrasMovimento + @",
+                            " + tamMovimento + @",
+                            " + coresMovimento + @"
+                    )
+                    SELECT
+                        mv.CodigoMercadoria,
+                        " + TextoSql("p", prodMercadoria) + @" AS Mercadoria,
+                        " + DecimalSql("p", prodPrecoVenda) + @" AS PrecoVenda,
+                        " + TextoSql("p", prodGrupo) + @" AS Grupo,
+                        " + TextoSql("p", prodSubGrupo) + @" AS SubGrupo,
+                        " + TextoSql("p", prodFabricante) + @" AS Fabricante,
+                        " + TextoSql("p", prodFornecedor) + @" AS Fornecedor,
+                        COALESCE(NULLIF(mv.CodBarras, ''), " + TextoSql("p", prodCodBarras) + @") AS CodBarras,
+                        " + TextoSql("p", prodCodFabricante) + @" AS CodFabricante,
+                        COALESCE(NULLIF(mv.Tam, ''), " + TextoSql("p", prodTam) + @") AS Tam,
+                        COALESCE(NULLIF(mv.Cores, ''), " + TextoSql("p", prodCores) + @") AS Cores,
+                        COALESCE(NULLIF(mv.CodBarras, ''), " + TextoSql("p", prodCodBarrasGrade) + @") AS CodBarras_Grade,
+                        CAST(0 AS INT) AS Registro,
+                        mv.Quantidade AS Quantidade,
+                        " + DecimalSql("p", prodVendaA) + @" AS VendaA,
+                        " + DecimalSql("p", prodVendaB) + @" AS VendaB,
+                        " + DecimalSql("p", prodVendaC) + @" AS VendaC,
+                        " + DecimalSql("p", prodVendaD) + @" AS VendaD,
+                        " + DecimalSql("p", prodVendaE) + @" AS VendaE,
+                        " + TextoSql("p", prodPrateleira) + @" AS Prateleira,
+                        " + TextoSql("p", prodGarantia) + @" AS Garantia
+                    FROM Movimento mv
+                    INNER JOIN " + tabelaProdutos.NomeQualificado + @" p
+                        ON CAST(p." + DelimitarIdentificador(prodCodigo) + @" AS NVARCHAR(50)) = mv.CodigoMercadoria
+                        " + produtoLojaFiltro + @"
+                        " + produtoAtivoFiltro + @"
+                    ORDER BY Mercadoria";
+
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    if (!string.IsNullOrWhiteSpace(loja))
+                        cmd.Parameters.AddWithValue("@loja", loja);
+
+                    if (!string.IsNullOrWhiteSpace(numeroDocumento))
+                        cmd.Parameters.AddWithValue("@numeroDocumento", numeroDocumento.Trim());
+
+                    if (dataInicial.HasValue)
+                        cmd.Parameters.Add("@dataInicial", SqlDbType.Date).Value = dataInicial.Value.Date;
+
+                    if (dataFinal.HasValue)
+                        cmd.Parameters.Add("@dataFinal", SqlDbType.Date).Value = dataFinal.Value.Date;
+
+                    using (var adapter = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = CriarTabelaResultadoPadrao();
+                        dt.Clear();
+                        adapter.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
+        }
+
+        private static string ObterLojaConfigurada()
+        {
+            try
+            {
+                var config = DatabaseConfig.LoadConfiguration();
+                return config?.Loja?.Trim() ?? "";
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        private static TabelaSqlInfo ObterTabelaSql(SqlConnection conn, bool obrigatoria, params string[] candidatos)
+        {
+            List<TabelaSqlInfo> tabelas = new List<TabelaSqlInfo>();
+
+            using (var cmd = new SqlCommand(@"
+                SELECT TABLE_SCHEMA, TABLE_NAME
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW')", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    tabelas.Add(new TabelaSqlInfo
+                    {
+                        Schema = reader["TABLE_SCHEMA"].ToString(),
+                        Nome = reader["TABLE_NAME"].ToString()
+                    });
+                }
+            }
+
+            foreach (string candidato in candidatos.Where(c => !string.IsNullOrWhiteSpace(c)))
+            {
+                TabelaSqlInfo tabela = tabelas.FirstOrDefault(t =>
+                    string.Equals(t.Nome, candidato, StringComparison.OrdinalIgnoreCase));
+
+                if (tabela != null)
+                    return tabela;
+            }
+
+            if (obrigatoria)
+                throw new Exception("Tabela SQL não encontrada: " + string.Join(", ", candidatos));
+
+            return null;
+        }
+
+        private static Dictionary<string, string> ObterMapaColunasSql(SqlConnection conn, TabelaSqlInfo tabela)
+        {
+            Dictionary<string, string> colunas = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            using (var cmd = new SqlCommand(@"
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table", conn))
+            {
+                cmd.Parameters.AddWithValue("@schema", tabela.Schema);
+                cmd.Parameters.AddWithValue("@table", tabela.Nome);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string nome = reader["COLUMN_NAME"].ToString();
+                        if (!colunas.ContainsKey(nome))
+                            colunas.Add(nome, nome);
+                    }
+                }
+            }
+
+            return colunas;
+        }
+
+        private static string ObterColunaSql(
+            TabelaSqlInfo tabela,
+            Dictionary<string, string> colunas,
+            bool obrigatoria,
+            params string[] candidatos)
+        {
+            foreach (string candidato in candidatos.Where(c => !string.IsNullOrWhiteSpace(c)))
+            {
+                string coluna;
+                if (colunas.TryGetValue(candidato, out coluna))
+                    return coluna;
+            }
+
+            if (obrigatoria)
+                throw new Exception("Coluna SQL não encontrada em " + tabela.Nome + ": " + string.Join(", ", candidatos));
+
+            return null;
+        }
+
+        private static string DelimitarIdentificador(string nome)
+        {
+            return "[" + (nome ?? "").Replace("]", "]]") + "]";
+        }
+
+        private static string TextoSql(string alias, string coluna, string padrao = "''")
+        {
+            if (string.IsNullOrEmpty(coluna))
+                return padrao;
+
+            return "ISNULL(CAST(" + alias + "." + DelimitarIdentificador(coluna) + " AS NVARCHAR(255)), " + padrao + ")";
+        }
+
+        private static string DecimalSql(string alias, string coluna)
+        {
+            if (string.IsNullOrEmpty(coluna))
+                return "CAST(0 AS DECIMAL(18, 2))";
+
+            return "ISNULL(" + alias + "." + DelimitarIdentificador(coluna) + ", 0)";
         }
 
 
@@ -672,50 +911,157 @@ namespace EtiquetaFORNew.Data
         /// Carrega produtos com preÃ§os alterados no perÃƒÆ’Ã‚Â­odo
         /// Equivalente: GeradordeEtiquetas_CarregarAlteracaoPrecos
         /// </summary>
-        private static DataTable CarregarPrecosAlterados(DateTime dataInicial, DateTime dataFinal)
+        private static DataTable CarregarPrecosAlterados(DateTime dataInicial, DateTime dataFinal, bool usarQuantidadeEstoque = false)
         {
             try
             {
-                using (var conn = new SQLiteConnection(ConnectionString))
+                string connectionStringSQLServer = DatabaseConfig.GetConnectionString();
+                if (string.IsNullOrEmpty(connectionStringSQLServer))
+                    throw new Exception("Conexão SQL Server não configurada!");
+
+                string loja = ObterLojaConfigurada();
+
+                using (var conn = new SqlConnection(connectionStringSQLServer))
                 {
                     conn.Open();
 
+                    TabelaSqlInfo tabelaMercadorias = ObterTabelaSql(conn, true, "Cadastro de Mercadorias", "Cadastro de mercadorias");
+                    TabelaSqlInfo tabelaLojas = ObterTabelaSql(conn, true, "Cadastro de mercadoriasLojas", "Cadastro de MercadoriasLojas");
+
+                    Dictionary<string, string> colMerc = ObterMapaColunasSql(conn, tabelaMercadorias);
+                    Dictionary<string, string> colLojas = ObterMapaColunasSql(conn, tabelaLojas);
+
+                    string cmCodigo = ObterColunaSql(tabelaMercadorias, colMerc, true,
+                        "Código da Mercadoria", "Codigo da Mercadoria", "CodigoMercadoria");
+                    string cmlCodigo = ObterColunaSql(tabelaLojas, colLojas, true,
+                        "Código da Mercadoria", "Codigo da Mercadoria", "CodigoMercadoria");
+                    string cmlLoja = ObterColunaSql(tabelaLojas, colLojas, !string.IsNullOrWhiteSpace(loja), "Loja");
+
+                    string dataCml = ObterColunaSql(tabelaLojas, colLojas, false,
+                        "DataAlteracaoPreco", "Data Alteracao Preco", "Data Alteração Preço",
+                        "Data de Alteração de Preço", "Data da Alteração de Preço");
+                    string dataCm = ObterColunaSql(tabelaMercadorias, colMerc, false,
+                        "DataAlteracaoPreco", "Data Alteracao Preco", "Data Alteração Preço",
+                        "Data de Alteração de Preço", "Data da Alteração de Preço");
+
+                    if (string.IsNullOrEmpty(dataCml) && string.IsNullOrEmpty(dataCm))
+                        throw new Exception("Coluna DataAlteracaoPreco não encontrada em Cadastro de Mercadorias ou Cadastro de mercadoriasLojas.");
+
+                    string aliasData = string.IsNullOrEmpty(dataCml) ? "cm" : "cml";
+                    string colunaData = string.IsNullOrEmpty(dataCml) ? dataCm : dataCml;
+
+                    string cmCodFabricante = ObterColunaSql(tabelaMercadorias, colMerc, false,
+                        "Cód Fabricante", "Cod Fabricante", "CodFabricante");
+                    string cmCodBarras = ObterColunaSql(tabelaMercadorias, colMerc, false,
+                        "Cód Barra", "Cod Barra", "CodBarras", "Código de Barras", "Codigo de Barras");
+                    string cmMercadoria = ObterColunaSql(tabelaMercadorias, colMerc, true, "Mercadoria");
+                    string cmPrecoVenda = ObterColunaSql(tabelaMercadorias, colMerc, false,
+                        "Preço de Venda", "Preco de Venda", "PrecoVenda");
+                    string cmlPrecoVenda = ObterColunaSql(tabelaLojas, colLojas, false,
+                        "Preço de Venda", "Preco de Venda", "PrecoVenda");
+                    string cmVendaA = ObterColunaSql(tabelaMercadorias, colMerc, false, "VendaA");
+                    string cmVendaB = ObterColunaSql(tabelaMercadorias, colMerc, false, "VendaB");
+                    string cmVendaC = ObterColunaSql(tabelaMercadorias, colMerc, false, "VendaC");
+                    string cmVendaD = ObterColunaSql(tabelaMercadorias, colMerc, false, "VendaD");
+                    string cmVendaE = ObterColunaSql(tabelaMercadorias, colMerc, false, "VendaE");
+                    string cmlVendaA = ObterColunaSql(tabelaLojas, colLojas, false, "VendaA");
+                    string cmlVendaB = ObterColunaSql(tabelaLojas, colLojas, false, "VendaB");
+                    string cmlVendaC = ObterColunaSql(tabelaLojas, colLojas, false, "VendaC");
+                    string cmlVendaD = ObterColunaSql(tabelaLojas, colLojas, false, "VendaD");
+                    string cmlVendaE = ObterColunaSql(tabelaLojas, colLojas, false, "VendaE");
+                    string cmFornecedor = ObterColunaSql(tabelaMercadorias, colMerc, false, "Fornecedor");
+                    string cmFabricante = ObterColunaSql(tabelaMercadorias, colMerc, false, "Fabricante");
+                    string cmGrupo = ObterColunaSql(tabelaMercadorias, colMerc, false, "Grupo");
+                    string cmSubGrupo = ObterColunaSql(tabelaMercadorias, colMerc, false, "SubGrupo", "Sub Grupo");
+                    string cmPrateleira = ObterColunaSql(tabelaMercadorias, colMerc, false, "Prateleira");
+                    string cmGarantia = ObterColunaSql(tabelaMercadorias, colMerc, false, "Garantia");
+                    string cmlTam = ObterColunaSql(tabelaLojas, colLojas, false, "Tam", "Tamanho");
+                    string cmlCores = ObterColunaSql(tabelaLojas, colLojas, false, "Cores", "Cor");
+                    string cmlCodBarras = ObterColunaSql(tabelaLojas, colLojas, false,
+                        "CodBarras", "CodBarras_Grade", "Código de Barras", "Codigo de Barras");
+                    string cmlEstoque = ObterColunaSql(tabelaLojas, colLojas, false,
+                        "Estoque", "Saldo", "Saldo_Estoque", "EstoqueAtual", "Quantidade");
+                    string cmlDesativado = ObterColunaSql(tabelaLojas, colLojas, false, "Desativado");
+                    string cmDesativado = ObterColunaSql(tabelaMercadorias, colMerc, false, "Desativado");
+                    string cmlAtivo = ObterColunaSql(tabelaLojas, colLojas, false, "Ativo");
+                    string cmAtivo = ObterColunaSql(tabelaMercadorias, colMerc, false, "Ativo");
+
+                    List<string> condicoes = new List<string>
+                    {
+                        "CAST(" + aliasData + "." + DelimitarIdentificador(colunaData) + " AS DATE) >= @dataInicial",
+                        "CAST(" + aliasData + "." + DelimitarIdentificador(colunaData) + " AS DATE) <= @dataFinal"
+                    };
+
+                    if (!string.IsNullOrWhiteSpace(loja))
+                        condicoes.Add("CAST(cml." + DelimitarIdentificador(cmlLoja) + " AS NVARCHAR(50)) = @loja");
+
+                    if (!string.IsNullOrEmpty(cmlDesativado))
+                        condicoes.Add("ISNULL(cml." + DelimitarIdentificador(cmlDesativado) + ", 0) = 0");
+                    if (!string.IsNullOrEmpty(cmDesativado))
+                        condicoes.Add("ISNULL(cm." + DelimitarIdentificador(cmDesativado) + ", 0) = 0");
+                    if (!string.IsNullOrEmpty(cmlAtivo))
+                        condicoes.Add("ISNULL(cml." + DelimitarIdentificador(cmlAtivo) + ", 1) = 1");
+                    if (!string.IsNullOrEmpty(cmAtivo))
+                        condicoes.Add("ISNULL(cm." + DelimitarIdentificador(cmAtivo) + ", 1) = 1");
+
+                    string precoVenda = !string.IsNullOrEmpty(cmlPrecoVenda)
+                        ? DecimalSql("cml", cmlPrecoVenda)
+                        : DecimalSql("cm", cmPrecoVenda);
+                    string vendaA = !string.IsNullOrEmpty(cmlVendaA) ? DecimalSql("cml", cmlVendaA) : DecimalSql("cm", cmVendaA);
+                    string vendaB = !string.IsNullOrEmpty(cmlVendaB) ? DecimalSql("cml", cmlVendaB) : DecimalSql("cm", cmVendaB);
+                    string vendaC = !string.IsNullOrEmpty(cmlVendaC) ? DecimalSql("cml", cmlVendaC) : DecimalSql("cm", cmVendaC);
+                    string vendaD = !string.IsNullOrEmpty(cmlVendaD) ? DecimalSql("cml", cmlVendaD) : DecimalSql("cm", cmVendaD);
+                    string vendaE = !string.IsNullOrEmpty(cmlVendaE) ? DecimalSql("cml", cmlVendaE) : DecimalSql("cm", cmVendaE);
+
+                    string quantidade = "CAST(1 AS INT)";
+                    if (usarQuantidadeEstoque && !string.IsNullOrEmpty(cmlEstoque))
+                    {
+                        string estoque = "cml." + DelimitarIdentificador(cmlEstoque);
+                        quantidade = "CASE WHEN " + estoque + " IS NULL OR " + estoque +
+                                     " <= 0 THEN 1 ELSE CAST(" + estoque + " AS INT) END";
+                    }
+
                     string query = @"
                         SELECT DISTINCT
-                            m.CodigoMercadoria,
-                            m.Mercadoria,
-                            m.PrecoVenda,
-                            m.Grupo,
-                            m.SubGrupo,
-                            m.Fabricante,
-                            m.Fornecedor,
-                            m.CodBarras,
-                            m.CodFabricante,
-                            m.Tam,
-                            m.Cores,
-                            m.CodBarras_Grade,
-                            m.Registro,
-                            1 as Quantidade
-                        FROM Mercadorias m
-                        WHERE 1=1
-                    ";
+                            CAST(cm." + DelimitarIdentificador(cmCodigo) + @" AS NVARCHAR(50)) AS CodigoMercadoria,
+                            " + TextoSql("cm", cmMercadoria) + @" AS Mercadoria,
+                            " + precoVenda + @" AS PrecoVenda,
+                            " + TextoSql("cm", cmGrupo) + @" AS Grupo,
+                            " + TextoSql("cm", cmSubGrupo) + @" AS SubGrupo,
+                            " + TextoSql("cm", cmFabricante) + @" AS Fabricante,
+                            " + TextoSql("cm", cmFornecedor) + @" AS Fornecedor,
+                            " + TextoSql("cm", cmCodBarras) + @" AS CodBarras,
+                            " + TextoSql("cm", cmCodFabricante) + @" AS CodFabricante,
+                            " + TextoSql("cml", cmlTam) + @" AS Tam,
+                            " + TextoSql("cml", cmlCores) + @" AS Cores,
+                            " + TextoSql("cml", cmlCodBarras) + @" AS CodBarras_Grade,
+                            CAST(0 AS INT) AS Registro,
+                            " + quantidade + @" AS Quantidade,
+                            " + vendaA + @" AS VendaA,
+                            " + vendaB + @" AS VendaB,
+                            " + vendaC + @" AS VendaC,
+                            " + vendaD + @" AS VendaD,
+                            " + vendaE + @" AS VendaE,
+                            " + TextoSql("cm", cmPrateleira) + @" AS Prateleira,
+                            " + TextoSql("cm", cmGarantia) + @" AS Garantia
+                        FROM " + tabelaMercadorias.NomeQualificado + @" cm
+                        INNER JOIN " + tabelaLojas.NomeQualificado + @" cml
+                            ON cm." + DelimitarIdentificador(cmCodigo) + @" = cml." + DelimitarIdentificador(cmlCodigo) + @"
+                        WHERE " + string.Join(" AND ", condicoes) + @"
+                        ORDER BY Mercadoria";
 
-                    // TODO: Implementar quando houver campo de data de alteraÃ§ÃƒÆ’Ã‚Â£o de preÃ§o
-                    // query += @"
-                    //     AND DATE(m.DataAlteracaoPreco) >= DATE(@dataInicial)
-                    //     AND DATE(m.DataAlteracaoPreco) <= DATE(@dataFinal)
-                    // ";
-
-                    query += " ORDER BY m.Mercadoria";
-
-                    using (var cmd = new SQLiteCommand(query, conn))
+                    using (var cmd = new SqlCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@dataInicial", dataInicial.ToString("yyyy-MM-dd"));
-                        cmd.Parameters.AddWithValue("@dataFinal", dataFinal.ToString("yyyy-MM-dd"));
+                        cmd.Parameters.Add("@dataInicial", SqlDbType.Date).Value = dataInicial.Date;
+                        cmd.Parameters.Add("@dataFinal", SqlDbType.Date).Value = dataFinal.Date;
 
-                        using (var adapter = new SQLiteDataAdapter(cmd))
+                        if (!string.IsNullOrWhiteSpace(loja))
+                            cmd.Parameters.AddWithValue("@loja", loja);
+
+                        using (var adapter = new SqlDataAdapter(cmd))
                         {
-                            DataTable dt = new DataTable();
+                            DataTable dt = CriarTabelaResultadoPadrao();
+                            dt.Clear();
                             adapter.Fill(dt);
                             return dt;
                         }

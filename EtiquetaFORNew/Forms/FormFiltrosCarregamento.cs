@@ -454,10 +454,10 @@ namespace EtiquetaFORNew
         private void ConfigurarFormulario()
         {
             cmbTipo.Items.Add("FILTROS MANUAIS");
-            //cmbTipo.Items.Add("AJUSTES");
-            //cmbTipo.Items.Add("BALANÇOS");
+            cmbTipo.Items.Add("AJUSTES");
+            cmbTipo.Items.Add("BALANÇOS");
             cmbTipo.Items.Add("NOTAS ENTRADA");
-            //cmbTipo.Items.Add("PREÇOS ALTERADOS");
+            cmbTipo.Items.Add("PREÇOS ALTERADOS");
             cmbTipo.Items.Add("PROMOÇÕES");
             cmbTipo.SelectedIndex = 0;
 
@@ -633,7 +633,7 @@ namespace EtiquetaFORNew
                     txtDocumento.Visible = true;
                     break;
 
-                case "BALANÇO":
+                case "BALANÇOS":
                     cmbGrupo.Enabled = false;
                     cmbFabricante.Enabled = false;
                     cmbFornecedor.Enabled = false;
@@ -792,6 +792,8 @@ namespace EtiquetaFORNew
             {
                 case "AJUSTES":
                 case "BALANÇOS":
+                    break;
+
                 case "NOTAS ENTRADA":
                     if (string.IsNullOrWhiteSpace(txtDocumento.Text))
                     {
@@ -852,7 +854,7 @@ namespace EtiquetaFORNew
             FabricanteSelecionado = cmbFabricante.Text;
             FornecedorSelecionado = cmbFornecedor.Text;
             EmpresaSelecionada = cmbEmpresa.Text;
-            DocumentoInformado = txtDocumento.Text;
+            DocumentoInformado = txtDocumento.Text.Trim();
             UsarFiltroData = chkUsarFiltroData.Checked;
 
             // â­ Armazenar ID da promoção se for tipo PROMOÇÕES
@@ -869,6 +871,11 @@ namespace EtiquetaFORNew
             {
                 DataInicial = dtpDataInicial.Value.Date;
                 DataFinal = dtpDataFinal.Value.Date;
+            }
+            else
+            {
+                DataInicial = null;
+                DataFinal = null;
             }
 
             this.DialogResult = DialogResult.OK;
