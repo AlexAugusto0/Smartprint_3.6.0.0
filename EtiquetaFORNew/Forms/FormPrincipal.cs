@@ -1445,7 +1445,7 @@ namespace EtiquetaFORNew
                     // Preencher campos de cadastro
                     txtNome.Text = nome;
                     txtCodigo.Text = codigo;
-                    txtPreco.Text = preco.ToString("F2");
+                    txtPreco.Text = FormatadorMonetario.Formatar(preco);
 
                     numQtd.Value = 1;
 
@@ -1564,11 +1564,7 @@ namespace EtiquetaFORNew
 
             decimal precoDecimal;
 
-            // O CultureInfo.InvariantCulture e Replace(",", ".") garantem que o preço seja lido corretamente
-
-            if (!decimal.TryParse(txtPreco.Text.Replace(",", "."), System.Globalization.NumberStyles.Any,
-
-                System.Globalization.CultureInfo.InvariantCulture, out precoDecimal))
+            if (!FormatadorMonetario.TryConverter(txtPreco.Text, out precoDecimal))
 
             {
 
@@ -1721,12 +1717,12 @@ namespace EtiquetaFORNew
             // ⭐ CONFECÇÃO: Inclui colunas Tam e Cor se o módulo for CONFECÇÃO
             if (isConfeccao && dgvProdutos.Columns.Contains("colTam") && dgvProdutos.Columns.Contains("colCor"))
             {
-                dgvProdutos.Rows.Add(false, produto.Nome, produto.CodBarras_Grade, produto.Preco.ToString("C2"),
+                dgvProdutos.Rows.Add(false, produto.Nome, produto.CodBarras_Grade, FormatadorMonetario.Formatar(produto.Preco),
                     produto.Quantidade, produto.Tam ?? "", produto.Cores ?? "");
             }
             else
             {
-                dgvProdutos.Rows.Add(false, produto.Nome, produto.Codigo, produto.Preco.ToString("C2"), produto.Quantidade);
+                dgvProdutos.Rows.Add(false, produto.Nome, produto.Codigo, FormatadorMonetario.Formatar(produto.Preco), produto.Quantidade);
             }
 
             // ⭐ Limpar DataRow armazenado após adicionar
@@ -2754,7 +2750,7 @@ namespace EtiquetaFORNew
                     itemImportado.Gerar,           // colSelecionar
                     produto.Nome,                   // colNome
                     produto.Codigo,                 // colCodigo
-                    produto.Preco.ToString("C2"),  // colPreco
+                    FormatadorMonetario.Formatar(produto.Preco),  // colPreco
                     itemImportado.Quantidade,      // colQuantidade (Qtde)
                     itemImportado.Tamanho ?? "",   // colTam
                     itemImportado.Cor ?? ""        // colCor
@@ -2767,7 +2763,7 @@ namespace EtiquetaFORNew
                     itemImportado.Gerar,           // colSelecionar
                     produto.Nome,                   // colNome
                     produto.Codigo,                 // colCodigo
-                    produto.Preco.ToString("C2"),  // colPreco'
+                    FormatadorMonetario.Formatar(produto.Preco),  // colPreco'
                     itemImportado.Quantidade       // colQuantidade (Qtde)
                 );
             }
@@ -2798,7 +2794,7 @@ namespace EtiquetaFORNew
                     item.Gerar,                    // colSelecionar
                     item.Mercadoria,               // colNome
                     item.Codigo ?? "",             // colCodigo
-                    (item.Preco ?? 0).ToString("C2"), // colPreco
+                    FormatadorMonetario.Formatar(item.Preco ?? 0m), // colPreco
                     item.Quantidade,               // colQuantidade (Qtde)
                     item.Tamanho ?? "",           // colTam
                     item.Cor ?? ""                // colCor
@@ -2811,7 +2807,7 @@ namespace EtiquetaFORNew
                     item.Gerar,                    // colSelecionar
                     item.Mercadoria,               // colNome
                     item.Codigo ?? "",             // colCodigo
-                    (item.Preco ?? 0).ToString("C2"), // colPreco
+                    FormatadorMonetario.Formatar(item.Preco ?? 0m), // colPreco
                     item.Quantidade                // colQuantidade (Qtde)
                 );
             }
@@ -3267,13 +3263,13 @@ namespace EtiquetaFORNew
 
             if (produto.EmPromocao)
             {
-                // Produto em promoção: mostra "DE R$ 100,00 | POR R$ 79,90"
-                precoExibicao = $"DE: {produto.PrecoOriginal:C2} POR: {produto.PrecoPromocional:C2}";
+                // Produto em promoção: mostra "DE: 100,00 POR: 79,90"
+                precoExibicao = $"DE: {FormatadorMonetario.Formatar(produto.PrecoOriginal)} POR: {FormatadorMonetario.Formatar(produto.PrecoPromocional)}";
             }
             else
             {
                 // Produto normal: mostra apenas o preço
-                precoExibicao = produto.Preco.ToString("C2");
+                precoExibicao = FormatadorMonetario.Formatar(produto.Preco);
             }
 
             // Adicionar ao grid com o preço formatado

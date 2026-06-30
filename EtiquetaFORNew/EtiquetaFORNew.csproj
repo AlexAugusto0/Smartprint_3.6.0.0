@@ -255,6 +255,7 @@
     <Compile Include="CalculadoraCamposEtiqueta.cs" />
     <Compile Include="Classes.cs" />
     <Compile Include="ConfiguracaoManager.cs" />
+    <Compile Include="FormatadorMonetario.cs" />
     <Compile Include="Data\Funcoes.cs" />
     <Compile Include="Data\Promocoesmanager.cs" />
     <Compile Include="Data\RawPrinterHelper.cs" />

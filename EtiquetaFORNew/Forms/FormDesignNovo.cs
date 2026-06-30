@@ -2267,7 +2267,7 @@ namespace EtiquetaFORNew.Forms
             if (CalculadoraCamposEtiqueta.CalculoAtivo(elemento)
                 && CalculadoraCamposEtiqueta.TryCalcularValorCampo(produto, campo, elemento, out valorCalculado))
             {
-                return valorCalculado.ToString("F2");
+                return FormatadorMonetario.Formatar(valorCalculado);
             }
 
             switch (campo)
@@ -2276,12 +2276,12 @@ namespace EtiquetaFORNew.Forms
                 case "CodigoMercadoria": return produto.Codigo ?? "";
                 case "CodFabricante":    return produto.CodFabricante ?? "";
                 case "CodBarras":        return produto.CodBarras ?? "";
-                case "PrecoVenda":       return produto.PrecoVenda > 0 ? produto.PrecoVenda.ToString("F2") : produto.Preco.ToString("F2");
-                case "VendaA":           return produto.VendaA > 0 ? produto.VendaA.ToString("F2") : "-";
-                case "VendaB":           return produto.VendaB > 0 ? produto.VendaB.ToString("F2") : "-";
-                case "VendaC":           return produto.VendaC > 0 ? produto.VendaC.ToString("F2") : "-";
-                case "VendaD":           return produto.VendaD > 0 ? produto.VendaD.ToString("F2") : "-";
-                case "VendaE":           return produto.VendaE > 0 ? produto.VendaE.ToString("F2") : "-";
+                case "PrecoVenda":       return FormatadorMonetario.Formatar(produto.PrecoVenda > 0 ? produto.PrecoVenda : produto.Preco);
+                case "VendaA":           return produto.VendaA > 0 ? FormatadorMonetario.Formatar(produto.VendaA) : "-";
+                case "VendaB":           return produto.VendaB > 0 ? FormatadorMonetario.Formatar(produto.VendaB) : "-";
+                case "VendaC":           return produto.VendaC > 0 ? FormatadorMonetario.Formatar(produto.VendaC) : "-";
+                case "VendaD":           return produto.VendaD > 0 ? FormatadorMonetario.Formatar(produto.VendaD) : "-";
+                case "VendaE":           return produto.VendaE > 0 ? FormatadorMonetario.Formatar(produto.VendaE) : "-";
                 case "Fornecedor":       return produto.Fornecedor ?? "";
                 case "Fabricante":       return produto.Fabricante ?? "";
                 case "Grupo":            return produto.Grupo ?? "";
@@ -2291,13 +2291,9 @@ namespace EtiquetaFORNew.Forms
                 case "Cores":            return produto.Cores ?? "";
                 case "CodBarras_Grade":  return produto.CodBarras_Grade ?? "";
                 case "PrecoOriginal":
-                    return produto.PrecoOriginal.HasValue
-                        ? produto.PrecoOriginal.Value.ToString("F2")
-                        : produto.Preco.ToString("F2");
+                    return FormatadorMonetario.Formatar(produto.PrecoOriginal ?? produto.Preco);
                 case "PrecoPromocional":
-                    return produto.PrecoPromocional.HasValue
-                        ? produto.PrecoPromocional.Value.ToString("F2")
-                        : produto.Preco.ToString("F2");
+                    return FormatadorMonetario.Formatar(produto.PrecoPromocional ?? produto.Preco);
                 default: return "";
             }
         }

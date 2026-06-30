@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace EtiquetaFORNew
 {
@@ -51,7 +50,7 @@ namespace EtiquetaFORNew
             if (!CalculoAtivo(elemento))
                 return campo ?? "";
 
-            string valor = elemento.ValorCalculoPreco.ToString("0.####", CultureInfo.CurrentCulture);
+            string valor = FormatadorMonetario.Formatar(elemento.ValorCalculoPreco);
             return $"{campo} {elemento.OperadorCalculoPreco} {valor}";
         }
 
