@@ -459,6 +459,10 @@ namespace EtiquetaFORNew
             cmbTipo.Items.Add("NOTAS ENTRADA");
             cmbTipo.Items.Add("PREÇOS ALTERADOS");
             cmbTipo.Items.Add("PROMOÇÕES");
+            if (EstaEmModoSoftcomShop())
+            {
+                cmbTipo.Items.Add("VENDAS");
+            }
             cmbTipo.SelectedIndex = 0;
 
             cmbEmpresa.Items.Add("MATRIZ");
@@ -619,6 +623,10 @@ namespace EtiquetaFORNew
             lblDocumento.Visible = false;
             txtDocumento.Visible = false;
             chkUsarFiltroData.Visible = true;
+            lblDataInicial.Visible = true;
+            lblDataFinal.Visible = true;
+            dtpDataInicial.Visible = true;
+            dtpDataFinal.Visible = true;
             lblDataInicial.Text = "Data Inicial:";
             lblDataFinal.Text = "Data Final:";
 
@@ -685,6 +693,21 @@ namespace EtiquetaFORNew
 
                     chkUsarFiltroData.Visible = false;
                     chkUsarFiltroData.Checked = false;
+                    break;
+
+                case "VENDAS":
+                    cmbGrupo.Enabled = false;
+                    cmbFabricante.Enabled = false;
+                    cmbFornecedor.Enabled = false;
+                    lblDocumento.Text = "Numero da Venda:";
+                    lblDocumento.Visible = true;
+                    txtDocumento.Visible = true;
+                    chkUsarFiltroData.Visible = false;
+                    chkUsarFiltroData.Checked = false;
+                    lblDataInicial.Visible = false;
+                    lblDataFinal.Visible = false;
+                    dtpDataInicial.Visible = false;
+                    dtpDataFinal.Visible = false;
                     break;
             }
         }
@@ -817,6 +840,23 @@ namespace EtiquetaFORNew
                     {
                         MessageBox.Show("O filtro de data é obrigatório para PREÇOS ALTERADOS!",
                             "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    break;
+
+                case "VENDAS":
+                    if (!EstaEmModoSoftcomShop())
+                    {
+                        MessageBox.Show("A opção VENDAS está disponível somente para SoftcomShop.",
+                            "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    if (!int.TryParse(txtDocumento.Text.Trim(), out int numeroVenda) || numeroVenda <= 0)
+                    {
+                        MessageBox.Show("Informe o número da venda.",
+                            "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtDocumento.Focus();
                         return;
                     }
                     break;

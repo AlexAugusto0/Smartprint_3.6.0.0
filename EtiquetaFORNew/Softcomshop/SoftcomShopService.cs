@@ -234,6 +234,32 @@ namespace EtiquetaFORNew
         }
 
         /// <summary>
+        /// Obtem produtos com preco alterado a partir do timestamp informado.
+        /// </summary>
+        public async Task<string> GetPrecosAlteradosAsync(long timestamp, int page = 1)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_currentToken))
+                {
+                    await GetTokenAsync();
+                }
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_currentToken}");
+
+                string url = $"{_router.AtualizacaoPrecoRouter}{timestamp}/page/{page}";
+
+                var response = await _httpClient.GetAsync(url);
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao obter precos alterados: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Obtem Promoções ativas
         /// </summary>
         public async Task<string> GetPromocoesAsync()

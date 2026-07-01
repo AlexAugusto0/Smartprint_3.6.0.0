@@ -59,10 +59,26 @@ namespace EtiquetaFORNew.Data
                     return CarregarNotasEntrada(documento, dataInicial, dataFinal);
 
                 case "PREÇOS ALTERADOS":
-                    if (!dataInicial.HasValue || !dataFinal.HasValue)
+                    if (!dataInicial.HasValue)
+                        throw new Exception("Informe a data inicial para carregar preços alterados.");
+
+                    if (EstaEmModoSoftcomShop())
+                    {
+                        return CarregarPrecosAlteradosSoftcomShop(dataInicial.Value);
+                    }
+
+                    if (!dataFinal.HasValue)
                         throw new Exception("Informe o período para carregar preços alterados.");
 
                     return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque);
+
+                case "VENDAS":
+                    if (!EstaEmModoSoftcomShop())
+                    {
+                        throw new Exception("A importacao por vendas esta disponivel somente para SoftcomShop.");
+                    }
+
+                    return CarregarVendaSoftcomShop(documento);
 
                 //case "PROMOÇÕES":
                 //    // ÃƒÂ¢Ã‚Â­Ã‚Â Usa o mÃƒÆ’Ã‚Â©todo do PromocoesManager com ID da promoÃ§ÃƒÆ’Ã‚Â£o
@@ -795,6 +811,100 @@ namespace EtiquetaFORNew.Data
             catch (Exception ex)
             {
                 throw new Exception($"Erro ao carregar NF SoftcomShop {numeroNF}: {ex.Message}", ex);
+            }
+
+            return resultado;
+        }
+
+        private static DataTable CarregarPrecosAlteradosSoftcomShop(DateTime dataInicial)
+        {
+            try
+            {
+                var config = ConfiguracaoSistema.Carregar();
+                if (config == null || config.TipoConexaoAtiva != TipoConexao.SoftcomShop || !config.SoftcomShopConfigurado())
+                {
+                    throw new Exception("SoftcomShop nao esta configurado como conexao ativa.");
+                }
+
+                var dataManager = new SoftcomShopDataManager(config.SoftcomShop, LocalDatabaseManager.GetConnectionString());
+                var syncResult = System.Threading.Tasks.Task.Run(() => dataManager.BuscarPrecosAlteradosAsync(dataInicial))
+                                        .GetAwaiter()
+                                        .GetResult();
+
+                if (!syncResult.Sucesso)
+                {
+                    throw new Exception(syncResult.MensagemErro ?? "Nenhum produto encontrado com preco alterado.");
+                }
+
+                return CarregarMercadoriasMarcadasSoftcomShop("precos alterados");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao carregar precos alterados SoftcomShop: {ex.Message}", ex);
+            }
+        }
+
+        private static DataTable CarregarVendaSoftcomShop(string numeroVendaTexto)
+        {
+            if (!int.TryParse(numeroVendaTexto, out int numeroVenda) || numeroVenda <= 0)
+            {
+                throw new Exception("Numero da venda invalido para consulta no SoftcomShop.");
+            }
+
+            try
+            {
+                var config = ConfiguracaoSistema.Carregar();
+                if (config == null || config.TipoConexaoAtiva != TipoConexao.SoftcomShop || !config.SoftcomShopConfigurado())
+                {
+                    throw new Exception("SoftcomShop nao esta configurado como conexao ativa.");
+                }
+
+                var dataManager = new SoftcomShopDataManager(config.SoftcomShop, LocalDatabaseManager.GetConnectionString());
+                var syncResult = System.Threading.Tasks.Task.Run(() => dataManager.BuscarPorVendaAsync(numeroVenda))
+                                        .GetAwaiter()
+                                        .GetResult();
+
+                if (!syncResult.Sucesso)
+                {
+                    throw new Exception(syncResult.MensagemErro ?? "Nenhum produto encontrado para esta venda.");
+                }
+
+                return CarregarMercadoriasMarcadasSoftcomShop("venda");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao carregar venda SoftcomShop {numeroVendaTexto}: {ex.Message}", ex);
+            }
+        }
+
+        private static DataTable CarregarMercadoriasMarcadasSoftcomShop(string descricao)
+        {
+            DataTable resultado = CriarTabelaResultadoPadrao();
+
+            using (var conn = new SQLiteConnection(ConnectionString))
+            {
+                conn.Open();
+
+                string query = @"
+                    SELECT *
+                    FROM Mercadorias
+                    WHERE GerarEtiqueta = 1
+                    ORDER BY Mercadoria";
+
+                using (var cmd = new SQLiteCommand(query, conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        int quantidade = ConverterQuantidadeEtiqueta(reader["QuantidadeEtiqueta"]);
+                        AdicionarRowCompleto(resultado, reader, Math.Max(1, quantidade));
+                    }
+                }
+            }
+
+            if (resultado.Rows.Count == 0)
+            {
+                throw new Exception($"A consulta de {descricao} foi concluida, mas nenhum produto ficou marcado para impressao no banco local.");
             }
 
             return resultado;

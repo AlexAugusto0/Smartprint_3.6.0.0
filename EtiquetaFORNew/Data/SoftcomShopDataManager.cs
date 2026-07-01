@@ -751,6 +751,104 @@ namespace EtiquetaFORNew
 
         #endregion
 
+        #region Busca por Precos Alterados
+
+        public async Task<SyncResult> BuscarPrecosAlteradosAsync(DateTime dataInicial, IProgress<string> progress = null)
+        {
+            var result = new SyncResult();
+            int paginaAtual = 1;
+            bool temMaisPaginas = true;
+            long timestamp = ConverterParaUnixTimestamp(dataInicial.Date);
+
+            try
+            {
+                progress?.Report("Buscando precos alterados...");
+
+                LimparEtiquetas();
+
+                while (temMaisPaginas)
+                {
+                    string jsonResponse = await _service.GetPrecosAlteradosAsync(timestamp, paginaAtual);
+                    var response = JObject.Parse(jsonResponse);
+                    var produtos = ExtrairProdutosPrecosAlterados(response);
+
+                    if (produtos == null || produtos.Count == 0)
+                    {
+                        temMaisPaginas = false;
+                        continue;
+                    }
+
+                    result.ProdutosAdicionados += ProcessarProdutosMovimento(produtos, "quantidade", "v2");
+
+                    if (response["date_sync"] != null)
+                    {
+                        AtualizarTimestamp(response["date_sync"].ToString());
+                    }
+
+                    int totalPaginas = ObterTotalPaginas(response);
+                    temMaisPaginas = paginaAtual < totalPaginas;
+                    paginaAtual++;
+                }
+
+                if (result.ProdutosAdicionados == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "Nenhum produto com preco alterado foi encontrado no periodo informado.";
+                    return result;
+                }
+
+                progress?.Report($"{result.ProdutosAdicionados} produtos carregados!");
+                result.Sucesso = true;
+            }
+            catch (Exception ex)
+            {
+                result.Sucesso = false;
+                result.MensagemErro = ex.Message;
+            }
+
+            return result;
+        }
+
+        private JArray ExtrairProdutosPrecosAlterados(JObject response)
+        {
+            var produtos = new JArray();
+            var data = response["data"] as JArray;
+            if (data == null)
+                return produtos;
+
+            foreach (var item in data.OfType<JObject>())
+            {
+                var normalizado = NormalizarItemNotaFiscal(item);
+                DefinirSeVazio(normalizado, "quantidade", item["quantidade"], item["qtd"], item["estoque"]);
+                produtos.Add(normalizado);
+            }
+
+            return produtos;
+        }
+
+        private static long ConverterParaUnixTimestamp(DateTime data)
+        {
+            return Convert.ToInt64((data.Date - new DateTime(1970, 1, 1)).TotalSeconds);
+        }
+
+        private int ObterTotalPaginas(JObject response)
+        {
+            int totalPaginas = 1;
+
+            if (response["meta"]?["page"]?["count"] != null)
+            {
+                totalPaginas = LerInteiro(response["meta"]["page"]["count"], 1);
+            }
+            else if (response["meta"]?["last_page"] != null)
+            {
+                totalPaginas = LerInteiro(response["meta"]["last_page"], 1);
+            }
+
+            return Math.Max(1, totalPaginas);
+        }
+
+        #endregion
+
         #region Busca por Venda
 
         /// <summary>
@@ -774,7 +872,7 @@ namespace EtiquetaFORNew
                     return result;
                 }
 
-                var produtos = response["data"]["itens"] as JArray;
+                var produtos = ExtrairProdutosVenda(response);
 
                 if (produtos == null || produtos.Count == 0)
                 {
@@ -787,7 +885,19 @@ namespace EtiquetaFORNew
                 LimparEtiquetas();
 
                 // Processar produtos
-                result.ProdutosAdicionados = ProcessarProdutosVenda(produtos);
+                result.ProdutosAdicionados = ProcessarProdutosMovimento(produtos, "quantidade", "v1");
+
+                if (result.ProdutosAdicionados == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A venda foi consultada, mas nenhum item possuia identificador suficiente para atualizar ou inserir no banco local.";
+                    return result;
+                }
+
+                if (response["date_sync"] != null)
+                {
+                    AtualizarTimestamp(response["date_sync"].ToString());
+                }
 
                 progress?.Report($"{result.ProdutosAdicionados} produtos carregados!");
                 result.Sucesso = true;
@@ -801,7 +911,33 @@ namespace EtiquetaFORNew
             return result;
         }
 
-        private int ProcessarProdutosVenda(JArray produtos)
+        private JArray ExtrairProdutosVenda(JObject response)
+        {
+            var produtos = new JArray();
+            var itens = response["data"]?["itens"] as JArray;
+            if (itens == null)
+                return produtos;
+
+            foreach (var item in itens.OfType<JObject>())
+            {
+                var normalizado = NormalizarItemNotaFiscal(item);
+                DefinirSeVazio(normalizado, "preco_venda",
+                    item["preco"],
+                    item["valor_unitario"],
+                    item["preco_unitario"]);
+                DefinirSeVazio(normalizado, "quantidade",
+                    item["quantidade"],
+                    item["qtd"],
+                    item["quantidade_item"],
+                    item["qtde"]);
+
+                produtos.Add(normalizado);
+            }
+
+            return produtos;
+        }
+
+        private int ProcessarProdutosMovimento(JArray produtos, string campoQuantidade, string versao)
         {
             int count = 0;
 
@@ -811,13 +947,36 @@ namespace EtiquetaFORNew
 
                 foreach (var produto in produtos)
                 {
-                    long produtoId = produto["produto_id"].ToObject<long>();
-                    string codBarrasGrade = produto["codigo_barras_grade"]?.ToString() ?? "";
-                    int quantidade = produto["quantidade"]?.ToObject<int>() ?? 1;
+                    long produtoId = LerLong(produto["produto_id"]);
+                    string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
+                    string codBarras = ObterTexto(produto["codigo_barras"]);
+                    string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
+                    int quantidade = Math.Max(1, LerInteiro(produto[campoQuantidade], 1));
 
-                    if (ProdutoExiste(conn, produtoId, codBarrasGrade))
+                    if (!TemIdentificacaoProduto(produtoId, codigoMercadoria, codBarras, codBarrasGrade))
                     {
-                        MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade);
+                        System.Diagnostics.Debug.WriteLine("[ProcessarProdutosMovimento] Item ignorado: sem produto_id, codigo de mercadoria ou codigo de barras.");
+                        continue;
+                    }
+
+                    if (ProdutoExiste(conn, produtoId, codBarrasGrade, codigoMercadoria, codBarras))
+                    {
+                        AtualizarProdutoMovimento(conn, produto, campoQuantidade);
+                    }
+                    else
+                    {
+                        InserirProduto(conn, produto, versao);
+                        MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade, codigoMercadoria, codBarras);
+                    }
+
+                    if (produto["tabela_precos"] != null)
+                    {
+                        ProcessarTabelaPrecos(conn, produto);
+                    }
+
+                    if (versao == "v2" && produto["sku_atributo"] != null)
+                    {
+                        ProcessarAtributos(conn, produto);
                     }
 
                     count++;
@@ -907,6 +1066,51 @@ namespace EtiquetaFORNew
                 WHERE " + string.Join(" OR ", condicoes);
 
                 cmd.Parameters.AddWithValue("@qtd", Math.Max(1, quantidade));
+                return cmd.ExecuteNonQuery();
+            }
+        }
+
+        private int AtualizarProdutoMovimento(SQLiteConnection conn, JToken produto, string campoQuantidade)
+        {
+            long produtoId = LerLong(produto["produto_id"]);
+            string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
+            string codBarras = ObterTexto(produto["codigo_barras"]);
+            string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
+            int quantidade = Math.Max(1, LerInteiro(produto[campoQuantidade], 1));
+            string textoPreco = ObterTexto(produto["preco_venda"]);
+            bool temPreco = !string.IsNullOrWhiteSpace(textoPreco);
+            decimal preco = LerDecimal(produto["preco_venda"], 0m);
+
+            using (var cmd = new SQLiteCommand(conn))
+            {
+                var condicoes = new List<string>();
+                AdicionarCondicoesProduto(cmd, condicoes, produtoId, codBarrasGrade, codigoMercadoria, codBarras);
+
+                if (condicoes.Count == 0)
+                    return 0;
+
+                var campos = new List<string>
+                {
+                    "UltimaAtualizacao = @data",
+                    "Origem = 'SOFTCOMSHOP'",
+                    "GerarEtiqueta = 1",
+                    "QuantidadeEtiqueta = @qtd"
+                };
+
+                if (temPreco)
+                {
+                    campos.Insert(0, "PrecoVenda = @preco");
+                    cmd.Parameters.AddWithValue("@preco", preco);
+                }
+
+                cmd.CommandText = @"
+                UPDATE Mercadorias 
+                SET " + string.Join(", ", campos) + @"
+                WHERE " + string.Join(" OR ", condicoes);
+
+                cmd.Parameters.AddWithValue("@data", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                cmd.Parameters.AddWithValue("@qtd", quantidade);
+
                 return cmd.ExecuteNonQuery();
             }
         }
