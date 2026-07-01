@@ -1,9 +1,10 @@
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace EtiquetaFORNew
 {
@@ -215,21 +216,34 @@ namespace EtiquetaFORNew
             try
             {
                 if (string.IsNullOrEmpty(_currentToken))
-                {
                     await GetTokenAsync();
-                }
 
                 _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_currentToken}");
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentToken);
 
                 string url = $"{_router.VendasRouter}{numeroVenda}?bloquear=False";
 
+                System.Diagnostics.Debug.WriteLine("=======================================");
+                System.Diagnostics.Debug.WriteLine($"URL........: {url}");
+                System.Diagnostics.Debug.WriteLine($"TOKEN......: {_currentToken}");
+                System.Diagnostics.Debug.WriteLine("=======================================");
+
                 var response = await _httpClient.GetAsync(url);
-                return await response.Content.ReadAsStringAsync();
+
+                string retorno = await response.Content.ReadAsStringAsync();
+
+                System.Diagnostics.Debug.WriteLine($"STATUS HTTP: {(int)response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"REASON.....: {response.ReasonPhrase}");
+                System.Diagnostics.Debug.WriteLine($"RETORNO....: {retorno}");
+                System.Diagnostics.Debug.WriteLine("=======================================");
+
+                return retorno;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Erro ao obter venda: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                throw;
             }
         }
 
@@ -333,6 +347,70 @@ namespace EtiquetaFORNew
             catch
             {
                 return false;
+            }
+        }
+
+        public async Task<string> BuscarVendaRawJsonAsync(string numeroVenda)
+        {
+            try
+            {
+                // 1. Garante que o token está atualizado
+                string token = await GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                // 2. Monta a URL da rota de vendas (ajusta para a tua rota real de vendas se necessário)
+                string url = $"{_config.BaseURL}/softauth/api/v2/produtos/vendas?numero_venda={numeroVenda}";
+
+                // 3. Faz a requisição HTTP
+                HttpResponseMessage response = await _httpClient.GetAsync(url);
+
+                // 4. Lê o conteúdo bruto como STRING (o JSON puro)
+                string jsonBruto = await response.Content.ReadAsStringAsync();
+
+                // ⭐ O PULO DO GATO: Grava o JSON em um arquivo na pasta "logs" para tu analisares
+                string pastaLogs = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                if (!Directory.Exists(pastaLogs))
+                    Directory.CreateDirectory(pastaLogs);
+
+                string caminhoArquivo = Path.Combine(pastaLogs, $"venda_{numeroVenda}.json");
+                File.WriteAllText(caminhoArquivo, jsonBruto);
+
+                // Mostra um aviso rápido no console ou debug para saberes onde foi salvo
+                System.Diagnostics.Debug.WriteLine($"[JSON LOG] Salvo com sucesso em: {caminhoArquivo}");
+
+                return jsonBruto;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao capturar JSON: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<string> ObterJsonBrutoVendaAsync(int numeroVenda)
+        {
+            try
+            {
+                string token = await GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                // Altere a rota abaixo caso o nome da propriedade no seu SoftcomShopRouter seja diferente
+                string url = $"{_config.BaseURL}/softauth/api/v2/produtos/vendas?numero_venda={numeroVenda}";
+
+                var response = await _httpClient.GetAsync(url);
+                string jsonBruto = await response.Content.ReadAsStringAsync();
+
+                // Salva direto na pasta do seu executável (bin/Debug)
+                string caminhoArquivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"venda_{numeroVenda}.json");
+                File.WriteAllText(caminhoArquivo, jsonBruto);
+
+                return jsonBruto;
+            }
+            catch (Exception ex)
+            {
+                string caminhoErro = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "erro_requisicao.txt");
+                File.WriteAllText(caminhoErro, ex.ToString());
+                throw;
             }
         }
 

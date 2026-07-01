@@ -865,10 +865,10 @@ namespace EtiquetaFORNew
                 string jsonResponse = await _service.GetVendaAsync(numeroVenda);
                 var response = JObject.Parse(jsonResponse);
 
-                if (!jsonResponse.Contains("sucesso"))
+                if (response["code"]?.ToObject<int>() != 1)
                 {
                     result.Sucesso = false;
-                    result.MensagemErro = "Venda não encontrada.";
+                    result.MensagemErro = response["human"]?.ToString() ?? "Erro na consulta.";
                     return result;
                 }
 
@@ -914,17 +914,28 @@ namespace EtiquetaFORNew
         private JArray ExtrairProdutosVenda(JObject response)
         {
             var produtos = new JArray();
-            var itens = response["data"]?["itens"] as JArray;
+
+            JToken data = response["data"];
+
+            // A API de vendas devolve o "data" como JSON serializado em string.
+            if (data != null && data.Type == JTokenType.String)
+            {
+                data = JObject.Parse(data.ToString());
+            }
+
+            var itens = data?["itens"] as JArray;
             if (itens == null)
                 return produtos;
 
             foreach (var item in itens.OfType<JObject>())
             {
                 var normalizado = NormalizarItemNotaFiscal(item);
+
                 DefinirSeVazio(normalizado, "preco_venda",
                     item["preco"],
                     item["valor_unitario"],
                     item["preco_unitario"]);
+
                 DefinirSeVazio(normalizado, "quantidade",
                     item["quantidade"],
                     item["qtd"],

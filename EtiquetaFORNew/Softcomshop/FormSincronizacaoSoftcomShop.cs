@@ -274,6 +274,66 @@ namespace EtiquetaFORNew
             await BuscarVendaAsync(numeroVenda);
         }
 
+        //private async Task BuscarVendaAsync(int numeroVenda)
+        //{
+        //    try
+        //    {
+        //        HabilitarBotoes(false);
+
+        //        var progress = new Progress<string>(mensagem =>
+        //        {
+        //            lblStatus.Text = mensagem;
+        //            Application.DoEvents();
+        //        });
+
+        //        lblStatus.Text = $"Buscando venda {numeroVenda}...";
+        //        progressBar.Style = ProgressBarStyle.Marquee;
+        //        progressBar.Visible = true;
+
+        //        var syncResult = await _dataManager.BuscarPorVendaAsync(numeroVenda, progress);
+
+        //        progressBar.Visible = false;
+
+        //        if (syncResult.Sucesso)
+        //        {
+        //            MessageBox.Show(
+        //                $"Produtos da venda carregados com sucesso!\n\n" +
+        //                $"Total: {syncResult.ProdutosAdicionados} produtos\n\n" +
+        //                $"Os produtos foram marcados para impressão de etiquetas.",
+        //                "Sucesso",
+        //                MessageBoxButtons.OK,
+        //                MessageBoxIcon.Information);
+
+        //            lblStatus.Text = "Pronto";
+        //        }
+        //        else
+        //        {
+        //            MessageBox.Show(
+        //                syncResult.MensagemErro,
+        //                "Atenção",
+        //                MessageBoxButtons.OK,
+        //                MessageBoxIcon.Warning);
+
+        //            lblStatus.Text = "Venda não encontrada";
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        progressBar.Visible = false;
+        //        MessageBox.Show(
+        //            $"Erro ao buscar venda:\n\n{ex.Message}",
+        //            "Erro",
+        //            MessageBoxButtons.OK,
+        //            MessageBoxIcon.Error);
+
+        //        lblStatus.Text = "Erro";
+        //    }
+        //    finally
+        //    {
+        //        HabilitarBotoes(true);
+        //    }
+        //}
+
         private async Task BuscarVendaAsync(int numeroVenda)
         {
             try
@@ -289,6 +349,14 @@ namespace EtiquetaFORNew
                 lblStatus.Text = $"Buscando venda {numeroVenda}...";
                 progressBar.Style = ProgressBarStyle.Marquee;
                 progressBar.Visible = true;
+
+                string urlVendaLegado =
+                    $"{_config.SoftcomShop.BaseURL}/softauth/api/vendas/vendas/completa/{numeroVenda}?bloquear=False";
+
+                System.Diagnostics.Debug.WriteLine($"BASE URL: {_config.SoftcomShop.BaseURL}");
+                System.Diagnostics.Debug.WriteLine($"CLIENT ID: {_config.SoftcomShop.ClientId}");
+                System.Diagnostics.Debug.WriteLine("TOKEN: (Gerenciado internamente por _dataManager)");
+                System.Diagnostics.Debug.WriteLine($"URL VENDA ESPERADA/LEGADO: {urlVendaLegado}");
 
                 var syncResult = await _dataManager.BuscarPorVendaAsync(numeroVenda, progress);
 
@@ -308,6 +376,8 @@ namespace EtiquetaFORNew
                 }
                 else
                 {
+                    System.Diagnostics.Debug.WriteLine($"RETORNO API ERRO: {syncResult.MensagemErro}");
+
                     MessageBox.Show(
                         syncResult.MensagemErro,
                         "Atenção",
@@ -317,9 +387,31 @@ namespace EtiquetaFORNew
                     lblStatus.Text = "Venda não encontrada";
                 }
             }
+            catch (Newtonsoft.Json.JsonSerializationException jsonEx)
+            {
+                progressBar.Visible = false;
+
+                string erroDetalhado =
+                    $"[Erro de Mapeamento JSON]\n\n" +
+                    $"Mensagem: {jsonEx.Message}\n\n" +
+                    $"Caminho do campo no JSON: {jsonEx.Path}";
+
+                System.Diagnostics.Debug.WriteLine(erroDetalhado);
+
+                MessageBox.Show(
+                    erroDetalhado,
+                    "Erro de Conversão da API",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                lblStatus.Text = "Erro no JSON da API";
+            }
             catch (Exception ex)
             {
                 progressBar.Visible = false;
+
+                System.Diagnostics.Debug.WriteLine($"EXCEÇÃO INTERNA: {ex}");
+
                 MessageBox.Show(
                     $"Erro ao buscar venda:\n\n{ex.Message}",
                     "Erro",
@@ -330,6 +422,7 @@ namespace EtiquetaFORNew
             }
             finally
             {
+                progressBar.Visible = false;
                 HabilitarBotoes(true);
             }
         }
@@ -350,7 +443,7 @@ namespace EtiquetaFORNew
         {
             btnSincronizarProdutos.Enabled = habilitar;
             btnBuscarNotaFiscal.Enabled = true;
-            btnBuscarVenda.Enabled = false;
+            btnBuscarVenda.Enabled = habilitar;
             btnFechar.Enabled = habilitar;
         }
 
@@ -533,5 +626,7 @@ namespace EtiquetaFORNew
                 return;
             }
         }
+
+
     }
 }
