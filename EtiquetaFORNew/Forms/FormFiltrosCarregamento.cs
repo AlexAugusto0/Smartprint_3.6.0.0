@@ -486,7 +486,7 @@ namespace EtiquetaFORNew
             {
                 cmbTipo.Items.Clear();
                 cmbTipo.Items.Add("FILTROS MANUAIS");
-                cmbTipo.Items.Add("AJUSTES");
+                
 
                 if (modoSoftcomShop)
                 {
@@ -494,7 +494,9 @@ namespace EtiquetaFORNew
                 }
                 else
                 {
+                    cmbTipo.Items.Add("AJUSTES");
                     cmbTipo.Items.Add("BALANÇOS");
+
                 }
 
                 cmbTipo.Items.Add("NOTAS ENTRADA");
@@ -677,6 +679,27 @@ namespace EtiquetaFORNew
 
             switch (tipoSelecionado)
             {
+                case "FILTROS MANUAIS":
+                    if (modoSoftcomShop) {
+                        cmbGrupo.Enabled = false;
+                        cmbFabricante.Enabled = false;
+                        cmbFornecedor.Enabled = false;
+                        lblDataInicial.Visible = false;
+                        lblDataFinal.Visible = false;
+                        dtpDataInicial.Visible = false;
+                        dtpDataFinal.Visible = false;
+                        chkUsarFiltroData.Visible = false;
+                        chkUsarFiltroData.Checked = false;
+                    }
+                    chkUsarFiltroData.Visible = false;
+                    chkUsarFiltroData.Checked = false;
+                    lblDataInicial.Visible = false;
+                    lblDataFinal.Visible = false;
+                    dtpDataInicial.Visible = false;
+                    dtpDataFinal.Visible = false;
+                    break;
+
+
                 case "AJUSTES":
                     cmbGrupo.Enabled = false;
                     cmbFabricante.Enabled = false;
@@ -712,6 +735,7 @@ namespace EtiquetaFORNew
                         lblDataFinal.Text = "Data Final:";
                         dtpDataInicial.Value = DateTime.Now;
                         dtpDataFinal.Value = DateTime.Now;
+
                     }
 
                     lblDocumento.Text = "Número da NF:";
@@ -738,6 +762,10 @@ namespace EtiquetaFORNew
 
                     chkUsarFiltroData.Visible = false;
                     chkUsarFiltroData.Checked = false;
+                    lblDataInicial.Visible = false;
+                    lblDataFinal.Visible = false;
+                    dtpDataInicial.Visible = false;
+                    dtpDataFinal.Visible = false;
                     break;
 
                 case "VENDAS":
