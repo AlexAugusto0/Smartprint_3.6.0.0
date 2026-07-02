@@ -6,6 +6,7 @@ using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace EtiquetaFORNew.Data
@@ -42,6 +43,11 @@ namespace EtiquetaFORNew.Data
             int? idPromocao = null, // ÃƒÂ¢Ã‚Â­Ã‚Â NOVO parÃƒÆ’Ã‚Â¢metro
             bool usarQuantidadeEstoque = false)
         {
+            if (TipoRequerCarregamentoSoftcomShopAsync(tipo))
+            {
+                throw new InvalidOperationException("Use CarregarProdutosPorTipoAsync para carregamentos SoftcomShop.");
+            }
+
             switch (tipo.ToUpper())
             {
                 case "AJUSTES":
@@ -53,7 +59,7 @@ namespace EtiquetaFORNew.Data
                 case "NOTAS ENTRADA":
                     if (EstaEmModoSoftcomShop())
                     {
-                        return CarregarNotasEntradaSoftcomShop(documento, dataInicial);
+                        throw new InvalidOperationException("Use CarregarProdutosPorTipoAsync para carregar notas do SoftcomShop.");
                     }
 
                     return CarregarNotasEntrada(documento, dataInicial, dataFinal);
@@ -64,7 +70,7 @@ namespace EtiquetaFORNew.Data
 
                     if (EstaEmModoSoftcomShop())
                     {
-                        return CarregarPrecosAlteradosSoftcomShop(dataInicial.Value);
+                        throw new InvalidOperationException("Use CarregarProdutosPorTipoAsync para carregar precos alterados do SoftcomShop.");
                     }
 
                     if (!dataFinal.HasValue)
@@ -78,7 +84,7 @@ namespace EtiquetaFORNew.Data
                         throw new Exception("A importacao por vendas esta disponivel somente para SoftcomShop.");
                     }
 
-                    return CarregarVendaSoftcomShop(documento);
+                    throw new InvalidOperationException("Use CarregarProdutosPorTipoAsync para carregar vendas do SoftcomShop.");
 
                 //case "PROMOÇÕES":
                 //    // ÃƒÂ¢Ã‚Â­Ã‚Â Usa o mÃƒÆ’Ã‚Â©todo do PromocoesManager com ID da promoÃ§ÃƒÆ’Ã‚Â£o
@@ -141,6 +147,82 @@ namespace EtiquetaFORNew.Data
                         fornecedor,
                         isConfeccao);
             }
+        }
+
+        public static async Task<DataTable> CarregarProdutosPorTipoAsync(
+            string tipo,
+            string documento = null,
+            DateTime? dataInicial = null,
+            DateTime? dataFinal = null,
+            string grupo = null,
+            string subGrupo = null,
+            string fabricante = null,
+            string fornecedor = null,
+            string produto = null,
+            bool isConfeccao = false,
+            int? idPromocao = null,
+            bool usarQuantidadeEstoque = false)
+        {
+            switch (tipo.ToUpper())
+            {
+                case "NOTAS ENTRADA":
+                    if (EstaEmModoSoftcomShop())
+                    {
+                        return await CarregarNotasEntradaSoftcomShopAsync(documento, dataInicial);
+                    }
+
+                    return CarregarNotasEntrada(documento, dataInicial, dataFinal);
+
+                case "PREÇOS ALTERADOS":
+                    if (!dataInicial.HasValue)
+                        throw new Exception("Informe a data inicial para carregar preços alterados.");
+
+                    if (EstaEmModoSoftcomShop())
+                    {
+                        return await CarregarPrecosAlteradosSoftcomShopAsync(dataInicial.Value);
+                    }
+
+                    if (!dataFinal.HasValue)
+                        throw new Exception("Informe o período para carregar preços alterados.");
+
+                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque);
+
+                case "VENDAS":
+                    if (!EstaEmModoSoftcomShop())
+                    {
+                        throw new Exception("A importacao por vendas esta disponivel somente para SoftcomShop.");
+                    }
+
+                    return await CarregarVendaSoftcomShopAsync(documento);
+
+                default:
+                    return CarregarProdutosPorTipo(
+                        tipo,
+                        documento,
+                        dataInicial,
+                        dataFinal,
+                        grupo,
+                        subGrupo,
+                        fabricante,
+                        fornecedor,
+                        produto,
+                        isConfeccao,
+                        idPromocao,
+                        usarQuantidadeEstoque);
+            }
+        }
+
+        private static bool TipoRequerCarregamentoSoftcomShopAsync(string tipo)
+        {
+            if (!EstaEmModoSoftcomShop() || string.IsNullOrWhiteSpace(tipo))
+            {
+                return false;
+            }
+
+            string tipoNormalizado = tipo.ToUpper();
+            return tipoNormalizado == "NOTAS ENTRADA" ||
+                   tipoNormalizado == "PREÇOS ALTERADOS" ||
+                   tipoNormalizado == "VENDAS";
         }
 
         // ========================================
@@ -631,7 +713,7 @@ namespace EtiquetaFORNew.Data
         }
 
         // Método auxiliar para evitar repetição e erros de ambiguidade
-        private static DataTable CarregarNotasEntradaSoftcomShop(string numeroNF, DateTime? dataEntrada)
+        private static async Task<DataTable> CarregarNotasEntradaSoftcomShopAsync(string numeroNF, DateTime? dataEntrada)
         {
             DataTable resultado = CriarTabelaResultadoPadrao();
 
@@ -655,10 +737,7 @@ namespace EtiquetaFORNew.Data
 
                 var dataManager = new SoftcomShopDataManager(config.SoftcomShop, LocalDatabaseManager.GetConnectionString());
 
-                // Evita deadlock na UI: executa a chamada async em uma Task separada em vez de bloquear o contexto atual.
-                var syncResult = System.Threading.Tasks.Task.Run(() => dataManager.BuscarPorNotaFiscalAsync(dataEntrada.Value, numeroNota))
-                                        .GetAwaiter()
-                                        .GetResult();
+                var syncResult = await dataManager.BuscarPorNotaFiscalAsync(dataEntrada.Value, numeroNota);
 
                 if (!syncResult.Sucesso)
                 {
@@ -816,7 +895,7 @@ namespace EtiquetaFORNew.Data
             return resultado;
         }
 
-        private static DataTable CarregarPrecosAlteradosSoftcomShop(DateTime dataInicial)
+        private static async Task<DataTable> CarregarPrecosAlteradosSoftcomShopAsync(DateTime dataInicial)
         {
             try
             {
@@ -827,9 +906,7 @@ namespace EtiquetaFORNew.Data
                 }
 
                 var dataManager = new SoftcomShopDataManager(config.SoftcomShop, LocalDatabaseManager.GetConnectionString());
-                var syncResult = System.Threading.Tasks.Task.Run(() => dataManager.BuscarPrecosAlteradosAsync(dataInicial))
-                                        .GetAwaiter()
-                                        .GetResult();
+                var syncResult = await dataManager.BuscarPrecosAlteradosAsync(dataInicial);
 
                 if (!syncResult.Sucesso)
                 {
@@ -844,7 +921,7 @@ namespace EtiquetaFORNew.Data
             }
         }
 
-        private static DataTable CarregarVendaSoftcomShop(string numeroVendaTexto)
+        private static async Task<DataTable> CarregarVendaSoftcomShopAsync(string numeroVendaTexto)
         {
             if (!int.TryParse(numeroVendaTexto, out int numeroVenda) || numeroVenda <= 0)
             {
@@ -860,9 +937,7 @@ namespace EtiquetaFORNew.Data
                 }
 
                 var dataManager = new SoftcomShopDataManager(config.SoftcomShop, LocalDatabaseManager.GetConnectionString());
-                var syncResult = System.Threading.Tasks.Task.Run(() => dataManager.BuscarPorVendaAsync(numeroVenda))
-                                        .GetAwaiter()
-                                        .GetResult();
+                var syncResult = await dataManager.BuscarPorVendaAsync(numeroVenda);
 
                 if (!syncResult.Sucesso)
                 {

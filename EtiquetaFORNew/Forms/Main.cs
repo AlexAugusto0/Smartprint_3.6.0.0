@@ -125,7 +125,7 @@ namespace EtiquetaFORNew
                         {
                             //MessageBox.Show($"✅ Bem-vindo, {nomeVendedor}!", "Login realizado", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                            // Chamar GetSetRegistroJsonAsync se a loja estiver configurada
+                            // Registrar uso se a loja estiver configurada
                             await ChamarRegistroLojaAsync(config.Loja, connectionString);
 
                             // Abre a próxima tela e esconde a principal
@@ -175,11 +175,17 @@ namespace EtiquetaFORNew
                                 string cgc = reader.IsDBNull(1) ? "" : reader.GetString(1);
                                 string codigoSuporte = reader.IsDBNull(2) ? "" : reader.GetString(2);
 
-                                // Chamar a função GetSetRegistroJsonAsync
+                                // Registrar uso no servidor da Agenda
                                 if (!string.IsNullOrEmpty(codigoSuporte) && !string.IsNullOrEmpty(cgc) && !string.IsNullOrEmpty(fantasia))
                                 {
-                                    string resultado = await DatabaseConfig.GetSetRegistroJsonAsync(codigoSuporte, cgc, fantasia);
-                                    System.Diagnostics.Debug.WriteLine($"Resultado do registro ao logar: {resultado}");
+                                    var resultado = await DatabaseConfig.RegistrarUsoSistemaAsync(
+                                        codigoSuporte,
+                                        cgc,
+                                        fantasia,
+                                        "Login SQL");
+
+                                    System.Diagnostics.Debug.WriteLine(
+                                        $"Resultado do registro ao logar: Sucesso={resultado.Sucesso}; Tentativas={resultado.Tentativas}; Erro={resultado.MensagemErro}");
                                 }
                             }
                         }

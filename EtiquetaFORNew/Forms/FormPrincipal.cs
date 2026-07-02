@@ -18,6 +18,8 @@ using System.IO;
 
 using System.Linq;
 
+using System.Threading.Tasks;
+
 using System.Windows.Forms;
 
 using System.Xml.Serialization;
@@ -133,7 +135,7 @@ namespace EtiquetaFORNew
 
 
 
-        private void FormPrincipal_Load(object sender, EventArgs e)
+        private async void FormPrincipal_Load(object sender, EventArgs e)
         {
             // ========================================
             // 🔹 VALIDAR MÓDULO DA APLICAÇÃO
@@ -258,7 +260,31 @@ namespace EtiquetaFORNew
             {
                 ProcessarImportacaoExterna();
             }
+
+            await RegistrarUsoSoftcomShopAsync("Abertura SoftcomShop");
             
+        }
+
+        private async Task RegistrarUsoSoftcomShopAsync(string origem)
+        {
+            try
+            {
+                var config = ConfiguracaoSistema.Carregar();
+                if (config == null ||
+                    config.TipoConexaoAtiva != TipoConexao.SoftcomShop ||
+                    !config.SoftcomShopConfigurado())
+                {
+                    return;
+                }
+
+                var resultado = await Data.DatabaseConfig.RegistrarUsoSoftcomShopAsync(config, origem);
+                System.Diagnostics.Debug.WriteLine(
+                    $"[{origem}] Registro SoftcomShop: Sucesso={resultado.Sucesso}; Tentativas={resultado.Tentativas}; Erro={resultado.MensagemErro}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{origem}] Erro inesperado no registro SoftcomShop: {ex}");
+            }
         }
 
 
@@ -2553,7 +2579,7 @@ namespace EtiquetaFORNew
         /// <summary>
         /// ⭐ CARREGAMENTO: Abre o formulário de filtros para carregar produtos em massa
         /// </summary>
-        private void btnCarregar_Click(object sender, EventArgs e)
+        private async void btnCarregar_Click(object sender, EventArgs e)
         {
             try
             {
@@ -2611,7 +2637,9 @@ namespace EtiquetaFORNew
                     // ========================================
                     Cursor = Cursors.WaitCursor;
 
-                    DataTable mercadoriasFiltradas = CarregadorDados.CarregarProdutosPorTipo(
+                    await RegistrarUsoSoftcomShopAsync($"Carregamento {tipo}");
+
+                    DataTable mercadoriasFiltradas = await CarregadorDados.CarregarProdutosPorTipoAsync(
                         tipo: tipo,
                         documento: documento,
                         dataInicial: dataInicial,
@@ -3589,7 +3617,7 @@ namespace EtiquetaFORNew
         //    }
         //}
 
-        private async void btnSincronizar_Click(object sender, EventArgs e)
+        private void btnSincronizar_Click(object sender, EventArgs e)
         {
             try
             {

@@ -472,7 +472,7 @@ namespace EtiquetaFORNew
                     return;
                 }
 
-                // Chamar funÃ§Ã£o de registro
+                // Chamar função de registro
                 System.Diagnostics.Debug.WriteLine($"[REGISTRO SOFTCOMSHOP] Registrando uso: {fantasia} - CNPJ: {cnpj}");
 
                 string resultado = await DatabaseConfig.GetSetRegistroJsonAsync(codigoSuporte, cnpj, fantasia);
@@ -481,7 +481,7 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
-                // NÃ£o exibir erro ao usuÃ¡rio, apenas logar
+                // NÃo exibir erro ao usuário, apenas logar
                 System.Diagnostics.Debug.WriteLine($"[REGISTRO SOFTCOMSHOP] Erro ao registrar uso: {ex.Message}");
             }
         }

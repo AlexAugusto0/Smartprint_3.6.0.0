@@ -503,14 +503,17 @@ namespace EtiquetaFORNew
                                 string cgc = reader.IsDBNull(1) ? "" : reader.GetString(1);
                                 string codigoSuporte = reader.IsDBNull(2) ? "" : reader.GetString(2);
 
-                                // Chamar a função GetSetRegistroJsonAsync
+                                // Registrar uso no servidor da Agenda
                                 if (!string.IsNullOrEmpty(codigoSuporte) && !string.IsNullOrEmpty(cgc) && !string.IsNullOrEmpty(fantasia))
                                 {
-                                    string resultado = await DatabaseConfig.GetSetRegistroJsonAsync(codigoSuporte, cgc, fantasia);
+                                    var resultado = await DatabaseConfig.RegistrarUsoSistemaAsync(
+                                        codigoSuporte,
+                                        cgc,
+                                        fantasia,
+                                        "Selecao loja SQL");
 
-                                    // Opcional: vocÃª pode fazer algo com o resultado aqui
-                                    // Por exemplo, mostrar uma mensagem ou salvar em algum lugar
-                                    System.Diagnostics.Debug.WriteLine($"Resultado do registro: {resultado}");
+                                    System.Diagnostics.Debug.WriteLine(
+                                        $"Resultado do registro: Sucesso={resultado.Sucesso}; Tentativas={resultado.Tentativas}; Erro={resultado.MensagemErro}");
                                 }
                             }
                         }

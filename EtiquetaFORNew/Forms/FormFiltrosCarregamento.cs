@@ -41,6 +41,7 @@ namespace EtiquetaFORNew
         private Label lblDataFinal;
         private Label lblTitulo;
         private Panel panelFiltros;
+        private bool? _ultimoModoSoftcomShopTipos;
 
         // Propriedades
         public string TipoSelecionado { get; private set; }
@@ -64,6 +65,7 @@ namespace EtiquetaFORNew
             ConfigurarFormulario();
             CarregarDados();
             AplicarPermissoesFiltros();
+            this.Activated += FormFiltrosCarregamento_Activated;
 
         }
 
@@ -453,22 +455,65 @@ namespace EtiquetaFORNew
 
         private void ConfigurarFormulario()
         {
-            cmbTipo.Items.Add("FILTROS MANUAIS");
-            cmbTipo.Items.Add("AJUSTES");
-            cmbTipo.Items.Add("BALANÇOS");
-            cmbTipo.Items.Add("NOTAS ENTRADA");
-            cmbTipo.Items.Add("PREÇOS ALTERADOS");
-            cmbTipo.Items.Add("PROMOÇÕES");
-            if (EstaEmModoSoftcomShop())
-            {
-                cmbTipo.Items.Add("VENDAS");
-            }
-            cmbTipo.SelectedIndex = 0;
+            CarregarTiposCarregamento();
 
             cmbEmpresa.Items.Add("MATRIZ");
             cmbEmpresa.SelectedIndex = 0;
 
             cmbTipo.SelectedIndexChanged += CmbTipo_SelectedIndexChanged;
+        }
+
+        private void FormFiltrosCarregamento_Activated(object sender, EventArgs e)
+        {
+            CarregarTiposCarregamento();
+        }
+
+        private void CarregarTiposCarregamento()
+        {
+            bool modoSoftcomShop = EstaEmModoSoftcomShop();
+
+            if (_ultimoModoSoftcomShopTipos.HasValue &&
+                _ultimoModoSoftcomShopTipos.Value == modoSoftcomShop &&
+                cmbTipo.Items.Count > 0)
+            {
+                return;
+            }
+
+            string tipoAtual = cmbTipo.Text;
+
+            cmbTipo.BeginUpdate();
+            try
+            {
+                cmbTipo.Items.Clear();
+                cmbTipo.Items.Add("FILTROS MANUAIS");
+                cmbTipo.Items.Add("AJUSTES");
+
+                if (modoSoftcomShop)
+                {
+                    cmbTipo.Items.Add("VENDAS");
+                }
+                else
+                {
+                    cmbTipo.Items.Add("BALANÇOS");
+                }
+
+                cmbTipo.Items.Add("NOTAS ENTRADA");
+                cmbTipo.Items.Add("PREÇOS ALTERADOS");
+                cmbTipo.Items.Add("PROMOÇÕES");
+
+                int indice = !string.IsNullOrEmpty(tipoAtual)
+                    ? cmbTipo.FindStringExact(tipoAtual)
+                    : -1;
+
+                cmbTipo.SelectedIndex = indice >= 0 ? indice : 0;
+                _ultimoModoSoftcomShopTipos = modoSoftcomShop;
+            }
+            finally
+            {
+                cmbTipo.EndUpdate();
+            }
+
+            AplicarPermissoesFiltros();
         }
 
         private void CarregarDados()
@@ -815,6 +860,14 @@ namespace EtiquetaFORNew
             {
                 case "AJUSTES":
                 case "BALANÇOS":
+                    if (tipoSelecionado == "BALANÇOS" && EstaEmModoSoftcomShop())
+                    {
+                        MessageBox.Show("A opção BALANÇOS está disponível somente para SQL Server.",
+                            "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        CarregarTiposCarregamento();
+                        return;
+                    }
+
                     break;
 
                 case "NOTAS ENTRADA":
