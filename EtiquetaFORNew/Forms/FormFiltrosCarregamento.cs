@@ -269,7 +269,8 @@ namespace EtiquetaFORNew
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 BackColor = Color.FromArgb(255, 165, 0),
-                ForeColor = Color.White
+                ForeColor = Color.Black,
+                BorderStyle = BorderStyle.FixedSingle
             };
 
             panelFiltros = new Panel
@@ -384,7 +385,7 @@ namespace EtiquetaFORNew
                 Location = new Point(30, 475),
                 Size = new Size(100, 45),
                 BackColor = Color.FromArgb(108, 117, 125),
-                ForeColor = Color.White,
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -397,7 +398,7 @@ namespace EtiquetaFORNew
                 Location = new Point(150, 475),
                 Size = new Size(130, 45),
                 BackColor = Color.FromArgb(220, 53, 69),
-                ForeColor = Color.White,
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -409,8 +410,8 @@ namespace EtiquetaFORNew
                 Text = "Carregar",
                 Location = new Point(300, 475),
                 Size = new Size(170, 45),
-                BackColor = Color.FromArgb(40, 167, 69),
-                ForeColor = Color.White,
+                BackColor = Color.FromArgb(255, 165, 0),
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand
