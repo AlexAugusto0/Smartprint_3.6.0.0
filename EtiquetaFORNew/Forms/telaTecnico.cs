@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Management;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace EtiquetaFORNew
@@ -12,6 +13,14 @@ namespace EtiquetaFORNew
         private List<ImpressoraInfo> impressoras = new List<ImpressoraInfo>();
         private DriverInstaller driverInstaller;
         private Timer timerAtualizacao;
+        private Timer timerAnimacaoPainel;
+        private Label lblStatusProcessamento;
+        private ProgressBar progressBarProcessamento;
+        private Color corOriginalGroupBoxDeteccao;
+        private Color corOriginalPanelConteudo;
+        private bool painelProcessando;
+        private bool atualizacaoListaEmAndamento;
+        private int passoAnimacaoPainel;
 
         public telaTecnico()
         {
@@ -19,10 +28,13 @@ namespace EtiquetaFORNew
 
             // Inicializa o instalador de drivers
             driverInstaller = new DriverInstaller(this);
+            driverInstaller.StatusAtualizado += DriverInstaller_StatusAtualizado;
 
             CarregarImpressoras();
             VersaoHelper.DefinirTituloComVersao(this, "Instalação de Drivers");
             InicializarListView();
+            InicializarPainelProcessamento();
+            InicializarAnimacaoPainel();
 
             // Timer para atualizar lista periodicamente
             InicializarTimer();
@@ -39,10 +51,134 @@ namespace EtiquetaFORNew
             timerAtualizacao.Tick += TimerAtualizacao_Tick;
         }
 
+        private void InicializarPainelProcessamento()
+        {
+            corOriginalGroupBoxDeteccao = groupBoxDeteccao.BackColor;
+            corOriginalPanelConteudo = panelConteudo.BackColor;
+
+            lblStatusProcessamento = new Label
+            {
+                Text = "Aguardando detecção.",
+                AutoEllipsis = true,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(52, 73, 94),
+                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+            };
+
+            progressBarProcessamento = new ProgressBar
+            {
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                Style = ProgressBarStyle.Continuous,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+            };
+
+            groupBoxDeteccao.Controls.Add(lblStatusProcessamento);
+            groupBoxDeteccao.Controls.Add(progressBarProcessamento);
+            groupBoxDeteccao.Resize += (s, e) => AjustarLayoutPainelProcessamento();
+            AjustarLayoutPainelProcessamento();
+        }
+
+        private void AjustarLayoutPainelProcessamento()
+        {
+            int margem = 15;
+            int largura = Math.Max(100, groupBoxDeteccao.ClientSize.Width - (margem * 2));
+            int topoBotoes = Math.Max(285, groupBoxDeteccao.ClientSize.Height - 67);
+
+            btnProcurar.Top = topoBotoes;
+            btnInstalarDriver.Top = topoBotoes;
+
+            int alturaLista = Math.Max(120, topoBotoes - listViewDispositivos.Top - 42);
+            listViewDispositivos.Height = alturaLista;
+            listViewDispositivos.Width = largura;
+
+            lblStatusProcessamento.Location = new Point(margem, listViewDispositivos.Bottom + 6);
+            lblStatusProcessamento.Size = new Size(largura, 18);
+
+            progressBarProcessamento.Location = new Point(margem, lblStatusProcessamento.Bottom + 3);
+            progressBarProcessamento.Size = new Size(largura, 10);
+        }
+
+        private void InicializarAnimacaoPainel()
+        {
+            timerAnimacaoPainel = new Timer();
+            timerAnimacaoPainel.Interval = 420;
+            timerAnimacaoPainel.Tick += (s, e) => AlternarDestaquePainel();
+        }
+
+        private void DriverInstaller_StatusAtualizado(object sender, DriverInstallStatusEventArgs e)
+        {
+            AtualizarStatusProcessamento(e.Mensagem, e.Progresso, !e.Finalizado);
+        }
+
+        private void AtualizarStatusProcessamento(string mensagem, int? progresso = null, bool manterProcessando = true)
+        {
+            if (IsDisposed)
+                return;
+
+            if (InvokeRequired)
+            {
+                if (IsHandleCreated)
+                    BeginInvoke(new Action(() => AtualizarStatusProcessamento(mensagem, progresso, manterProcessando)));
+                return;
+            }
+
+            if (lblStatusProcessamento != null && !string.IsNullOrWhiteSpace(mensagem))
+                lblStatusProcessamento.Text = mensagem;
+
+            if (progressBarProcessamento != null && progresso.HasValue)
+                progressBarProcessamento.Value = Math.Max(0, Math.Min(100, progresso.Value));
+
+            if (manterProcessando)
+            {
+                IniciarAnimacaoPainel();
+                AlternarDestaquePainel();
+            }
+            else
+            {
+                FinalizarAnimacaoPainel();
+            }
+        }
+
+        private void IniciarAnimacaoPainel()
+        {
+            painelProcessando = true;
+            if (timerAnimacaoPainel != null && !timerAnimacaoPainel.Enabled)
+                timerAnimacaoPainel.Start();
+        }
+
+        private void FinalizarAnimacaoPainel()
+        {
+            painelProcessando = false;
+            if (timerAnimacaoPainel != null)
+                timerAnimacaoPainel.Stop();
+
+            groupBoxDeteccao.BackColor = corOriginalGroupBoxDeteccao;
+            panelConteudo.BackColor = corOriginalPanelConteudo;
+        }
+
+        private void AlternarDestaquePainel()
+        {
+            if (!painelProcessando)
+                return;
+
+            passoAnimacaoPainel++;
+            bool destacar = passoAnimacaoPainel % 2 == 0;
+
+            groupBoxDeteccao.BackColor = destacar
+                ? Color.FromArgb(255, 248, 222)
+                : corOriginalGroupBoxDeteccao;
+
+            panelConteudo.BackColor = destacar
+                ? Color.FromArgb(255, 253, 242)
+                : corOriginalPanelConteudo;
+        }
+
         private void TimerAtualizacao_Tick(object sender, EventArgs e)
         {
             // Só atualiza se a lista estiver visível e tiver itens
-            if (groupBoxDeteccao.Visible && listViewDispositivos.Items.Count > 0)
+            if (groupBoxDeteccao.Visible && listViewDispositivos.Items.Count > 0 && !atualizacaoListaEmAndamento)
             {
                 AtualizarListaDispositivos();
             }
@@ -220,6 +356,7 @@ namespace EtiquetaFORNew
         {
             if (btnDownloadDriver.Tag is ImpressoraInfo impressora)
             {
+                AtualizarStatusProcessamento($"Instalando driver selecionado manualmente: {impressora.Nome}", 20);
                 driverInstaller.BaixarEInstalarDriver(impressora);
             }
             else
@@ -431,44 +568,31 @@ namespace EtiquetaFORNew
                 return Color.FromArgb(52, 73, 94);   // Azul escuro - Desconhecido
         }
 
-        private void BuscarDispositivosDeImpressoras()
+        private async Task BuscarDispositivosDeImpressorasAsync()
         {
+            if (atualizacaoListaEmAndamento)
+                return;
+
             try
             {
-                listViewDispositivos.Items.Clear();
+                atualizacaoListaEmAndamento = true;
+                btnProcurar.Enabled = false;
+                AtualizarStatusProcessamento("Procurando impressoras USB conectadas...", 10);
 
-                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE DeviceID LIKE '%USB%'");
+                List<PrinterDeviceInfo> dispositivos = await Task.Run(() => EnumerarDispositivosUsb());
+                PopularListaDispositivos(dispositivos, null);
 
-                int encontrados = 0;
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    string nome = obj["Name"]?.ToString() ?? "Desconhecido";
-                    string deviceId = obj["DeviceID"]?.ToString() ?? "-";
+                int encontrados = dispositivos.Count;
+                int comProblema = dispositivos.Count(d =>
+                    (d.StatusDriver ?? string.Empty).StartsWith("✗") ||
+                    (d.StatusDriver ?? string.Empty).StartsWith("⚠"));
 
-                    // Filtra apenas impressoras USB
-                    if (deviceId.StartsWith("USBPRINT", StringComparison.OrdinalIgnoreCase))
-                    {
-                        encontrados++;
-
-                        string fabricante = ObterFabricante(obj);
-                        string statusDriver = VerificarStatusDriver(obj);
-
-                        var item = new ListViewItem(new[] { nome, fabricante, statusDriver, deviceId });
-                        item.Tag = new { DeviceId = deviceId, Device = obj };
-
-                        // Define cor baseada no status
-                        Color corStatus = ObterCorStatus(statusDriver);
-                        item.ForeColor = corStatus;
-
-                        // Negrito se tiver problema
-                        if (statusDriver.StartsWith("✗") || statusDriver.StartsWith("⚠"))
-                        {
-                            item.Font = new Font(listViewDispositivos.Font, FontStyle.Bold);
-                        }
-
-                        listViewDispositivos.Items.Add(item);
-                    }
-                }
+                AtualizarStatusProcessamento(
+                    encontrados == 0
+                        ? "Nenhuma impressora USB detectada."
+                        : $"{encontrados} impressora(s) USB encontrada(s).",
+                    100,
+                    false);
 
                 if (encontrados == 0)
                 {
@@ -486,10 +610,6 @@ namespace EtiquetaFORNew
                 {
                     string mensagem = $"{encontrados} impressora(s) USB encontrada(s).";
 
-                    // Conta quantas estão OK vs com problema
-                    int comProblema = listViewDispositivos.Items.Cast<ListViewItem>()
-                        .Count(i => i.SubItems[2].Text.StartsWith("✗") || i.SubItems[2].Text.StartsWith("⚠"));
-
                     if (comProblema > 0)
                     {
                         mensagem += $"\n\n{comProblema} com problema de driver.";
@@ -501,11 +621,18 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                AtualizarStatusProcessamento("Erro ao buscar impressoras USB.", 0, false);
+                PrinterDetectionLogger.Log("Erro ao buscar impressoras USB: " + ex.Message);
                 MessageBox.Show(
                     $"Erro ao buscar impressoras: {ex.Message}",
                     "Erro",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnProcurar.Enabled = true;
+                atualizacaoListaEmAndamento = false;
             }
         }
 
@@ -514,65 +641,134 @@ namespace EtiquetaFORNew
         /// </summary>
         private void AtualizarListaDispositivos()
         {
+            _ = AtualizarListaDispositivosAsync(false);
+        }
+
+        private async Task AtualizarListaDispositivosAsync(bool mostrarStatus)
+        {
+            if (atualizacaoListaEmAndamento)
+                return;
+
             try
             {
-                // Salva item selecionado
-                string deviceIdSelecionado = null;
-                if (listViewDispositivos.SelectedItems.Count > 0)
-                {
-                    var tag = listViewDispositivos.SelectedItems[0].Tag;
-                    if (tag != null)
-                    {
-                        var anonimo = tag as dynamic;
-                        deviceIdSelecionado = anonimo?.DeviceId;
-                    }
-                }
+                atualizacaoListaEmAndamento = true;
 
-                listViewDispositivos.Items.Clear();
+                string deviceIdSelecionado = ObterDeviceIdSelecionado();
+                if (mostrarStatus)
+                    AtualizarStatusProcessamento("Atualizando lista de impressoras...", 15);
 
-                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE DeviceID LIKE '%USB%'");
+                List<PrinterDeviceInfo> dispositivos = await Task.Run(() => EnumerarDispositivosUsb());
+                PopularListaDispositivos(dispositivos, deviceIdSelecionado);
 
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    string nome = obj["Name"]?.ToString() ?? "Desconhecido";
-                    string deviceId = obj["DeviceID"]?.ToString() ?? "-";
-
-                    if (deviceId.StartsWith("USBPRINT", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string fabricante = ObterFabricante(obj);
-                        string statusDriver = VerificarStatusDriver(obj);
-
-                        var item = new ListViewItem(new[] { nome, fabricante, statusDriver, deviceId });
-                        item.Tag = new { DeviceId = deviceId, Device = obj };
-
-                        Color corStatus = ObterCorStatus(statusDriver);
-                        item.ForeColor = corStatus;
-
-                        if (statusDriver.StartsWith("✗") || statusDriver.StartsWith("⚠"))
-                        {
-                            item.Font = new Font(listViewDispositivos.Font, FontStyle.Bold);
-                        }
-
-                        listViewDispositivos.Items.Add(item);
-
-                        // Reseleciona item se era o selecionado antes
-                        if (deviceId == deviceIdSelecionado)
-                        {
-                            item.Selected = true;
-                        }
-                    }
-                }
+                if (mostrarStatus)
+                    AtualizarStatusProcessamento("Lista de impressoras atualizada.", 100, false);
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignora erros na atualização automática
+                PrinterDetectionLogger.Log("Erro ao atualizar lista de impressoras: " + ex.Message);
+                if (mostrarStatus)
+                    AtualizarStatusProcessamento("Erro ao atualizar lista de impressoras.", 0, false);
+            }
+            finally
+            {
+                atualizacaoListaEmAndamento = false;
             }
         }
 
-        private void btnProcurar_Click(object sender, EventArgs e)
+        private List<PrinterDeviceInfo> EnumerarDispositivosUsb()
+        {
+            var dispositivos = new List<PrinterDeviceInfo>();
+
+            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE DeviceID LIKE '%USB%'"))
+            using (ManagementObjectCollection results = searcher.Get())
+            {
+                foreach (ManagementObject obj in results)
+                {
+                    string deviceId = obj["DeviceID"]?.ToString() ?? "-";
+
+                    // Filtra apenas impressoras USB
+                    if (!deviceId.StartsWith("USBPRINT", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    string fabricante = ObterFabricante(obj);
+                    string statusDriver = VerificarStatusDriver(obj);
+                    var dispositivo = PrinterDeviceInfo.FromManagementObject(obj, fabricante);
+                    dispositivo.StatusDriver = statusDriver;
+
+                    if (string.IsNullOrWhiteSpace(dispositivo.Nome))
+                        dispositivo.Nome = "Desconhecido";
+
+                    if (string.IsNullOrWhiteSpace(dispositivo.DeviceId))
+                        dispositivo.DeviceId = deviceId;
+
+                    dispositivos.Add(dispositivo);
+                    PrinterDetectionLogger.LogDeviceFound(dispositivo);
+                }
+            }
+
+            return dispositivos;
+        }
+
+        private void PopularListaDispositivos(IEnumerable<PrinterDeviceInfo> dispositivos, string deviceIdSelecionado)
+        {
+            listViewDispositivos.BeginUpdate();
+            try
+            {
+                listViewDispositivos.Items.Clear();
+
+                foreach (var dispositivo in dispositivos)
+                {
+                    var item = new ListViewItem(new[]
+                    {
+                        string.IsNullOrWhiteSpace(dispositivo.Nome) ? "Desconhecido" : dispositivo.Nome,
+                        string.IsNullOrWhiteSpace(dispositivo.Fabricante) ? "Desconhecido" : dispositivo.Fabricante,
+                        string.IsNullOrWhiteSpace(dispositivo.StatusDriver) ? "? Indeterminado" : dispositivo.StatusDriver,
+                        string.IsNullOrWhiteSpace(dispositivo.DeviceId) ? "-" : dispositivo.DeviceId
+                    });
+
+                    item.Tag = dispositivo;
+
+                    Color corStatus = ObterCorStatus(dispositivo.StatusDriver ?? string.Empty);
+                    item.ForeColor = corStatus;
+
+                    if ((dispositivo.StatusDriver ?? string.Empty).StartsWith("✗") ||
+                        (dispositivo.StatusDriver ?? string.Empty).StartsWith("⚠"))
+                    {
+                        item.Font = new Font(listViewDispositivos.Font, FontStyle.Bold);
+                    }
+
+                    listViewDispositivos.Items.Add(item);
+
+                    if (!string.IsNullOrWhiteSpace(deviceIdSelecionado) &&
+                        dispositivo.DeviceId.Equals(deviceIdSelecionado, StringComparison.OrdinalIgnoreCase))
+                    {
+                        item.Selected = true;
+                    }
+                }
+            }
+            finally
+            {
+                listViewDispositivos.EndUpdate();
+            }
+        }
+
+        private string ObterDeviceIdSelecionado()
+        {
+            if (listViewDispositivos.SelectedItems.Count == 0)
+                return null;
+
+            if (listViewDispositivos.SelectedItems[0].Tag is PrinterDeviceInfo dispositivo)
+                return dispositivo.DeviceId;
+
+            return listViewDispositivos.SelectedItems[0].SubItems.Count > 3
+                ? listViewDispositivos.SelectedItems[0].SubItems[3].Text
+                : null;
+        }
+
+        private async void btnProcurar_Click(object sender, EventArgs e)
         {
             listViewDispositivos.Items.Clear();
-            BuscarDispositivosDeImpressoras();
+            await BuscarDispositivosDeImpressorasAsync();
         }
 
         private void btnInstalarDriver_Click(object sender, EventArgs e)
@@ -587,8 +783,10 @@ namespace EtiquetaFORNew
                 return;
             }
 
-            string nomeDispositivo = listViewDispositivos.SelectedItems[0].SubItems[0].Text;
-            string statusAtual = listViewDispositivos.SelectedItems[0].SubItems[2].Text;
+            var itemSelecionado = listViewDispositivos.SelectedItems[0];
+            var dispositivo = itemSelecionado.Tag as PrinterDeviceInfo ?? CriarDispositivoAPartirDoItem(itemSelecionado);
+            string nomeDispositivo = string.IsNullOrWhiteSpace(dispositivo.Nome) ? "Desconhecido" : dispositivo.Nome;
+            string statusAtual = dispositivo.StatusDriver ?? string.Empty;
 
             // Avisa se já está instalado
             if (statusAtual.StartsWith("✓"))
@@ -606,13 +804,19 @@ namespace EtiquetaFORNew
                     return;
             }
 
-            var impressoraEncontrada = TentarIdentificarImpressora(nomeDispositivo);
+            AtualizarStatusProcessamento("Identificando modelo e escolhendo melhor driver...", 25);
+            var resultadoIdentificacao = TentarIdentificarImpressora(dispositivo);
+            var impressoraEncontrada = resultadoIdentificacao.Impressora;
 
             if (impressoraEncontrada != null)
             {
+                AtualizarStatusProcessamento($"Driver selecionado: {impressoraEncontrada.Nome}", 45);
+
                 DialogResult resultado = MessageBox.Show(
                     $"Dispositivo: {nomeDispositivo}\n\n" +
-                    $"Impressora identificada: {impressoraEncontrada.Nome}\n\n" +
+                    $"Impressora identificada: {impressoraEncontrada.Nome}\n" +
+                    $"Pontuação: {resultadoIdentificacao.Pontuacao}\n" +
+                    $"Motivo: {resultadoIdentificacao.Motivo}\n\n" +
                     $"Deseja baixar e instalar o driver?",
                     "Driver Identificado",
                     MessageBoxButtons.YesNo,
@@ -633,15 +837,57 @@ namespace EtiquetaFORNew
                     };
                     timerAtualizarAposInstalar.Start();
                 }
+                else
+                {
+                    AtualizarStatusProcessamento("Instalação cancelada pelo usuário.", 0, false);
+                }
             }
             else
             {
+                AtualizarStatusProcessamento("Não foi possível identificar com segurança. Abrindo seleção manual.", 0, false);
                 MostrarSelecaoManualDriver(nomeDispositivo);
             }
         }
 
-        private ImpressoraInfo TentarIdentificarImpressora(string nomeDispositivo)
+        private PrinterDeviceInfo CriarDispositivoAPartirDoItem(ListViewItem item)
         {
+            return new PrinterDeviceInfo
+            {
+                Nome = item.SubItems.Count > 0 ? item.SubItems[0].Text : string.Empty,
+                Fabricante = item.SubItems.Count > 1 ? item.SubItems[1].Text : string.Empty,
+                StatusDriver = item.SubItems.Count > 2 ? item.SubItems[2].Text : string.Empty,
+                DeviceId = item.SubItems.Count > 3 ? item.SubItems[3].Text : string.Empty
+            };
+        }
+
+        private PrinterMatchResult TentarIdentificarImpressora(PrinterDeviceInfo dispositivo)
+        {
+            var resultado = PrinterDriverMatcher.IdentificarMelhorDriver(dispositivo, impressoras);
+
+            if (resultado.Confiavel)
+            {
+                PrinterDetectionLogger.LogMatchResult(dispositivo, resultado);
+                return resultado;
+            }
+
+            var fallback = TentarIdentificarImpressoraLegado(dispositivo.Nome);
+            if (fallback != null)
+            {
+                resultado.Impressora = fallback;
+                resultado.UsouFallback = true;
+                resultado.Pontuacao = Math.Max(resultado.Pontuacao, 1);
+                resultado.Motivo = "Fallback legado aplicado após baixa confiança do matcher novo. " + resultado.Motivo;
+            }
+
+            PrinterDetectionLogger.LogMatchResult(dispositivo, resultado);
+            return resultado;
+        }
+
+        private ImpressoraInfo TentarIdentificarImpressoraLegado(string nomeDispositivo)
+        {
+            if (string.IsNullOrWhiteSpace(nomeDispositivo))
+                return null;
+
             string nomeNormalizado = nomeDispositivo.ToLower().Replace(" ", "");
 
             foreach (var impressora in impressoras)
@@ -678,6 +924,8 @@ namespace EtiquetaFORNew
                     var impressoraSelecionada = formSelecao.ImpressoraSelecionada;
                     if (impressoraSelecionada != null)
                     {
+                        AtualizarStatusProcessamento($"Instalando driver selecionado manualmente: {impressoraSelecionada.Nome}", 20);
+                        PrinterDetectionLogger.Log("Driver selecionado manualmente | Dispositivo=" + nomeDispositivo + " | Modelo=" + impressoraSelecionada.Nome);
                         driverInstaller.BaixarEInstalarDriver(impressoraSelecionada);
 
                         // Aguarda e atualiza lista
@@ -702,6 +950,12 @@ namespace EtiquetaFORNew
             {
                 timerAtualizacao.Stop();
                 timerAtualizacao.Dispose();
+            }
+
+            if (timerAnimacaoPainel != null)
+            {
+                timerAnimacaoPainel.Stop();
+                timerAnimacaoPainel.Dispose();
             }
 
             // Libera imagem

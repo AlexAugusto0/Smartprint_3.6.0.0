@@ -22,6 +22,18 @@ namespace EtiquetaFORNew
         [JsonProperty("driverUrl")]
         public string DriverUrl { get; set; }
 
+        [JsonProperty("fabricante")]
+        public string Fabricante { get; set; }
+
+        [JsonProperty("aliases")]
+        public List<string> Aliases { get; set; }
+
+        [JsonProperty("hardwareIds")]
+        public List<string> HardwareIds { get; set; }
+
+        [JsonProperty("deviceIds")]
+        public List<string> DeviceIds { get; set; }
+
         /// <summary>
         /// Obtém a imagem da impressora a partir dos recursos
         /// </summary>

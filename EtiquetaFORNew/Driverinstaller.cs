@@ -9,6 +9,20 @@ using System.Windows.Forms;
 
 namespace EtiquetaFORNew
 {
+    public class DriverInstallStatusEventArgs : EventArgs
+    {
+        public string Mensagem { get; private set; }
+        public int? Progresso { get; private set; }
+        public bool Finalizado { get; private set; }
+
+        public DriverInstallStatusEventArgs(string mensagem, int? progresso, bool finalizado)
+        {
+            Mensagem = mensagem;
+            Progresso = progresso;
+            Finalizado = finalizado;
+        }
+    }
+
     /// <summary>
     /// Gerenciador de download e instalação de drivers - VERSÃO OTIMIZADA
     /// Com menos confirmações e fluxo mais direto
@@ -23,6 +37,7 @@ namespace EtiquetaFORNew
 
         public event EventHandler<DownloadProgressChangedEventArgs> ProgressoDownload;
         public event EventHandler<AsyncCompletedEventArgs> DownloadCompleto;
+        public event EventHandler<DriverInstallStatusEventArgs> StatusAtualizado;
 
         public DriverInstaller(Form formPai)
         {
@@ -38,9 +53,12 @@ namespace EtiquetaFORNew
             {
                 _impressora = impressora;
                 _urlDriver = impressora.DriverUrl?.Trim();
+                NotificarStatus($"Preparando instalação do driver de {impressora.Nome}...", 5);
+                PrinterDetectionLogger.Log("Preparando instalacao de driver | Modelo=" + impressora.Nome + " | Url=" + (_urlDriver ?? "-"));
 
                 if (string.IsNullOrWhiteSpace(_urlDriver))
                 {
+                    NotificarStatus("URL do driver não encontrada.", 0, true);
                     MessageBox.Show(
                         "URL do driver não encontrada para esta impressora.",
                         "Aviso",
@@ -52,7 +70,10 @@ namespace EtiquetaFORNew
                 // Google Drive - abre direto no navegador
                 if (_urlDriver.Contains("drive.google.com"))
                 {
+                    NotificarStatus("Abrindo download manual no navegador...", 20);
                     AbrirLinkNoNavegador(_urlDriver);
+                    NotificarStatus("Download manual aberto no navegador.", 100, true);
+                    PrinterDetectionLogger.Log("Driver exige download manual via navegador | Modelo=" + impressora.Nome);
                     MessageBox.Show(
                         $"Download do driver de {impressora.Nome} iniciado no navegador.\n\n" +
                         "Após o download, execute o instalador.",
@@ -78,6 +99,8 @@ namespace EtiquetaFORNew
                 // Se já existe, usa direto (sem perguntar)
                 if (File.Exists(_caminhoDownload))
                 {
+                    NotificarStatus("Arquivo de driver já baixado. Processando...", 45);
+                    PrinterDetectionLogger.Log("Arquivo de driver ja existe, processando localmente | Caminho=" + _caminhoDownload);
                     ProcessarArquivoBaixado(_caminhoDownload);
                     return;
                 }
@@ -87,6 +110,8 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                NotificarStatus("Erro ao preparar instalação do driver.", 0, true);
+                PrinterDetectionLogger.Log("Erro ao preparar instalacao do driver: " + ex.Message);
                 MessageBox.Show(
                     $"Erro ao preparar instalação do driver:\n\n{ex.Message}",
                     "Erro",
@@ -99,6 +124,9 @@ namespace EtiquetaFORNew
         {
             try
             {
+                NotificarStatus("Iniciando download do driver...", 10);
+                PrinterDetectionLogger.Log("Iniciando download de driver | Url=" + url + " | Destino=" + caminhoDestino);
+
                 _webClient = new WebClient();
                 _webClient.DownloadProgressChanged += WebClient_DownloadProgressChanged;
                 _webClient.DownloadFileCompleted += WebClient_DownloadFileCompleted;
@@ -110,6 +138,8 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                NotificarStatus("Erro ao iniciar download do driver.", 0, true);
+                PrinterDetectionLogger.Log("Erro ao iniciar download do driver: " + ex.Message);
                 MessageBox.Show(
                     $"Erro ao iniciar download:\n\n{ex.Message}",
                     "Erro de Download",
@@ -124,6 +154,8 @@ namespace EtiquetaFORNew
             {
                 formProgresso.AtualizarProgresso(e.ProgressPercentage, e.BytesReceived, e.TotalBytesToReceive);
             }
+
+            NotificarStatus($"Baixando driver de {_impressora?.Nome}: {e.ProgressPercentage}%", e.ProgressPercentage);
             ProgressoDownload?.Invoke(sender, e);
         }
 
@@ -134,6 +166,8 @@ namespace EtiquetaFORNew
 
             if (e.Error != null)
             {
+                NotificarStatus("Erro ao baixar o driver.", 0, true);
+                PrinterDetectionLogger.Log("Erro ao baixar driver: " + e.Error.Message);
                 MessageBox.Show(
                     $"Erro ao baixar o driver:\n\n{e.Error.Message}",
                     "Erro de Download",
@@ -144,6 +178,8 @@ namespace EtiquetaFORNew
 
             if (e.Cancelled)
             {
+                NotificarStatus("Download cancelado.", 0, true);
+                PrinterDetectionLogger.Log("Download de driver cancelado pelo usuario.");
                 MessageBox.Show(
                     "Download cancelado.",
                     "Cancelado",
@@ -153,6 +189,8 @@ namespace EtiquetaFORNew
             }
 
             // Download completo - processa direto (sem mensagem de sucesso)
+            NotificarStatus("Download concluído. Processando arquivo...", 70);
+            PrinterDetectionLogger.Log("Download de driver concluido | Caminho=" + _caminhoDownload);
             ProcessarArquivoBaixado(_caminhoDownload);
 
             DownloadCompleto?.Invoke(sender, e);
@@ -165,6 +203,8 @@ namespace EtiquetaFORNew
         {
             try
             {
+                NotificarStatus("Analisando arquivo baixado...", 75);
+                PrinterDetectionLogger.Log("Processando arquivo de driver | Caminho=" + caminhoArquivo);
                 string extensao = Path.GetExtension(caminhoArquivo).ToLower();
 
                 if (extensao == ".zip")
@@ -175,6 +215,8 @@ namespace EtiquetaFORNew
                 else if (extensao == ".rar" || extensao == ".7z")
                 {
                     // RAR/7Z - abre pasta (não dá pra extrair automaticamente)
+                    NotificarStatus("Arquivo requer extração manual.", 100, true);
+                    PrinterDetectionLogger.Log("Arquivo requer extracao manual | Caminho=" + caminhoArquivo);
                     MessageBox.Show(
                         $"Arquivo {extensao.ToUpper()} requer extração manual.\n\n" +
                         $"A pasta será aberta para você extrair e executar o instalador.",
@@ -191,6 +233,8 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                NotificarStatus("Erro ao processar arquivo do driver.", 0, true);
+                PrinterDetectionLogger.Log("Erro ao processar arquivo de driver: " + ex.Message);
                 MessageBox.Show(
                     $"Erro ao processar arquivo:\n\n{ex.Message}",
                     "Erro",
@@ -206,6 +250,8 @@ namespace EtiquetaFORNew
         {
             try
             {
+                NotificarStatus("Extraindo pacote do driver...", 80);
+                PrinterDetectionLogger.Log("Extraindo ZIP de driver | Caminho=" + caminhoZip);
                 string pastaExtracao = Path.Combine(
                     Path.GetDirectoryName(caminhoZip),
                     Path.GetFileNameWithoutExtension(caminhoZip) + "_extraido");
@@ -228,6 +274,8 @@ namespace EtiquetaFORNew
                 if (executaveis.Count == 0)
                 {
                     // Nenhum instalador encontrado
+                    NotificarStatus("Nenhum instalador automático encontrado.", 100, true);
+                    PrinterDetectionLogger.Log("Nenhum instalador encontrado no ZIP | Pasta=" + pastaExtracao);
                     MessageBox.Show(
                         "Nenhum instalador encontrado no arquivo ZIP.\n\n" +
                         "A pasta extraída será aberta para você procurar manualmente.",
@@ -241,16 +289,19 @@ namespace EtiquetaFORNew
                 if (executaveis.Count == 1)
                 {
                     // 1 instalador - executa direto
+                    NotificarStatus("Instalador encontrado. Iniciando...", 92);
                     ExecutarInstalador(executaveis[0]);
                     return;
                 }
 
                 // Múltiplos instaladores - tenta identificar
+                NotificarStatus("Selecionando instalador principal...", 88);
                 string instaladorPrincipal = IdentificarInstaladorPrincipal(executaveis);
 
                 if (instaladorPrincipal != null)
                 {
                     // Identificou - executa direto
+                    PrinterDetectionLogger.Log("Instalador principal identificado | Caminho=" + instaladorPrincipal);
                     ExecutarInstalador(instaladorPrincipal);
                 }
                 else
@@ -261,6 +312,8 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                NotificarStatus("Erro ao extrair pacote do driver.", 0, true);
+                PrinterDetectionLogger.Log("Erro ao extrair ZIP de driver: " + ex.Message);
                 MessageBox.Show(
                     $"Erro ao extrair arquivo ZIP:\n\n{ex.Message}",
                     "Erro de Extração",
@@ -344,6 +397,9 @@ namespace EtiquetaFORNew
         {
             try
             {
+                NotificarStatus("Iniciando instalador do driver...", 95);
+                PrinterDetectionLogger.Log("Executando instalador de driver | Caminho=" + caminhoArquivo);
+
                 ProcessStartInfo startInfo = new ProcessStartInfo
                 {
                     FileName = caminhoArquivo,
@@ -352,6 +408,7 @@ namespace EtiquetaFORNew
                 };
 
                 Process.Start(startInfo);
+                NotificarStatus("Instalador iniciado. Conclua as etapas na tela.", 100, true);
 
                 // Mensagem informativa simples
                 MessageBox.Show(
@@ -363,6 +420,8 @@ namespace EtiquetaFORNew
             }
             catch (Exception ex)
             {
+                NotificarStatus("Não foi possível iniciar o instalador.", 0, true);
+                PrinterDetectionLogger.Log("Erro ao executar instalador de driver: " + ex.Message);
                 // Se falhar (UAC cancelado, etc), oferece abrir pasta
                 DialogResult resultado = MessageBox.Show(
                     $"Não foi possível iniciar o instalador automaticamente.\n\n" +
@@ -422,6 +481,18 @@ namespace EtiquetaFORNew
         public void CancelarDownload()
         {
             _webClient?.CancelAsync();
+        }
+
+        private void NotificarStatus(string mensagem, int? progresso = null, bool finalizado = false)
+        {
+            try
+            {
+                StatusAtualizado?.Invoke(this, new DriverInstallStatusEventArgs(mensagem, progresso, finalizado));
+            }
+            catch
+            {
+                // A instalacao nao deve depender da UI de status.
+            }
         }
     }
 

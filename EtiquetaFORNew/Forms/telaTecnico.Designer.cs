@@ -283,7 +283,7 @@
             // 
             // panelTitulo
             // 
-            this.panelTitulo.BackColor = System.Drawing.Color.DarkGray;
+            this.panelTitulo.BackColor = System.Drawing.Color.White;
             this.panelTitulo.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.panelTitulo.Controls.Add(this.pictureBox2);
             this.panelTitulo.Controls.Add(this.lblTitulo);
