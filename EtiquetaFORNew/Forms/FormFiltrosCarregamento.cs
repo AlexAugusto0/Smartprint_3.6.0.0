@@ -384,7 +384,7 @@ namespace EtiquetaFORNew
                 Text = "Limpar",
                 Location = new Point(30, 475),
                 Size = new Size(100, 45),
-                BackColor = Color.FromArgb(108, 117, 125),
+                BackColor = Color.FromArgb(161, 179, 179),
                 ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
