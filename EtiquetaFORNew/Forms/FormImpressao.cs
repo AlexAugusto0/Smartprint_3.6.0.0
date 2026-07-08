@@ -494,6 +494,11 @@ namespace EtiquetaFORNew
                         g.DrawString(valor, fonte, brush, bounds, sf);
                         break;
 
+                    case TipoElemento.Expressao:
+                        string valorExpressao = ObterValorExpressao(elem.Conteudo, produto);
+                        g.DrawString(valorExpressao, fonte, brush, bounds, sf);
+                        break;
+
                     case TipoElemento.CodigoBarras:
                         // ⭐ ATUALIZADO: Agora suporta diferentes campos de código
                         string codigoBarras = ObterCodigoBarras(elem.Conteudo, produto);
@@ -512,6 +517,15 @@ namespace EtiquetaFORNew
             {
                 g.Restore(state);
             }
+        }
+
+        private string ObterValorExpressao(string expressao, Produto produto)
+        {
+            if (produto == null)
+                return string.Empty;
+
+            ResultadoExpressao resultado = ExpressionEngine.Calcular(expressao, produto);
+            return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : "[Erro]";
         }
 
         // ⭐ NOVO MÉTODO: Obtém o valor correto para o código de barras
@@ -550,13 +564,16 @@ namespace EtiquetaFORNew
             {
                 // Campos originais
                 case "Nome":
+                case "Descricao":
                     return produto.Nome ?? "";
                 case "Codigo":
                     return produto.Codigo ?? "";
                 case "Preco":
+                case "PrecoCusto":
                     return FormatadorMonetario.Formatar(produto.Preco);
                 case "Quantidade":
                     return produto.Quantidade.ToString();
+                case "Referencia":
                 case "CodFabricante":
                     return produto.CodFabricante ?? "";
 
@@ -585,6 +602,10 @@ namespace EtiquetaFORNew
                     return produto.Fabricante ?? "";
                 case "Grupo":
                     return produto.Grupo ?? "";
+                case "SubGrupo":
+                    return produto.SubGrupo ?? "";
+                case "Marca":
+                    return produto.Marca ?? "";
                 case "Prateleira":
                     return produto.Prateleira ?? "";
                 case "Garantia":

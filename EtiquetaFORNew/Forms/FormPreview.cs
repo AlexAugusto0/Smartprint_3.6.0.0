@@ -213,6 +213,8 @@ namespace EtiquetaFORNew
                 Fornecedor = row.Table.Columns.Contains("Fornecedor") ? row["Fornecedor"]?.ToString() ?? "" : "",
                 Fabricante = row.Table.Columns.Contains("Fabricante") ? row["Fabricante"]?.ToString() ?? "" : "",
                 Grupo = row.Table.Columns.Contains("Grupo") ? row["Grupo"]?.ToString() ?? "" : "",
+                SubGrupo = row.Table.Columns.Contains("SubGrupo") ? row["SubGrupo"]?.ToString() ?? "" : "",
+                Marca = row.Table.Columns.Contains("Marca") ? row["Marca"]?.ToString() ?? "" : "",
                 Prateleira = row.Table.Columns.Contains("Prateleira") ? row["Prateleira"]?.ToString() ?? "" : "",
                 Garantia = row.Table.Columns.Contains("Garantia") ? row["Garantia"]?.ToString() ?? "" : "",
                 Tam = row.Table.Columns.Contains("Tam") ? row["Tam"]?.ToString() ?? "" : "",
@@ -243,6 +245,8 @@ namespace EtiquetaFORNew
                 Fornecedor = "Confecções XYZ Ltda",
                 Fabricante = "Têxtil ABC",
                 Grupo = "Vestuário Masculino",
+                SubGrupo = "Camisas",
+                Marca = "SmartPrint",
                 Prateleira = "A-15",
                 Garantia = "90 dias",
                 Tam = "M",
@@ -413,6 +417,11 @@ namespace EtiquetaFORNew
                         g.DrawString(valor, fonte, brush, bounds, sf);
                         break;
 
+                    case TipoElemento.Expressao:
+                        string valorExpressao = ObterValorExpressao(elem.Conteudo, produto);
+                        g.DrawString(valorExpressao, fonte, brush, bounds, sf);
+                        break;
+
                     case TipoElemento.CodigoBarras:
                         string codigoBarras = ObterCodigoBarras(elem.Conteudo, produto);
                         DesenharCodigoBarras(g, codigoBarras, bounds);
@@ -446,14 +455,17 @@ namespace EtiquetaFORNew
             {
                 case "Nome":
                 case "Mercadoria":
+                case "Descricao":
                     return produto.Nome ?? "";
                 case "Codigo":
                 case "CodigoMercadoria":
                     return produto.Codigo ?? "";
                 case "Preco":
+                case "PrecoCusto":
                     return FormatadorMonetario.Formatar(produto.Preco);
                 case "Quantidade":
                     return produto.Quantidade.ToString();
+                case "Referencia":
                 case "CodFabricante":
                     return produto.CodFabricante ?? "";
                 case "CodBarras":
@@ -476,6 +488,10 @@ namespace EtiquetaFORNew
                     return produto.Fabricante ?? "";
                 case "Grupo":
                     return produto.Grupo ?? "";
+                case "SubGrupo":
+                    return produto.SubGrupo ?? "";
+                case "Marca":
+                    return produto.Marca ?? "";
                 case "Prateleira":
                     return produto.Prateleira ?? "";
                 case "Garantia":
@@ -493,6 +509,15 @@ namespace EtiquetaFORNew
                 default:
                     return "";
             }
+        }
+
+        private string ObterValorExpressao(string expressao, Produto produto)
+        {
+            if (produto == null)
+                return $"[{(string.IsNullOrWhiteSpace(expressao) ? "Expressão" : expressao)}]";
+
+            ResultadoExpressao resultado = ExpressionEngine.Calcular(expressao, produto);
+            return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : "[Erro]";
         }
 
         private string ObterCodigoBarras(string campo, Produto produto)

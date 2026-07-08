@@ -8,6 +8,7 @@ namespace EtiquetaFORNew
         private static readonly HashSet<string> CamposPreco = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "PRECO",
+            "PRECOCUSTO",
             "PRECOVENDA",
             "VENDAA",
             "VENDAB",
@@ -87,39 +88,8 @@ namespace EtiquetaFORNew
         private static bool TryObterValorPreco(Produto produto, string campo, out decimal valor)
         {
             valor = 0m;
-
-            switch (NormalizarCampo(campo))
-            {
-                case "PRECO":
-                    valor = produto.Preco;
-                    return true;
-                case "PRECOVENDA":
-                    valor = produto.PrecoVenda > 0m ? produto.PrecoVenda : produto.Preco;
-                    return true;
-                case "VENDAA":
-                    valor = produto.VendaA;
-                    return true;
-                case "VENDAB":
-                    valor = produto.VendaB;
-                    return true;
-                case "VENDAC":
-                    valor = produto.VendaC;
-                    return true;
-                case "VENDAD":
-                    valor = produto.VendaD;
-                    return true;
-                case "VENDAE":
-                    valor = produto.VendaE;
-                    return true;
-                case "PRECOORIGINAL":
-                    valor = produto.PrecoOriginal.HasValue ? produto.PrecoOriginal.Value : produto.Preco;
-                    return true;
-                case "PRECOPROMOCIONAL":
-                    valor = produto.PrecoPromocional.HasValue ? produto.PrecoPromocional.Value : produto.Preco;
-                    return true;
-                default:
-                    return false;
-            }
+            string mensagemErro;
+            return CampoEtiquetaResolver.TryObterValorDecimal(produto, campo, out valor, out mensagemErro);
         }
 
         private static string NormalizarCampo(string campo)

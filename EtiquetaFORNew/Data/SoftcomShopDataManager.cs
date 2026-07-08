@@ -225,8 +225,8 @@ namespace EtiquetaFORNew
             decimal preco = LerDecimal(produto["preco_venda"], 0m);
             cmd.Parameters.AddWithValue("@preco", preco);
 
-            cmd.Parameters.AddWithValue("@fabricante", produto["marca_nome"]?.ToString() ?? "");
-            cmd.Parameters.AddWithValue("@grupo", produto["grupo_nome"]?.ToString() ?? "");
+            cmd.Parameters.AddWithValue("@fabricante", ObterFabricanteProduto(produto));
+            cmd.Parameters.AddWithValue("@grupo", ObterGrupoProduto(produto));
             cmd.Parameters.AddWithValue("@dataAtualizacao", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             cmd.Parameters.AddWithValue("@ativo", 1);
 
@@ -643,14 +643,38 @@ namespace EtiquetaFORNew
             DefinirSeVazio(normalizado, "marca_nome",
                 item["marca_nome"],
                 item["fabricante"],
+                item["fabricante_nome"],
+                item["nome_fabricante"],
+                item["marca"],
+                item["marca_descricao"],
+                item["descricao_marca"],
                 produto?["marca_nome"],
-                produto?["fabricante"]);
+                produto?["fabricante"],
+                produto?["fabricante_nome"],
+                produto?["nome_fabricante"],
+                produto?["marca"],
+                produto?["marca_descricao"],
+                produto?["descricao_marca"]);
 
             DefinirSeVazio(normalizado, "grupo_nome",
                 item["grupo_nome"],
+                item["grupo_descricao"],
+                item["descricao_grupo"],
+                item["nome_grupo"],
+                item["grupo_produto"],
                 item["grupo"],
+                item["categoria"],
+                item["categoria_nome"],
+                item["departamento"],
                 produto?["grupo_nome"],
-                produto?["grupo"]);
+                produto?["grupo_descricao"],
+                produto?["descricao_grupo"],
+                produto?["nome_grupo"],
+                produto?["grupo_produto"],
+                produto?["grupo"],
+                produto?["categoria"],
+                produto?["categoria_nome"],
+                produto?["departamento"]);
 
             return normalizado;
         }
@@ -1114,6 +1138,8 @@ namespace EtiquetaFORNew
                     cmd.Parameters.AddWithValue("@preco", preco);
                 }
 
+                AdicionarCamposClassificacaoProduto(cmd, campos, produto);
+
                 cmd.CommandText = @"
                 UPDATE Mercadorias 
                 SET " + string.Join(", ", campos) + @"
@@ -1143,12 +1169,19 @@ namespace EtiquetaFORNew
                 if (condicoes.Count == 0)
                     return 0;
 
+                var campos = new List<string>
+                {
+                    "PrecoVenda = @preco",
+                    "UltimaAtualizacao = @data",
+                    "GerarEtiqueta = 1",
+                    "QuantidadeEtiqueta = @qtd"
+                };
+
+                AdicionarCamposClassificacaoProduto(cmd, campos, produto);
+
                 cmd.CommandText = @"
                 UPDATE Mercadorias 
-                SET PrecoVenda = @preco, 
-                    UltimaAtualizacao = @data,
-                    GerarEtiqueta = 1,
-                    QuantidadeEtiqueta = @qtd
+                SET " + string.Join(", ", campos) + @"
                 WHERE " + string.Join(" OR ", condicoes);
 
                 cmd.Parameters.AddWithValue("@preco", preco);
@@ -1194,6 +1227,122 @@ namespace EtiquetaFORNew
             }
 
             return "";
+        }
+
+        private static string PrimeiroTextoValor(params string[] valores)
+        {
+            foreach (var valor in valores)
+            {
+                if (!string.IsNullOrWhiteSpace(valor))
+                    return valor.Trim();
+            }
+
+            return "";
+        }
+
+        private static string ObterFabricanteProduto(JToken produto)
+        {
+            return PrimeiroTextoValor(
+                ObterCampoComoTexto(produto, "marca_nome"),
+                ObterCampoComoTexto(produto, "fabricante"),
+                ObterCampoComoTexto(produto, "fabricante_nome"),
+                ObterCampoComoTexto(produto, "nome_fabricante"),
+                ObterCampoComoTexto(produto, "marca"),
+                ObterCampoComoTexto(produto, "marca_descricao"),
+                ObterCampoComoTexto(produto, "descricao_marca"),
+                ObterCampoComoTexto(produto, "brand"),
+                ObterCampoComoTexto(produto, "brand_name"),
+                ObterCampoComoTexto(produto, "FABRICANTE"));
+        }
+
+        private static string ObterGrupoProduto(JToken produto)
+        {
+            return PrimeiroTextoValor(
+                ObterCampoComoTexto(produto, "grupo_nome"),
+                ObterCampoComoTexto(produto, "grupo_descricao"),
+                ObterCampoComoTexto(produto, "descricao_grupo"),
+                ObterCampoComoTexto(produto, "nome_grupo"),
+                ObterCampoComoTexto(produto, "grupo_produto"),
+                ObterCampoComoTexto(produto, "grupo"),
+                ObterCampoComoTexto(produto, "categoria"),
+                ObterCampoComoTexto(produto, "categoria_nome"),
+                ObterCampoComoTexto(produto, "departamento"),
+                ObterCampoComoTexto(produto, "GRUPO"));
+        }
+
+        private static void AdicionarCamposClassificacaoProduto(SQLiteCommand cmd, List<string> campos, JToken produto)
+        {
+            string fabricante = ObterFabricanteProduto(produto);
+            if (!string.IsNullOrWhiteSpace(fabricante))
+            {
+                campos.Add("Fabricante = @fabricante");
+                cmd.Parameters.AddWithValue("@fabricante", fabricante);
+            }
+
+            string grupo = ObterGrupoProduto(produto);
+            if (!string.IsNullOrWhiteSpace(grupo))
+            {
+                campos.Add("Grupo = @grupo");
+                cmd.Parameters.AddWithValue("@grupo", grupo);
+            }
+        }
+
+        private static string ObterCampoComoTexto(JToken token, string nomeCampo)
+        {
+            return ObterTextoClassificacao(ObterCampo(token, nomeCampo));
+        }
+
+        private static JToken ObterCampo(JToken token, string nomeCampo)
+        {
+            var obj = token as JObject;
+            if (obj == null || string.IsNullOrWhiteSpace(nomeCampo))
+                return null;
+
+            foreach (var prop in obj.Properties())
+            {
+                if (string.Equals(prop.Name, nomeCampo, StringComparison.OrdinalIgnoreCase))
+                    return prop.Value;
+            }
+
+            return null;
+        }
+
+        private static string ObterTextoClassificacao(JToken token)
+        {
+            if (token == null || token.Type == JTokenType.Null)
+                return "";
+
+            if (token is JValue)
+                return token.ToString().Trim();
+
+            var array = token as JArray;
+            if (array != null)
+            {
+                foreach (var item in array)
+                {
+                    string texto = ObterTextoClassificacao(item);
+                    if (!string.IsNullOrWhiteSpace(texto))
+                        return texto;
+                }
+
+                return "";
+            }
+
+            var obj = token as JObject;
+            if (obj != null)
+            {
+                return PrimeiroTextoValor(
+                    ObterCampoComoTexto(obj, "nome"),
+                    ObterCampoComoTexto(obj, "descricao"),
+                    ObterCampoComoTexto(obj, "descrição"),
+                    ObterCampoComoTexto(obj, "GRP_DESCRI"),
+                    ObterCampoComoTexto(obj, "valor"),
+                    ObterCampoComoTexto(obj, "value"),
+                    ObterCampoComoTexto(obj, "name"),
+                    ObterCampoComoTexto(obj, "description"));
+            }
+
+            return token.ToString().Trim();
         }
 
         private static string ObterTexto(JToken token)

@@ -1643,6 +1643,10 @@ namespace EtiquetaFORNew
                     produto.Fornecedor = produtoAtualCompleto["Fornecedor"]?.ToString();
                     produto.Fabricante = produtoAtualCompleto["Fabricante"]?.ToString();
                     produto.Grupo = produtoAtualCompleto["Grupo"]?.ToString();
+                    if (produtoAtualCompleto.Table.Columns.Contains("SubGrupo"))
+                        produto.SubGrupo = produtoAtualCompleto["SubGrupo"]?.ToString();
+                    if (produtoAtualCompleto.Table.Columns.Contains("Marca"))
+                        produto.Marca = produtoAtualCompleto["Marca"]?.ToString();
                     produto.Prateleira = produtoAtualCompleto["Prateleira"]?.ToString();
                     produto.Garantia = produtoAtualCompleto["Garantia"]?.ToString();
                     produto.Tam = produtoAtualCompleto["Tam"]?.ToString();
@@ -1712,6 +1716,10 @@ namespace EtiquetaFORNew
                         produto.Fornecedor = row["Fornecedor"]?.ToString();
                         produto.Fabricante = row["Fabricante"]?.ToString();
                         produto.Grupo = row["Grupo"]?.ToString();
+                        if (row.Table.Columns.Contains("SubGrupo"))
+                            produto.SubGrupo = row["SubGrupo"]?.ToString();
+                        if (row.Table.Columns.Contains("Marca"))
+                            produto.Marca = row["Marca"]?.ToString();
                         produto.Prateleira = row["Prateleira"]?.ToString();
                         produto.Garantia = row["Garantia"]?.ToString();
                         produto.Tam = row["Tam"]?.ToString();
@@ -2995,7 +3003,11 @@ namespace EtiquetaFORNew
                         Quantidade = item.Quantidade, // Mantém a quantidade que veio do Softshop
                         Tam = row["Tam"]?.ToString(),
                         Cores = row["Cores"]?.ToString(),
-                        CodFabricante = row["Referencia"]?.ToString()
+                        CodFabricante = row.Table.Columns.Contains("Referencia")
+                            ? row["Referencia"]?.ToString()
+                            : (row.Table.Columns.Contains("CodFabricante") ? row["CodFabricante"]?.ToString() : ""),
+                        SubGrupo = row.Table.Columns.Contains("SubGrupo") ? row["SubGrupo"]?.ToString() : "",
+                        Marca = row.Table.Columns.Contains("Marca") ? row["Marca"]?.ToString() : ""
                     };
                 }
             }
@@ -3059,6 +3071,12 @@ namespace EtiquetaFORNew
 
                 if (row.Table.Columns.Contains("Grupo"))
                     produto.Grupo = row["Grupo"]?.ToString() ?? "";
+
+                if (row.Table.Columns.Contains("SubGrupo"))
+                    produto.SubGrupo = row["SubGrupo"]?.ToString() ?? "";
+
+                if (row.Table.Columns.Contains("Marca"))
+                    produto.Marca = row["Marca"]?.ToString() ?? "";
 
                 if (row.Table.Columns.Contains("Prateleira"))
                     produto.Prateleira = row["Prateleira"]?.ToString() ?? "";
@@ -3253,6 +3271,10 @@ namespace EtiquetaFORNew
                 produto.Fornecedor = row["Fornecedor"]?.ToString();
                 produto.Fabricante = row["Fabricante"]?.ToString();
                 produto.Grupo = row["Grupo"]?.ToString();
+                if (row.Table.Columns.Contains("SubGrupo"))
+                    produto.SubGrupo = row["SubGrupo"]?.ToString();
+                if (row.Table.Columns.Contains("Marca"))
+                    produto.Marca = row["Marca"]?.ToString();
                 produto.Prateleira = row["Prateleira"]?.ToString();
                 produto.Garantia = row["Garantia"]?.ToString();
                 produto.Tam = row["Tam"]?.ToString();

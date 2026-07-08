@@ -59,6 +59,10 @@ namespace EtiquetaFORNew.Forms
         private Label lblCalculoPreco;
         private ComboBox cmbOperadorCalculoPreco;
         private NumericUpDown numValorCalculoPreco;
+        private Label lblExpressaoFormula;
+        private TextBox txtExpressaoFormula;
+        private Button btnInserirCampoExpressao;
+        private Button btnEditorExpressao;
 
         // Toolbox de elementos
         private Panel panelToolbox;
@@ -730,9 +734,9 @@ namespace EtiquetaFORNew.Forms
                 Font = new Font("Segoe UI", 8)
             };
             cmbCampos.Items.AddRange(new object[] {
-                "Mercadoria", "CodigoMercadoria", "CodFabricante", "CodBarras",
-                "PrecoVenda", "VendaA", "VendaB", "VendaC", "VendaD", "VendaE",
-                "Fornecedor", "Fabricante", "Grupo", "Prateleira", "Garantia",
+                "Mercadoria", "Descricao", "CodigoMercadoria", "Codigo", "CodFabricante", "Referencia", "CodBarras",
+                "Preco", "PrecoCusto", "PrecoVenda", "VendaA", "VendaB", "VendaC", "VendaD", "VendaE",
+                "Quantidade", "Fornecedor", "Fabricante", "Grupo", "SubGrupo", "Marca", "Prateleira", "Garantia",
                 "Tam", "Cores", "CodBarras_Grade", "PrecoOriginal", "PrecoPromocional"
             });
             cmbCampos.SelectedIndexChanged += (s, e) => {
@@ -777,6 +781,9 @@ namespace EtiquetaFORNew.Forms
             yPos += 35;
 
             Button btnTexto = CriarBotaoElemento("📝 Texto", yPos, () => AdicionarElemento(TipoElemento.Texto));
+            yPos += 40;
+
+            Button btnExpressao = CriarBotaoElemento("∑ Expressão", yPos, () => AdicionarElemento(TipoElemento.Expressao));
             yPos += 40;
 
             Button btnImagem = CriarBotaoElemento("🖼️ Imagem", yPos, () => AdicionarImagem());
@@ -935,6 +942,62 @@ namespace EtiquetaFORNew.Forms
             numValorCalculoPreco.ValueChanged += (s, e) => AlterarCalculoPreco();
             panelPropriedades.Controls.Add(numValorCalculoPreco);
             yPos += 35;
+
+            lblExpressaoFormula = new Label
+            {
+                Text = "Expressão:",
+                Location = new Point(10, yPos),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+            panelPropriedades.Controls.Add(lblExpressaoFormula);
+            yPos += 25;
+
+            txtExpressaoFormula = new TextBox
+            {
+                Location = new Point(10, yPos),
+                Size = new Size(160, 25),
+                Font = new Font("Segoe UI", 9),
+                Visible = false,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                AutoCompleteSource = AutoCompleteSource.CustomSource
+            };
+            txtExpressaoFormula.AutoCompleteCustomSource.AddRange(CampoEtiquetaResolver.ObterCamposDisponiveis().ToArray());
+            txtExpressaoFormula.TextChanged += (s, e) => AlterarExpressao();
+            txtExpressaoFormula.Leave += (s, e) => ValidarExpressaoSelecionada(true);
+            panelPropriedades.Controls.Add(txtExpressaoFormula);
+            yPos += 32;
+
+            btnInserirCampoExpressao = new Button
+            {
+                Text = "Inserir Campo",
+                Location = new Point(10, yPos),
+                Size = new Size(110, 28),
+                Font = new Font("Segoe UI", 8),
+                BackColor = Color.FromArgb(236, 240, 241),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Visible = false
+            };
+            btnInserirCampoExpressao.Click += (s, e) => AbrirMenuCamposExpressao();
+            panelPropriedades.Controls.Add(btnInserirCampoExpressao);
+
+            btnEditorExpressao = new Button
+            {
+                Text = "...",
+                Location = new Point(130, yPos),
+                Size = new Size(40, 28),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                BackColor = Color.FromArgb(236, 240, 241),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Visible = false
+            };
+            btnEditorExpressao.Click += (s, e) => AbrirEditorExpressao();
+            panelPropriedades.Controls.Add(btnEditorExpressao);
+            yPos += 38;
 
             Label lblAlinhamento = new Label
             {
@@ -1258,6 +1321,19 @@ namespace EtiquetaFORNew.Forms
                     elemento.Bounds = new Rectangle(1, 1, Math.Max(3, largura), Math.Max(2, altura));
                 }
             }
+            else if (tipo == TipoElemento.Expressao)
+            {
+                elemento.Conteudo = "PrecoVenda * 1.10";
+                elemento.Fonte = new Font("Arial", 8);
+
+                using (Graphics g = Graphics.FromImage(new Bitmap(1, 1)))
+                {
+                    SizeF tamanhoTexto = g.MeasureString("[Expressão]", elemento.Fonte);
+                    int largura = Math.Min((int)(tamanhoTexto.Width / MM_PARA_PIXEL) + 4, (int)template.Largura - 2);
+                    int altura = Math.Min((int)(tamanhoTexto.Height / MM_PARA_PIXEL) + 2, (int)template.Altura - 2);
+                    elemento.Bounds = new Rectangle(1, 1, Math.Max(12, largura), Math.Max(3, altura));
+                }
+            }
 
             template.Elementos.Add(elemento);
             elementoSelecionado = elemento;
@@ -1424,6 +1500,11 @@ namespace EtiquetaFORNew.Forms
                             case TipoElemento.Imagem:
                                 tipoNome = "🖼️ Imagem";
                                 break;
+                            case TipoElemento.Expressao:
+                                string expressaoResumida = elementoReferencia.Conteudo ?? "";
+                                if (expressaoResumida.Length > 18) expressaoResumida = expressaoResumida.Substring(0, 18) + "…";
+                                tipoNome = "∑ Expressão: " + expressaoResumida;
+                                break;
                             default:
                                 tipoNome = elementoReferencia.Tipo.ToString();
                                 break;
@@ -1514,6 +1595,18 @@ namespace EtiquetaFORNew.Forms
                         && cmbOperadorCalculoPreco.SelectedItem != null
                         && cmbOperadorCalculoPreco.SelectedItem.ToString() != "Nenhum";
                 }
+
+                bool expressao = edicaoIndividual && elementoSelecionado.Tipo == TipoElemento.Expressao;
+                if (lblExpressaoFormula != null) lblExpressaoFormula.Visible = expressao;
+                if (txtExpressaoFormula != null)
+                {
+                    txtExpressaoFormula.Visible = expressao;
+                    txtExpressaoFormula.Enabled = expressao;
+                    txtExpressaoFormula.Text = expressao ? (elementoSelecionado.Conteudo ?? "") : "";
+                    txtExpressaoFormula.BackColor = Color.White;
+                }
+                if (btnInserirCampoExpressao != null) btnInserirCampoExpressao.Visible = expressao;
+                if (btnEditorExpressao != null) btnEditorExpressao.Visible = expressao;
             }
             finally
             {
@@ -1563,6 +1656,155 @@ namespace EtiquetaFORNew.Forms
 
             SalvarEstadoHistorico();
             pbCanvas.Invalidate();
+        }
+
+        private void AlterarExpressao()
+        {
+            if (atualizandoPropriedades) return;
+            if (elementoSelecionado == null || elementoSelecionado.Tipo != TipoElemento.Expressao) return;
+            if (txtExpressaoFormula == null) return;
+
+            string novaExpressao = txtExpressaoFormula.Text ?? string.Empty;
+            if ((elementoSelecionado.Conteudo ?? string.Empty) == novaExpressao)
+                return;
+
+            elementoSelecionado.Conteudo = novaExpressao;
+            txtExpressaoFormula.BackColor = Color.White;
+            SalvarEstadoHistorico();
+            pbCanvas.Invalidate();
+        }
+
+        private bool ValidarExpressaoSelecionada(bool mostrarMensagem)
+        {
+            if (atualizandoPropriedades) return true;
+            if (elementoSelecionado == null || elementoSelecionado.Tipo != TipoElemento.Expressao) return true;
+
+            ResultadoExpressao resultado = ExpressionEngine.Validar(elementoSelecionado.Conteudo);
+            bool valida = resultado.Sucesso;
+
+            if (txtExpressaoFormula != null)
+                txtExpressaoFormula.BackColor = valida ? Color.White : Color.MistyRose;
+
+            if (!valida && mostrarMensagem)
+            {
+                MessageBox.Show(
+                    resultado.MensagemErro,
+                    "Expressão inválida",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+
+            return valida;
+        }
+
+        private void AbrirMenuCamposExpressao()
+        {
+            if (txtExpressaoFormula == null || !txtExpressaoFormula.Visible)
+                return;
+
+            ContextMenuStrip menu = new ContextMenuStrip();
+            foreach (string campo in CampoEtiquetaResolver.ObterCamposDisponiveis())
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem(campo);
+                item.Click += (s, e) => InserirTextoNaExpressao(campo);
+                menu.Items.Add(item);
+            }
+
+            menu.Show(btnInserirCampoExpressao, new Point(0, btnInserirCampoExpressao.Height));
+        }
+
+        private void InserirTextoNaExpressao(string texto)
+        {
+            if (txtExpressaoFormula == null)
+                return;
+
+            int inicio = txtExpressaoFormula.SelectionStart;
+            txtExpressaoFormula.SelectedText = texto;
+            txtExpressaoFormula.Focus();
+            txtExpressaoFormula.SelectionStart = Math.Min(txtExpressaoFormula.Text.Length, inicio + texto.Length);
+        }
+
+        private void AbrirEditorExpressao()
+        {
+            if (elementoSelecionado == null || elementoSelecionado.Tipo != TipoElemento.Expressao)
+                return;
+
+            using (Form editor = new Form())
+            using (TextBox txtFormula = new TextBox())
+            using (ListBox lstCampos = new ListBox())
+            using (Button btnOk = new Button())
+            using (Button btnCancelar = new Button())
+            {
+                editor.Text = "Editor de Expressão";
+                editor.StartPosition = FormStartPosition.CenterParent;
+                editor.FormBorderStyle = FormBorderStyle.FixedDialog;
+                editor.MinimizeBox = false;
+                editor.MaximizeBox = false;
+                editor.ClientSize = new Size(520, 300);
+
+                txtFormula.Multiline = true;
+                txtFormula.ScrollBars = ScrollBars.Vertical;
+                txtFormula.Font = new Font("Consolas", 10);
+                txtFormula.Location = new Point(12, 12);
+                txtFormula.Size = new Size(340, 230);
+                txtFormula.Text = elementoSelecionado.Conteudo ?? string.Empty;
+                editor.Controls.Add(txtFormula);
+
+                lstCampos.Location = new Point(365, 12);
+                lstCampos.Size = new Size(140, 230);
+                lstCampos.Font = new Font("Segoe UI", 9);
+                foreach (string campo in CampoEtiquetaResolver.ObterCamposDisponiveis())
+                    lstCampos.Items.Add(campo);
+                lstCampos.DoubleClick += (s, e) =>
+                {
+                    if (lstCampos.SelectedItem == null) return;
+                    int inicio = txtFormula.SelectionStart;
+                    string campo = lstCampos.SelectedItem.ToString();
+                    txtFormula.SelectedText = campo;
+                    txtFormula.Focus();
+                    txtFormula.SelectionStart = Math.Min(txtFormula.Text.Length, inicio + campo.Length);
+                };
+                editor.Controls.Add(lstCampos);
+
+                btnOk.Text = "OK";
+                btnOk.Location = new Point(330, 258);
+                btnOk.Size = new Size(80, 28);
+                btnOk.DialogResult = DialogResult.OK;
+                editor.Controls.Add(btnOk);
+
+                btnCancelar.Text = "Cancelar";
+                btnCancelar.Location = new Point(425, 258);
+                btnCancelar.Size = new Size(80, 28);
+                btnCancelar.DialogResult = DialogResult.Cancel;
+                editor.Controls.Add(btnCancelar);
+
+                editor.AcceptButton = btnOk;
+                editor.CancelButton = btnCancelar;
+
+                if (editor.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                ResultadoExpressao validacao = ExpressionEngine.Validar(txtFormula.Text);
+                if (!validacao.Sucesso)
+                {
+                    MessageBox.Show(
+                        validacao.MensagemErro,
+                        "Expressão inválida",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if ((elementoSelecionado.Conteudo ?? string.Empty) != txtFormula.Text)
+                {
+                    elementoSelecionado.Conteudo = txtFormula.Text;
+                    if (txtExpressaoFormula != null)
+                        txtExpressaoFormula.Text = txtFormula.Text;
+
+                    SalvarEstadoHistorico();
+                    pbCanvas.Invalidate();
+                }
+            }
         }
 
         private void AlterarLarguraElementosSelecionados()
@@ -2209,6 +2451,22 @@ namespace EtiquetaFORNew.Forms
                     }
                     break;
 
+                case TipoElemento.Expressao:
+                    string valorExpressao = ObterValorExpressao(elem.Conteudo, produto);
+                    using (SolidBrush brush = new SolidBrush(elem.Cor))
+                    using (Font fonteComZoom = new Font(elem.Fonte.FontFamily, elem.Fonte.Size * zoom, elem.Fonte.Style))
+                    {
+                        StringFormat sf = new StringFormat
+                        {
+                            Alignment = elem.Alinhamento,
+                            LineAlignment = StringAlignment.Center,
+                            Trimming = StringTrimming.EllipsisCharacter,
+                            FormatFlags = StringFormatFlags.LineLimit
+                        };
+                        g.DrawString(valorExpressao, fonteComZoom, brush, bounds, sf);
+                    }
+                    break;
+
                 case TipoElemento.CodigoBarras:
                     string codigoBarras = ObterValorCampo(elem.Conteudo, produto);
                     DesenharCodigoBarras(g, codigoBarras, bounds);
@@ -2272,19 +2530,28 @@ namespace EtiquetaFORNew.Forms
 
             switch (campo)
             {
-                case "Mercadoria":       return produto.Nome ?? "";
+                case "Nome":
+                case "Mercadoria":
+                case "Descricao":        return produto.Nome ?? "";
+                case "Codigo":
                 case "CodigoMercadoria": return produto.Codigo ?? "";
+                case "Referencia":
                 case "CodFabricante":    return produto.CodFabricante ?? "";
                 case "CodBarras":        return produto.CodBarras ?? "";
+                case "Preco":
+                case "PrecoCusto":       return FormatadorMonetario.Formatar(produto.Preco);
                 case "PrecoVenda":       return FormatadorMonetario.Formatar(produto.PrecoVenda > 0 ? produto.PrecoVenda : produto.Preco);
                 case "VendaA":           return produto.VendaA > 0 ? FormatadorMonetario.Formatar(produto.VendaA) : "-";
                 case "VendaB":           return produto.VendaB > 0 ? FormatadorMonetario.Formatar(produto.VendaB) : "-";
                 case "VendaC":           return produto.VendaC > 0 ? FormatadorMonetario.Formatar(produto.VendaC) : "-";
                 case "VendaD":           return produto.VendaD > 0 ? FormatadorMonetario.Formatar(produto.VendaD) : "-";
                 case "VendaE":           return produto.VendaE > 0 ? FormatadorMonetario.Formatar(produto.VendaE) : "-";
+                case "Quantidade":       return produto.Quantidade.ToString();
                 case "Fornecedor":       return produto.Fornecedor ?? "";
                 case "Fabricante":       return produto.Fabricante ?? "";
                 case "Grupo":            return produto.Grupo ?? "";
+                case "SubGrupo":         return produto.SubGrupo ?? "";
+                case "Marca":            return produto.Marca ?? "";
                 case "Prateleira":       return produto.Prateleira ?? "";
                 case "Garantia":         return produto.Garantia ?? "";
                 case "Tam":              return produto.Tam ?? "";
@@ -2296,6 +2563,15 @@ namespace EtiquetaFORNew.Forms
                     return FormatadorMonetario.Formatar(produto.PrecoPromocional ?? produto.Preco);
                 default: return "";
             }
+        }
+
+        private string ObterValorExpressao(string expressao, Produto produto)
+        {
+            if (produto == null)
+                return $"[{(string.IsNullOrWhiteSpace(expressao) ? "Expressão" : expressao)}]";
+
+            ResultadoExpressao resultado = ExpressionEngine.Calcular(expressao, produto);
+            return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : "[Erro]";
         }
 
         private void DesenharCodigoBarras(Graphics g, string codigo, Rectangle bounds)

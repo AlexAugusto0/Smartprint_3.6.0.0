@@ -23,6 +23,8 @@ namespace EtiquetaFORNew
         public string Fornecedor { get; set; }
         public string Fabricante { get; set; }
         public string Grupo { get; set; }
+        public string SubGrupo { get; set; }
+        public string Marca { get; set; }
         public string Prateleira { get; set; }
         public string Garantia { get; set; }
         public string Tam { get; set; }
@@ -40,7 +42,8 @@ namespace EtiquetaFORNew
         Texto,
         Campo,
         CodigoBarras,
-        Imagem
+        Imagem,
+        Expressao
     }
 
     // Classe de Elemento da Etiqueta
