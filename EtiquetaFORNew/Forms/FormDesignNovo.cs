@@ -913,8 +913,8 @@ namespace EtiquetaFORNew.Forms
                 ForeColor = Color.Gray,
                 Visible = false
             };
-            panelPropriedades.Controls.Add(lblCalculoPreco);
-            yPos += 25;
+            //panelPropriedades.Controls.Add(lblCalculoPreco);
+            //yPos += 25;
 
             cmbOperadorCalculoPreco = new ComboBox
             {
@@ -926,7 +926,7 @@ namespace EtiquetaFORNew.Forms
             };
             cmbOperadorCalculoPreco.Items.AddRange(new object[] { "Nenhum", "+", "-", "*", "/" });
             cmbOperadorCalculoPreco.SelectedIndexChanged += (s, e) => AlterarCalculoPreco();
-            panelPropriedades.Controls.Add(cmbOperadorCalculoPreco);
+            //panelPropriedades.Controls.Add(cmbOperadorCalculoPreco);
 
             numValorCalculoPreco = new NumericUpDown
             {
@@ -940,8 +940,8 @@ namespace EtiquetaFORNew.Forms
                 Visible = false
             };
             numValorCalculoPreco.ValueChanged += (s, e) => AlterarCalculoPreco();
-            panelPropriedades.Controls.Add(numValorCalculoPreco);
-            yPos += 35;
+            //panelPropriedades.Controls.Add(numValorCalculoPreco);
+            //yPos += 35;
 
             lblExpressaoFormula = new Label
             {
