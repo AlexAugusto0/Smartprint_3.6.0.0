@@ -361,9 +361,12 @@ namespace EtiquetaFORNew
         // ⭐ CORRIGIDO: Desenhar elemento com escala correta
         private void DesenharElemento(Graphics g, ElementoEtiqueta elem, RectangleF rectEtiqueta, Produto produto)
         {
-            // Calcular escala correta (MM para pixels)
-            float escala = PIXELS_POR_MM;
+            DesenharElementoEscalado(g, elem, rectEtiqueta, produto, PIXELS_POR_MM);
+        }
 
+        private void DesenharElementoEscalado(Graphics g, ElementoEtiqueta elem, RectangleF rectEtiqueta, Produto produto, float escala)
+        {
+            // Calcular escala correta (MM para pixels)
             RectangleF bounds = new RectangleF(
                 rectEtiqueta.X + (elem.Bounds.X * escala),
                 rectEtiqueta.Y + (elem.Bounds.Y * escala),
@@ -434,9 +437,27 @@ namespace EtiquetaFORNew
                 }
             }
 
+            DesenharBordaElemento(g, bounds, elem, escala);
+
             if (state != null)
             {
                 g.Restore(state);
+            }
+        }
+
+        private void DesenharBordaElemento(Graphics g, RectangleF bounds, ElementoEtiqueta elem, float escala)
+        {
+            if (elem == null || elem.Borda != TipoBordaElemento.SolidaPreta)
+                return;
+
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                return;
+
+            float espessura = Math.Max(0.1f, elem.EspessuraBorda) * Math.Max(0.1f, escala);
+            using (Pen penBorda = new Pen(Color.Black, espessura))
+            {
+                penBorda.Alignment = PenAlignment.Inset;
+                g.DrawRectangle(penBorda, bounds.X, bounds.Y, bounds.Width, bounds.Height);
             }
         }
 
@@ -685,23 +706,25 @@ namespace EtiquetaFORNew
 
             RectangleF rectEtiqueta = new RectangleF(x, y, largura, altura);
 
-            Pen penBorda = new Pen(Color.Black, 1);
-            g.DrawRectangle(penBorda, x, y, largura, altura);
-            penBorda.Dispose();
+            if (template.Elementos.Count > 0)
+            {
+                foreach (var elem in template.Elementos)
+                    DesenharElementoEscalado(g, elem, rectEtiqueta, produtoExemplo, pixelsPorMM);
+            }
+            else
+            {
+                using (Font fonte = new Font("Segoe UI", 10, FontStyle.Bold))
+                using (SolidBrush brush = new SolidBrush(Color.Black))
+                using (StringFormat sf = new StringFormat())
+                {
+                    sf.Alignment = StringAlignment.Center;
+                    sf.LineAlignment = StringAlignment.Center;
 
-            Font fonte = new Font("Segoe UI", 10, FontStyle.Bold);
-            SolidBrush brush = new SolidBrush(Color.Black);
-            StringFormat sf = new StringFormat();
-            sf.Alignment = StringAlignment.Center;
-            sf.LineAlignment = StringAlignment.Center;
-
-            string texto = string.Format("ETIQUETA\n{0}x{1} mm",
-                configuracao.LarguraEtiqueta, configuracao.AlturaEtiqueta);
-            g.DrawString(texto, fonte, brush, rectEtiqueta, sf);
-
-            fonte.Dispose();
-            brush.Dispose();
-            sf.Dispose();
+                    string texto = string.Format("ETIQUETA\n{0}x{1} mm",
+                        configuracao.LarguraEtiqueta, configuracao.AlturaEtiqueta);
+                    g.DrawString(texto, fonte, brush, rectEtiqueta, sf);
+                }
+            }
         }
     }
 }

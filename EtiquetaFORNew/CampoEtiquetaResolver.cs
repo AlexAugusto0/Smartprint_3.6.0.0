@@ -42,6 +42,7 @@ namespace EtiquetaFORNew
             "Grupo",
             "SubGrupo",
             "Marca",
+            "Observacao",
             "Prateleira",
             "Garantia",
             "Tam",
@@ -74,6 +75,7 @@ namespace EtiquetaFORNew
             RegistrarTexto("Grupo", p => p.Grupo);
             RegistrarTexto("SubGrupo", p => p.SubGrupo, "Sub Grupo");
             RegistrarTexto("Marca", p => p.Marca);
+            RegistrarTexto("Observacao", p => p.Observacao, "Observação");
             RegistrarTexto("Prateleira", p => p.Prateleira);
             RegistrarTexto("Garantia", p => p.Garantia);
             RegistrarTexto("Tam", p => p.Tam, "Tamanho");

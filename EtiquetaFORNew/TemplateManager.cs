@@ -179,7 +179,9 @@ namespace EtiquetaFORNew
                     Alinhamento = elem.Alinhamento.ToString(),
                     Rotacao = elem.Rotacao,
                     OperadorCalculoPreco = elem.OperadorCalculoPreco,
-                    ValorCalculoPreco = elem.ValorCalculoPreco
+                    ValorCalculoPreco = elem.ValorCalculoPreco,
+                    Borda = elem.Borda.ToString(),
+                    EspessuraBorda = Math.Max(0.1f, elem.EspessuraBorda)
                 };
 
                 // ⭐ NOVA: Salvar cor de fundo se definida
@@ -227,7 +229,9 @@ namespace EtiquetaFORNew
                     Italico = elemSer.Italico,
                     Cor = System.Drawing.Color.FromArgb(elemSer.CorR, elemSer.CorG, elemSer.CorB),
                     OperadorCalculoPreco = elemSer.OperadorCalculoPreco,
-                    ValorCalculoPreco = elemSer.ValorCalculoPreco
+                    ValorCalculoPreco = elemSer.ValorCalculoPreco,
+                    Borda = ObterTipoBorda(elemSer.Borda),
+                    EspessuraBorda = elemSer.EspessuraBorda > 0 ? Math.Max(0.1f, elemSer.EspessuraBorda) : 1
                 };
 
                 // Alinhamento
@@ -288,6 +292,22 @@ namespace EtiquetaFORNew
 
             return template;
         }
+
+        private static TipoBordaElemento ObterTipoBorda(string borda)
+        {
+            if (!string.IsNullOrEmpty(borda))
+            {
+                try
+                {
+                    return (TipoBordaElemento)Enum.Parse(typeof(TipoBordaElemento), borda);
+                }
+                catch
+                {
+                }
+            }
+
+            return TipoBordaElemento.Transparente;
+        }
     }
 
     // Classes para serialização JSON
@@ -325,5 +345,7 @@ namespace EtiquetaFORNew
         public float Rotacao { get; set; }
         public string OperadorCalculoPreco { get; set; }
         public decimal ValorCalculoPreco { get; set; }
+        public string Borda { get; set; }
+        public float EspessuraBorda { get; set; }
     }
 }

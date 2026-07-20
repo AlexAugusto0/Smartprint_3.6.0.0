@@ -162,6 +162,7 @@ namespace EtiquetaFORNew.Data
                     Fornecedor TEXT,
                     Fabricante TEXT,
                     Grupo TEXT,
+                    Observacao TEXT,
                     Prateleira TEXT,
                     Garantia TEXT,
                     Tam TEXT,
@@ -218,6 +219,7 @@ namespace EtiquetaFORNew.Data
                     AdicionarCampoSeNaoExistir(conn, "Mercadorias", "Origem", "TEXT DEFAULT 'SQL'");
                     AdicionarCampoSeNaoExistir(conn, "Mercadorias", "Referencia", "TEXT");
                     AdicionarCampoSeNaoExistir(conn, "Mercadorias", "Marca", "TEXT");
+                    AdicionarCampoSeNaoExistir(conn, "Mercadorias", "Observacao", "TEXT");
                     AdicionarCampoSeNaoExistir(conn, "Mercadorias", "Ativo", "INTEGER DEFAULT 1");
                     AdicionarCampoSeNaoExistir(conn, "Mercadorias", "GerarEtiqueta", "INTEGER DEFAULT 0");
                     AdicionarCampoSeNaoExistir(conn, "Mercadorias", "QuantidadeEtiqueta", "INTEGER DEFAULT 1");
@@ -479,6 +481,7 @@ namespace EtiquetaFORNew.Data
                             Fornecedor,
                             Fabricante,
                             Grupo,
+                            Observacao,
                             Prateleira,
                             Garantia,
                             Tam,
@@ -639,6 +642,7 @@ namespace EtiquetaFORNew.Data
                     Fornecedor,
                     Fabricante,
                     Grupo,
+                    Observacao,
                     Prateleira,
                     Garantia,
                     Tam,
@@ -722,7 +726,7 @@ namespace EtiquetaFORNew.Data
                     CodigoMercadoria, CodFabricante, CodBarras, Mercadoria,
                     PrecoVenda, PrecoVenda as PrecoOriginal, PrecoPromocional,
                     VendaA, VendaB, VendaC, VendaD, VendaE,
-                    Fornecedor, Fabricante, Grupo, Prateleira,
+                    Fornecedor, Fabricante, Grupo, Observacao, Prateleira,
                     Garantia, Tam, Cores, CodBarras_Grade, Registro,
                     ID_Promocao, EmPromocao
                 FROM Mercadorias
@@ -808,6 +812,7 @@ namespace EtiquetaFORNew.Data
                             Fornecedor,
                             Fabricante,
                             Grupo,
+                            Observacao,
                             Prateleira,
                             Garantia,
                             Tam,

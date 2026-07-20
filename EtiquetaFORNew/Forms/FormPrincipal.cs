@@ -1647,6 +1647,8 @@ namespace EtiquetaFORNew
                         produto.SubGrupo = produtoAtualCompleto["SubGrupo"]?.ToString();
                     if (produtoAtualCompleto.Table.Columns.Contains("Marca"))
                         produto.Marca = produtoAtualCompleto["Marca"]?.ToString();
+                    if (produtoAtualCompleto.Table.Columns.Contains("Observacao"))
+                        produto.Observacao = produtoAtualCompleto["Observacao"]?.ToString();
                     produto.Prateleira = produtoAtualCompleto["Prateleira"]?.ToString();
                     produto.Garantia = produtoAtualCompleto["Garantia"]?.ToString();
                     produto.Tam = produtoAtualCompleto["Tam"]?.ToString();
@@ -1720,6 +1722,8 @@ namespace EtiquetaFORNew
                             produto.SubGrupo = row["SubGrupo"]?.ToString();
                         if (row.Table.Columns.Contains("Marca"))
                             produto.Marca = row["Marca"]?.ToString();
+                        if (row.Table.Columns.Contains("Observacao"))
+                            produto.Observacao = row["Observacao"]?.ToString();
                         produto.Prateleira = row["Prateleira"]?.ToString();
                         produto.Garantia = row["Garantia"]?.ToString();
                         produto.Tam = row["Tam"]?.ToString();
@@ -3007,7 +3011,8 @@ namespace EtiquetaFORNew
                             ? row["Referencia"]?.ToString()
                             : (row.Table.Columns.Contains("CodFabricante") ? row["CodFabricante"]?.ToString() : ""),
                         SubGrupo = row.Table.Columns.Contains("SubGrupo") ? row["SubGrupo"]?.ToString() : "",
-                        Marca = row.Table.Columns.Contains("Marca") ? row["Marca"]?.ToString() : ""
+                        Marca = row.Table.Columns.Contains("Marca") ? row["Marca"]?.ToString() : "",
+                        Observacao = row.Table.Columns.Contains("Observacao") ? row["Observacao"]?.ToString() : ""
                     };
                 }
             }
@@ -3078,6 +3083,9 @@ namespace EtiquetaFORNew
                 if (row.Table.Columns.Contains("Marca"))
                     produto.Marca = row["Marca"]?.ToString() ?? "";
 
+                if (row.Table.Columns.Contains("Observacao"))
+                    produto.Observacao = row["Observacao"]?.ToString() ?? "";
+
                 if (row.Table.Columns.Contains("Prateleira"))
                     produto.Prateleira = row["Prateleira"]?.ToString() ?? "";
 
@@ -3141,6 +3149,8 @@ namespace EtiquetaFORNew
 
                     // Aproveita para puxar outros dados que podem faltar na importação
                     produto.Nome = row["Mercadoria"]?.ToString() ?? produto.Nome;
+                    if (row.Table.Columns.Contains("Observacao"))
+                        produto.Observacao = row["Observacao"]?.ToString() ?? produto.Observacao;
                     produto.Tam = row["Tam"]?.ToString();
                     produto.Cores = row["Cores"]?.ToString();
                 }
@@ -3164,6 +3174,7 @@ namespace EtiquetaFORNew
                     Codigo = row["CodigoMercadoria"].ToString(),
                     // AQUI ESTÁ O PREÇO QUE VOCÊ PRECISA:
                     Preco = row["PrecoVenda"] != DBNull.Value ? Convert.ToDecimal(row["PrecoVenda"]) : 0m,
+                    Observacao = row.Table.Columns.Contains("Observacao") ? row["Observacao"].ToString() : "",
                     Tam = row.Table.Columns.Contains("Tam") ? row["Tam"].ToString() : "",
                     Cores = row.Table.Columns.Contains("Cores") ? row["Cores"].ToString() : ""
                 };
@@ -3275,6 +3286,8 @@ namespace EtiquetaFORNew
                     produto.SubGrupo = row["SubGrupo"]?.ToString();
                 if (row.Table.Columns.Contains("Marca"))
                     produto.Marca = row["Marca"]?.ToString();
+                if (row.Table.Columns.Contains("Observacao"))
+                    produto.Observacao = row["Observacao"]?.ToString();
                 produto.Prateleira = row["Prateleira"]?.ToString();
                 produto.Garantia = row["Garantia"]?.ToString();
                 produto.Tam = row["Tam"]?.ToString();

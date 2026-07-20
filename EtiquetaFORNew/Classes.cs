@@ -25,6 +25,7 @@ namespace EtiquetaFORNew
         public string Grupo { get; set; }
         public string SubGrupo { get; set; }
         public string Marca { get; set; }
+        public string Observacao { get; set; }
         public string Prateleira { get; set; }
         public string Garantia { get; set; }
         public string Tam { get; set; }
@@ -44,6 +45,12 @@ namespace EtiquetaFORNew
         CodigoBarras,
         Imagem,
         Expressao
+    }
+
+    public enum TipoBordaElemento
+    {
+        Transparente,
+        SolidaPreta
     }
 
     // Classe de Elemento da Etiqueta
@@ -71,6 +78,8 @@ namespace EtiquetaFORNew
 
         public string OperadorCalculoPreco { get; set; }
         public decimal ValorCalculoPreco { get; set; }
+        public TipoBordaElemento Borda { get; set; }
+        public float EspessuraBorda { get; set; }
 
         public ElementoEtiqueta()
         {
@@ -80,6 +89,8 @@ namespace EtiquetaFORNew
             Rotacao = 0f;
             OperadorCalculoPreco = string.Empty;
             ValorCalculoPreco = 0m;
+            Borda = TipoBordaElemento.Transparente;
+            EspessuraBorda = 1;
         }
     }
 

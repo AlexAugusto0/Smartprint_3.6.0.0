@@ -54,6 +54,8 @@ namespace EtiquetaFORNew.Forms
         private Button btnFundoPreto;
         private Button btnFundoBranco;
         private Button btnFundoTransparente;
+        private ComboBox cmbBordaElemento;
+        private NumericUpDown numEspessuraBorda;
         private Label lblPropriedadesElemento;
         private ComboBox cmbFonte;
         private Label lblCalculoPreco;
@@ -736,7 +738,7 @@ namespace EtiquetaFORNew.Forms
             cmbCampos.Items.AddRange(new object[] {
                 "Mercadoria", "Descricao", "CodigoMercadoria", "Codigo", "CodFabricante", "Referencia", "CodBarras",
                 "Preco", "PrecoCusto", "PrecoVenda", "VendaA", "VendaB", "VendaC", "VendaD", "VendaE",
-                "Quantidade", "Fornecedor", "Fabricante", "Grupo", "SubGrupo", "Marca", "Prateleira", "Garantia",
+                "Quantidade", "Fornecedor", "Fabricante", "Grupo", "SubGrupo", "Marca", "Observacao", "Prateleira", "Garantia",
                 "Tam", "Cores", "CodBarras_Grade", "PrecoOriginal", "PrecoPromocional"
             });
             cmbCampos.SelectedIndexChanged += (s, e) => {
@@ -1272,6 +1274,55 @@ namespace EtiquetaFORNew.Forms
             };
             btnFundoTransparente.Click += (s, e) => AplicarCorFundo(null);
             panelPropriedades.Controls.Add(btnFundoTransparente);
+            yPos += 35;
+
+            Label lblBorda = new Label
+            {
+                Text = "Borda:",
+                Location = new Point(10, yPos),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray
+            };
+            panelPropriedades.Controls.Add(lblBorda);
+            yPos += 25;
+
+            cmbBordaElemento = new ComboBox
+            {
+                Location = new Point(10, yPos),
+                Size = new Size(160, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9)
+            };
+            cmbBordaElemento.Items.AddRange(new object[] { "Transparente", "Sólida Preta" });
+            cmbBordaElemento.SelectedIndexChanged += (s, e) => AlterarBordaElementosSelecionados();
+            panelPropriedades.Controls.Add(cmbBordaElemento);
+            yPos += 35;
+
+            Label lblEspessuraBorda = new Label
+            {
+                Text = "Espessura da Borda:",
+                Location = new Point(10, yPos),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray
+            };
+            panelPropriedades.Controls.Add(lblEspessuraBorda);
+            yPos += 25;
+
+            numEspessuraBorda = new NumericUpDown
+            {
+                Location = new Point(10, yPos),
+                Size = new Size(70, 23),
+                Minimum = 0.1m,
+                Maximum = 20,
+                DecimalPlaces = 1,
+                Increment = 0.1m,
+                Value = 1,
+                Enabled = false
+            };
+            numEspessuraBorda.ValueChanged += (s, e) => AlterarEspessuraBordaElementosSelecionados();
+            panelPropriedades.Controls.Add(numEspessuraBorda);
         }
 
         private Button CriarBotaoElemento(string texto, int yPos, Action onClick)
@@ -1551,6 +1602,15 @@ namespace EtiquetaFORNew.Forms
                 {
                     btnCorFundo.BackColor = Color.Transparent;
                     btnCorFundo.ForeColor = Color.Black;
+                }
+
+                if (cmbBordaElemento != null)
+                    cmbBordaElemento.SelectedIndex = elementoReferencia.Borda == TipoBordaElemento.SolidaPreta ? 1 : 0;
+
+                if (numEspessuraBorda != null)
+                {
+                    DefinirValorNumerico(numEspessuraBorda, (decimal)Math.Max(0.1f, elementoReferencia.EspessuraBorda));
+                    numEspessuraBorda.Enabled = elementoReferencia.Borda == TipoBordaElemento.SolidaPreta;
                 }
 
                 AtualizarBotoesAlinhamento();
@@ -2015,6 +2075,69 @@ namespace EtiquetaFORNew.Forms
             pbCanvas.Invalidate();            
         }
 
+        private void AlterarBordaElementosSelecionados()
+        {
+            if (atualizandoPropriedades) return;
+
+            var elementosEdicao = ObterElementosParaEdicao();
+            if (elementosEdicao.Count == 0 || cmbBordaElemento == null) return;
+
+            TipoBordaElemento novaBorda = cmbBordaElemento.SelectedIndex == 1
+                ? TipoBordaElemento.SolidaPreta
+                : TipoBordaElemento.Transparente;
+
+            if (numEspessuraBorda != null)
+                numEspessuraBorda.Enabled = novaBorda == TipoBordaElemento.SolidaPreta;
+
+            bool alterou = false;
+            foreach (var elemento in elementosEdicao)
+            {
+                if (elemento.Borda != novaBorda)
+                {
+                    elemento.Borda = novaBorda;
+                    alterou = true;
+                }
+
+                if (elemento.EspessuraBorda < 0.1f)
+                {
+                    elemento.EspessuraBorda = 1;
+                    alterou = true;
+                }
+            }
+
+            if (alterou)
+            {
+                SalvarEstadoHistorico();
+                pbCanvas.Invalidate();
+            }
+        }
+
+        private void AlterarEspessuraBordaElementosSelecionados()
+        {
+            if (atualizandoPropriedades) return;
+            if (numEspessuraBorda == null || !numEspessuraBorda.Enabled) return;
+
+            var elementosEdicao = ObterElementosParaEdicao();
+            if (elementosEdicao.Count == 0) return;
+
+            float novaEspessura = (float)numEspessuraBorda.Value;
+            bool alterou = false;
+
+            foreach (var elemento in elementosEdicao)
+            {
+                if (elemento.EspessuraBorda == novaEspessura) continue;
+
+                elemento.EspessuraBorda = novaEspessura;
+                alterou = true;
+            }
+
+            if (alterou)
+            {
+                SalvarEstadoHistorico();
+                pbCanvas.Invalidate();
+            }
+        }
+
         #endregion
 
         #region Régua de Alinhamento (Snap Lines)
@@ -2381,7 +2504,9 @@ namespace EtiquetaFORNew.Forms
                     using (Pen penSelecao = new Pen(Color.Blue, 2))
                     {
                         penSelecao.DashStyle = DashStyle.Dash;
-                        g.DrawRectangle(penSelecao, bounds);
+                        Rectangle boundsSelecao = bounds;
+                        boundsSelecao.Inflate(2, 2);
+                        g.DrawRectangle(penSelecao, boundsSelecao);
                     }
 
                     if (elementoSelecionado == elem && elementosSelecionados.Count == 0)
@@ -2484,11 +2609,27 @@ namespace EtiquetaFORNew.Forms
                     break;
             }
 
-            g.DrawRectangle(Pens.LightGray, bounds);
+            DesenharBordaElemento(g, bounds, elem, MM_PARA_PIXEL * zoom);
 
             if (state != null)
                 g.Restore(state);
             
+        }
+
+        private void DesenharBordaElemento(Graphics g, RectangleF bounds, ElementoEtiqueta elem, float escala)
+        {
+            if (elem == null || elem.Borda != TipoBordaElemento.SolidaPreta)
+                return;
+
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                return;
+
+            float espessura = Math.Max(0.1f, elem.EspessuraBorda) * Math.Max(0.1f, escala);
+            using (Pen penBorda = new Pen(Color.Black, espessura))
+            {
+                penBorda.Alignment = PenAlignment.Inset;
+                g.DrawRectangle(penBorda, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            }
         }
 
         #endregion
@@ -2552,6 +2693,7 @@ namespace EtiquetaFORNew.Forms
                 case "Grupo":            return produto.Grupo ?? "";
                 case "SubGrupo":         return produto.SubGrupo ?? "";
                 case "Marca":            return produto.Marca ?? "";
+                case "Observacao":       return produto.Observacao ?? "";
                 case "Prateleira":       return produto.Prateleira ?? "";
                 case "Garantia":         return produto.Garantia ?? "";
                 case "Tam":              return produto.Tam ?? "";

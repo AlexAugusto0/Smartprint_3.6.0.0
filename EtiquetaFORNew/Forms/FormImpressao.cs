@@ -512,10 +512,28 @@ namespace EtiquetaFORNew
                 }
             }
 
+            DesenharBordaElemento(g, bounds, elem, escala);
+
             // ⭐ RESTAURAR estado gráfico após desenhar
             if (state != null)
             {
                 g.Restore(state);
+            }
+        }
+
+        private void DesenharBordaElemento(Graphics g, RectangleF bounds, ElementoEtiqueta elem, float escala)
+        {
+            if (elem == null || elem.Borda != TipoBordaElemento.SolidaPreta)
+                return;
+
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                return;
+
+            float espessura = Math.Max(0.1f, elem.EspessuraBorda) * Math.Max(0.1f, escala);
+            using (Pen penBorda = new Pen(Color.Black, espessura))
+            {
+                penBorda.Alignment = PenAlignment.Inset;
+                g.DrawRectangle(penBorda, bounds.X, bounds.Y, bounds.Width, bounds.Height);
             }
         }
 
@@ -606,6 +624,8 @@ namespace EtiquetaFORNew
                     return produto.SubGrupo ?? "";
                 case "Marca":
                     return produto.Marca ?? "";
+                case "Observacao":
+                    return produto.Observacao ?? "";
                 case "Prateleira":
                     return produto.Prateleira ?? "";
                 case "Garantia":

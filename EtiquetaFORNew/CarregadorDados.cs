@@ -1012,6 +1012,8 @@ namespace EtiquetaFORNew.Data
             row["PrecoVenda"] = preco;
             row["CodFabricante"] = reader["CodFabricante"]?.ToString() ?? "";
             row["Fabricante"] = reader["Fabricante"]?.ToString() ?? "";
+            if (dt.Columns.Contains("Observacao"))
+                row["Observacao"] = reader["Observacao"]?.ToString() ?? "";
 
             if (dt.Columns.Contains("CodBarras_Grade"))
                 row["CodBarras_Grade"] = reader["CodBarras_Grade"]?.ToString() ?? "";
@@ -1048,6 +1050,7 @@ namespace EtiquetaFORNew.Data
             row["SubGrupo"] = GetValue<string>("SubGrupo", "");
             row["Fabricante"] = GetValue<string>("Fabricante", "");
             row["Fornecedor"] = GetValue<string>("Fornecedor", "");
+            row["Observacao"] = GetValue<string>("Observacao", "");
             row["CodBarras"] = GetValue<string>("CodBarras", "");
             row["CodFabricante"] = GetValue<string>("CodFabricante", "");
             row["Tam"] = GetValue<string>("Tam", "");
@@ -1072,6 +1075,7 @@ namespace EtiquetaFORNew.Data
             dt.Columns.Add("SubGrupo", typeof(string));
             dt.Columns.Add("Fabricante", typeof(string));
             dt.Columns.Add("Fornecedor", typeof(string));
+            dt.Columns.Add("Observacao", typeof(string));
             dt.Columns.Add("CodBarras", typeof(string));
             dt.Columns.Add("CodFabricante", typeof(string));
             dt.Columns.Add("Tam", typeof(string));

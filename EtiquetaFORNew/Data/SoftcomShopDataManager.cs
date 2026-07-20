@@ -161,12 +161,12 @@ namespace EtiquetaFORNew
             var cmd = new SQLiteCommand(@"
         INSERT INTO Mercadorias (
             ID_SoftcomShop, CodigoMercadoria, CodFabricante, CodBarras, CodBarras_Grade, 
-            Mercadoria, PrecoVenda, Fabricante, Grupo, 
+            Mercadoria, PrecoVenda, Fabricante, Grupo, Observacao, 
             UltimaAtualizacao, Ativo, Tam, Cores, Origem,
             GerarEtiqueta, QuantidadeEtiqueta
         ) VALUES (
             @id, @codMerc, @codFabricante, @codBarras, @codBarrasGrade, 
-            @mercadoria, @preco, @fabricante, @grupo,
+            @mercadoria, @preco, @fabricante, @grupo, @observacao,
             @dataAtualizacao, @ativo, @tam, @cor, 'SOFTCOMSHOP',
             0, 1
         )", conn);
@@ -227,6 +227,7 @@ namespace EtiquetaFORNew
 
             cmd.Parameters.AddWithValue("@fabricante", ObterFabricanteProduto(produto));
             cmd.Parameters.AddWithValue("@grupo", ObterGrupoProduto(produto));
+            cmd.Parameters.AddWithValue("@observacao", ObterObservacaoProduto(produto));
             cmd.Parameters.AddWithValue("@dataAtualizacao", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             cmd.Parameters.AddWithValue("@ativo", 1);
 
@@ -675,6 +676,24 @@ namespace EtiquetaFORNew
                 produto?["categoria"],
                 produto?["categoria_nome"],
                 produto?["departamento"]);
+
+            DefinirSeVazio(normalizado, "observacao",
+                item["observacao"],
+                item["observacao_produto"],
+                item["produto_observacao"],
+                item["observação"],
+                item["observacoes"],
+                item["obs"],
+                item["OBSERVACAO"],
+                item["OBSERVAÇÃO"],
+                produto?["observacao"],
+                produto?["observacao_produto"],
+                produto?["produto_observacao"],
+                produto?["observação"],
+                produto?["observacoes"],
+                produto?["obs"],
+                produto?["OBSERVACAO"],
+                produto?["OBSERVAÇÃO"]);
 
             return normalizado;
         }
@@ -1270,6 +1289,19 @@ namespace EtiquetaFORNew
                 ObterCampoComoTexto(produto, "GRUPO"));
         }
 
+        private static string ObterObservacaoProduto(JToken produto)
+        {
+            return PrimeiroTextoValor(
+                ObterCampoComoTexto(produto, "observacao"),
+                ObterCampoComoTexto(produto, "observacao_produto"),
+                ObterCampoComoTexto(produto, "produto_observacao"),
+                ObterCampoComoTexto(produto, "observação"),
+                ObterCampoComoTexto(produto, "observacoes"),
+                ObterCampoComoTexto(produto, "obs"),
+                ObterCampoComoTexto(produto, "OBSERVACAO"),
+                ObterCampoComoTexto(produto, "OBSERVAÇÃO"));
+        }
+
         private static void AdicionarCamposClassificacaoProduto(SQLiteCommand cmd, List<string> campos, JToken produto)
         {
             string fabricante = ObterFabricanteProduto(produto);
@@ -1284,6 +1316,13 @@ namespace EtiquetaFORNew
             {
                 campos.Add("Grupo = @grupo");
                 cmd.Parameters.AddWithValue("@grupo", grupo);
+            }
+
+            string observacao = ObterObservacaoProduto(produto);
+            if (!string.IsNullOrWhiteSpace(observacao))
+            {
+                campos.Add("Observacao = @observacao");
+                cmd.Parameters.AddWithValue("@observacao", observacao);
             }
         }
 
