@@ -442,7 +442,7 @@ namespace EtiquetaFORNew
         private void HabilitarBotoes(bool habilitar)
         {
             btnSincronizarProdutos.Enabled = habilitar;
-            btnBuscarNotaFiscal.Enabled = true;
+            btnBuscarNotaFiscal.Enabled = false;
             btnBuscarVenda.Enabled = habilitar;
             btnFechar.Enabled = habilitar;
         }
@@ -487,6 +487,11 @@ namespace EtiquetaFORNew
         }
 
         #endregion
+
+        private void groupBox1_Enter(object sender, EventArgs e)
+        {
+
+        }
     }
 
     /// <summary>
