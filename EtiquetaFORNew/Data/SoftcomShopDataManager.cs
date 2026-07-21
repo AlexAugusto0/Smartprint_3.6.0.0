@@ -188,36 +188,7 @@ namespace EtiquetaFORNew
             cmd.Parameters.AddWithValue("@codBarras", produto["codigo_barras"]?.ToString() ?? "");
             cmd.Parameters.AddWithValue("@codBarrasGrade", produto["codigo_barras_grade"]?.ToString() ?? "");
 
-            // ⭐ CORREÇÃO: Tentar múltiplos campos para o nome do produto
-            string nomeProduto = null;
-
-            // Tentar campo "produto_nome"
-            if (!string.IsNullOrWhiteSpace(produto["produto_nome"]?.ToString()))
-            {
-                nomeProduto = produto["produto_nome"].ToString();
-            }
-            // Se vazio, tentar "descricao"
-            else if (!string.IsNullOrWhiteSpace(produto["descricao"]?.ToString()))
-            {
-                nomeProduto = produto["descricao"].ToString();
-            }
-            // Se vazio, tentar "nome"
-            else if (!string.IsNullOrWhiteSpace(produto["nome"]?.ToString()))
-            {
-                nomeProduto = produto["nome"].ToString();
-            }
-            // Se vazio, tentar "produto_descricao"
-            else if (!string.IsNullOrWhiteSpace(produto["produto_descricao"]?.ToString()))
-            {
-                nomeProduto = produto["produto_descricao"].ToString();
-            }
-            // Fallback: usar referência ou ID
-            else
-            {
-                nomeProduto = !string.IsNullOrWhiteSpace(referencia)
-                    ? referencia
-                    : $"Produto {codigoMercadoria}";
-            }
+            string nomeProduto = ObterNomeMercadoria(produto, referencia, codigoMercadoria);
 
             cmd.Parameters.AddWithValue("@mercadoria", nomeProduto);
 
@@ -235,6 +206,24 @@ namespace EtiquetaFORNew
             cmd.Parameters.AddWithValue("@cor", "");
 
             cmd.ExecuteNonQuery();
+        }
+
+        private string ObterNomeMercadoria(JToken produto, string referencia, string codigoMercadoria)
+        {
+            string nomeProduto = PrimeiroTexto(
+                produto?["produto_nome"],
+                produto?["descricao"],
+                produto?["nome"],
+                produto?["produto_descricao"]);
+
+            if (string.IsNullOrWhiteSpace(nomeProduto))
+            {
+                nomeProduto = !string.IsNullOrWhiteSpace(referencia)
+                    ? referencia
+                    : $"Produto {codigoMercadoria}";
+            }
+
+            return nomeProduto;
         }
 
         /// <summary>

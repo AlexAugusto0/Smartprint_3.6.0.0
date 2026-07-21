@@ -256,6 +256,7 @@
     <Compile Include="CampoEtiquetaResolver.cs" />
     <Compile Include="Classes.cs" />
     <Compile Include="ConfiguracaoManager.cs" />
+    <Compile Include="DescricaoMercadoriaDisplayHelper.cs" />
     <Compile Include="ExpressionEngine.cs" />
     <Compile Include="FormatadorMonetario.cs" />
     <Compile Include="Data\Funcoes.cs" />

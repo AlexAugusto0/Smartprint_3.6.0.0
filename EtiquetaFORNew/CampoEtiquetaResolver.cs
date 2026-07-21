@@ -53,7 +53,7 @@ namespace EtiquetaFORNew
 
         static CampoEtiquetaResolver()
         {
-            RegistrarTexto("Nome", p => p.Nome, "Mercadoria", "Descricao", "Descrição");
+            RegistrarTexto("Nome", p => DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(p), "Mercadoria", "Descricao", "Descrição");
             RegistrarTexto("Codigo", p => p.Codigo, "CodigoMercadoria", "Código", "CódigoMercadoria");
             RegistrarTexto("Referencia", p => p.CodFabricante, "CodFabricante", "Referência");
             RegistrarTexto("CodBarras", p => p.CodBarras, "CodigoBarras", "CódigoBarras");

@@ -1753,14 +1753,15 @@ namespace EtiquetaFORNew
             produtos.Add(produto);
 
             // ⭐ CONFECÇÃO: Inclui colunas Tam e Cor se o módulo for CONFECÇÃO
+            string nomeVisivel = DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
             if (isConfeccao && dgvProdutos.Columns.Contains("colTam") && dgvProdutos.Columns.Contains("colCor"))
             {
-                dgvProdutos.Rows.Add(false, produto.Nome, produto.CodBarras_Grade, FormatadorMonetario.Formatar(produto.Preco),
+                dgvProdutos.Rows.Add(false, nomeVisivel, produto.CodBarras_Grade, FormatadorMonetario.Formatar(produto.Preco),
                     produto.Quantidade, produto.Tam ?? "", produto.Cores ?? "");
             }
             else
             {
-                dgvProdutos.Rows.Add(false, produto.Nome, produto.Codigo, FormatadorMonetario.Formatar(produto.Preco), produto.Quantidade);
+                dgvProdutos.Rows.Add(false, nomeVisivel, produto.Codigo, FormatadorMonetario.Formatar(produto.Preco), produto.Quantidade);
             }
 
             // ⭐ Limpar DataRow armazenado após adicionar
@@ -2781,6 +2782,7 @@ namespace EtiquetaFORNew
         {
             // Adicionar à lista interna
             produtos.Add(produto);
+            string nomeVisivel = DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
 
             // Adicionar ao DataGridView
             if (isConfeccao && dgvProdutos.Columns.Contains("colTam") && dgvProdutos.Columns.Contains("colCor"))
@@ -2788,7 +2790,7 @@ namespace EtiquetaFORNew
                 // Modo confecção: inclui tamanho e cor
                 dgvProdutos.Rows.Add(
                     itemImportado.Gerar,           // colSelecionar
-                    produto.Nome,                   // colNome
+                    nomeVisivel,                    // colNome
                     produto.Codigo,                 // colCodigo
                     FormatadorMonetario.Formatar(produto.Preco),  // colPreco
                     itemImportado.Quantidade,      // colQuantidade (Qtde)
@@ -2801,7 +2803,7 @@ namespace EtiquetaFORNew
                 // Modo normal: sem tamanho e cor
                 dgvProdutos.Rows.Add(
                     itemImportado.Gerar,           // colSelecionar
-                    produto.Nome,                   // colNome
+                    nomeVisivel,                    // colNome
                     produto.Codigo,                 // colCodigo
                     FormatadorMonetario.Formatar(produto.Preco),  // colPreco'
                     itemImportado.Quantidade       // colQuantidade (Qtde)
@@ -2820,8 +2822,11 @@ namespace EtiquetaFORNew
                 Nome = item.Mercadoria,
                 Codigo = item.Codigo,
                 Preco = item.Preco ?? 0,
-                Quantidade = item.Quantidade
+                Quantidade = item.Quantidade,
+                Tam = item.Tamanho,
+                Cores = item.Cor
             };
+            string nomeVisivel = DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
 
             // Adicionar à lista interna
             produtos.Add(produto);
@@ -2832,7 +2837,7 @@ namespace EtiquetaFORNew
                 // Modo confecção: inclui tamanho e cor
                 dgvProdutos.Rows.Add(
                     item.Gerar,                    // colSelecionar
-                    item.Mercadoria,               // colNome
+                    nomeVisivel,                   // colNome
                     item.Codigo ?? "",             // colCodigo
                     FormatadorMonetario.Formatar(item.Preco ?? 0m), // colPreco
                     item.Quantidade,               // colQuantidade (Qtde)
@@ -2845,7 +2850,7 @@ namespace EtiquetaFORNew
                 // Modo normal: sem tamanho e cor
                 dgvProdutos.Rows.Add(
                     item.Gerar,                    // colSelecionar
-                    item.Mercadoria,               // colNome
+                    nomeVisivel,                   // colNome
                     item.Codigo ?? "",             // colCodigo
                     FormatadorMonetario.Formatar(item.Preco ?? 0m), // colPreco
                     item.Quantidade                // colQuantidade (Qtde)
@@ -3336,15 +3341,16 @@ namespace EtiquetaFORNew
             }
 
             // Adicionar ao grid com o preço formatado
+            string nomeVisivel = DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
             if (isConfeccao && dgvProdutos.Columns.Contains("colTam") && dgvProdutos.Columns.Contains("colCor"))
             {
-                dgvProdutos.Rows.Add(false, produto.Nome, produto.CodBarras_Grade,
+                dgvProdutos.Rows.Add(false, nomeVisivel, produto.CodBarras_Grade,
                     precoExibicao, produto.Quantidade,
                     produto.Tam ?? "", produto.Cores ?? "");
             }
             else
             {
-                dgvProdutos.Rows.Add(false, produto.Nome, produto.Codigo,
+                dgvProdutos.Rows.Add(false, nomeVisivel, produto.Codigo,
                     precoExibicao, produto.Quantidade);
             }
 

@@ -583,7 +583,8 @@ namespace EtiquetaFORNew
                 // Campos originais
                 case "Nome":
                 case "Descricao":
-                    return produto.Nome ?? "";
+                case "Descrição":
+                    return DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
                 case "Codigo":
                     return produto.Codigo ?? "";
                 case "Preco":
@@ -597,7 +598,7 @@ namespace EtiquetaFORNew
 
                 // ⭐ NOVOS CAMPOS - Usando propriedades reais da classe Produto
                 case "Mercadoria":
-                    return produto.Nome ?? "";
+                    return DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
                 case "CodigoMercadoria":
                     return produto.Codigo ?? "";
                 case "CodBarras":

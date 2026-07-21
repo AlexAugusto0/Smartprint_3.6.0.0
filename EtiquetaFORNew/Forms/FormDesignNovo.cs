@@ -2673,7 +2673,8 @@ namespace EtiquetaFORNew.Forms
             {
                 case "Nome":
                 case "Mercadoria":
-                case "Descricao":        return produto.Nome ?? "";
+                case "Descricao":
+                case "Descrição":        return DescricaoMercadoriaDisplayHelper.ObterDescricaoVisivel(produto);
                 case "Codigo":
                 case "CodigoMercadoria": return produto.Codigo ?? "";
                 case "Referencia":
