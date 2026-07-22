@@ -14,11 +14,17 @@ namespace EtiquetaFORNew
     public partial class FormImpressao : Form
     {
         private List<Produto> produtos;
+        private List<EtiquetaVolumeDistribuidora> volumesDistribuidora;
+        private List<EtiquetaDistribuidora> documentosDistribuidora;
         private TemplateEtiqueta template;
         private ConfiguracaoEtiqueta configuracaoEtiqueta;
 
         private List<List<Produto>> produtosPorPagina;
+        private List<List<EtiquetaVolumeDistribuidora>> volumesDistribuidoraPorPagina;
+        private List<List<EtiquetaDistribuidora>> documentosDistribuidoraPorPagina;
         private int paginaAtual = 0;
+        private bool modoDistribuidoraVolumes;
+        private bool modoDistribuidoraDocumento;
 
         // ⭐ NOVO: O objeto responsável pela impressão
         private PrintDocument printDocument1;
@@ -44,15 +50,45 @@ namespace EtiquetaFORNew
         public FormImpressao(List<Produto> produtos, TemplateEtiqueta template, ConfiguracaoEtiqueta configuracao = null)
         {
             InitializeComponent();
-            VersaoHelper.DefinirTituloComVersao(this, "Visualização de Impressão");
             this.produtos = produtos;
             this.template = template;
             this.configuracaoEtiqueta = configuracao ?? CriarConfiguracaoPadrao();
+            this.modoDistribuidoraVolumes = false;
+            this.modoDistribuidoraDocumento = false;
 
-            // ⭐ CORREÇÃO: Inicializa o PrintDocument e anexa o evento PrintPage
+            InicializarFormularioImpressao("Visualização de Impressão", "VISUALIZAÇÃO DAS ETIQUETAS");
+        }
+
+        public FormImpressao(List<EtiquetaVolumeDistribuidora> volumes, TemplateEtiqueta template, ConfiguracaoEtiqueta configuracao = null)
+        {
+            InitializeComponent();
+            this.volumesDistribuidora = volumes ?? new List<EtiquetaVolumeDistribuidora>();
+            this.template = template;
+            this.configuracaoEtiqueta = configuracao ?? CriarConfiguracaoPadrao();
+            this.modoDistribuidoraVolumes = true;
+            this.modoDistribuidoraDocumento = false;
+
+            InicializarFormularioImpressao("Visualização de NFe / Volumes", "VISUALIZAÇÃO DOS VOLUMES");
+        }
+
+        public FormImpressao(List<EtiquetaDistribuidora> documentos, TemplateEtiqueta template, ConfiguracaoEtiqueta configuracao = null)
+        {
+            InitializeComponent();
+            this.documentosDistribuidora = documentos ?? new List<EtiquetaDistribuidora>();
+            this.template = template;
+            this.configuracaoEtiqueta = configuracao ?? CriarConfiguracaoPadrao();
+            this.modoDistribuidoraVolumes = false;
+            this.modoDistribuidoraDocumento = true;
+
+            InicializarFormularioImpressao("Visualização de NFe / Volumes", "VISUALIZAÇÃO DA NF-E");
+        }
+
+        private void InicializarFormularioImpressao(string tituloJanela, string tituloTela)
+        {
+            VersaoHelper.DefinirTituloComVersao(this, tituloJanela);
+            lblTitulo.Text = tituloTela;
             printDocument1 = new PrintDocument();
             printDocument1.PrintPage += PrintDoc_PrintPage;
-
             this.Shown += FormImpressao_Shown;
             this.Resize += (sender, e) => DesenharVisualizacao();
             panelVisualizacao.AutoScroll = true;
@@ -98,6 +134,18 @@ namespace EtiquetaFORNew
         // ==========================================
         private void CalcularPaginacao()
         {
+            if (modoDistribuidoraDocumento)
+            {
+                CalcularPaginacaoDocumentosDistribuidora();
+                return;
+            }
+
+            if (modoDistribuidoraVolumes)
+            {
+                CalcularPaginacaoVolumesDistribuidora();
+                return;
+            }
+
             produtosPorPagina = new List<List<Produto>>();
 
             if (template == null)
@@ -133,6 +181,56 @@ namespace EtiquetaFORNew
                 produtosPorPagina.Add(new List<Produto>());
         }
 
+        private void CalcularPaginacaoVolumesDistribuidora()
+        {
+            volumesDistribuidoraPorPagina = new List<List<EtiquetaVolumeDistribuidora>>();
+
+            if (template == null)
+            {
+                MessageBox.Show("Template não definido!", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            int numColunas = Math.Max(1, configuracaoEtiqueta.NumColunas);
+            int numLinhas = Math.Max(1, configuracaoEtiqueta.NumLinhas);
+            int etiquetasPorPagina = numColunas * numLinhas;
+            List<EtiquetaVolumeDistribuidora> etiquetas = volumesDistribuidora ?? new List<EtiquetaVolumeDistribuidora>();
+
+            for (int i = 0; i < etiquetas.Count; i += etiquetasPorPagina)
+            {
+                int count = Math.Min(etiquetasPorPagina, etiquetas.Count - i);
+                volumesDistribuidoraPorPagina.Add(etiquetas.GetRange(i, count));
+            }
+
+            if (volumesDistribuidoraPorPagina.Count == 0)
+                volumesDistribuidoraPorPagina.Add(new List<EtiquetaVolumeDistribuidora>());
+        }
+
+        private void CalcularPaginacaoDocumentosDistribuidora()
+        {
+            documentosDistribuidoraPorPagina = new List<List<EtiquetaDistribuidora>>();
+
+            if (template == null)
+            {
+                MessageBox.Show("Template não definido!", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            int numColunas = Math.Max(1, configuracaoEtiqueta.NumColunas);
+            int numLinhas = Math.Max(1, configuracaoEtiqueta.NumLinhas);
+            int etiquetasPorPagina = numColunas * numLinhas;
+            List<EtiquetaDistribuidora> etiquetas = documentosDistribuidora ?? new List<EtiquetaDistribuidora>();
+
+            for (int i = 0; i < etiquetas.Count; i += etiquetasPorPagina)
+            {
+                int count = Math.Min(etiquetasPorPagina, etiquetas.Count - i);
+                documentosDistribuidoraPorPagina.Add(etiquetas.GetRange(i, count));
+            }
+
+            if (documentosDistribuidoraPorPagina.Count == 0)
+                documentosDistribuidoraPorPagina.Add(new List<EtiquetaDistribuidora>());
+        }
+
         private void btnAnterior_Click(object sender, EventArgs e) => MudarPagina(-1);
         private void btnProxima_Click(object sender, EventArgs e) => MudarPagina(1);
         private void btnFechar_Click(object sender, EventArgs e) => this.Close();
@@ -140,16 +238,48 @@ namespace EtiquetaFORNew
         private void MudarPagina(int direcao)
         {
             paginaAtual += direcao;
-            paginaAtual = Math.Max(0, Math.Min(paginaAtual, produtosPorPagina.Count - 1));
+            paginaAtual = Math.Max(0, Math.Min(paginaAtual, ObterTotalPaginas() - 1));
             DesenharVisualizacao();
             AtualizarBotoes();
         }
 
         private void AtualizarBotoes()
         {
+            int totalPaginas = ObterTotalPaginas();
             btnAnterior.Enabled = paginaAtual > 0;
-            btnProxima.Enabled = paginaAtual < produtosPorPagina.Count - 1;
-            lblInfo.Text = $"Página {paginaAtual + 1} de {produtosPorPagina.Count}";
+            btnProxima.Enabled = paginaAtual < totalPaginas - 1;
+            lblInfo.Text = $"Página {paginaAtual + 1} de {totalPaginas}";
+        }
+
+        private int ObterTotalPaginas()
+        {
+            if (modoDistribuidoraDocumento)
+                return documentosDistribuidoraPorPagina == null || documentosDistribuidoraPorPagina.Count == 0
+                    ? 1
+                    : documentosDistribuidoraPorPagina.Count;
+
+            if (modoDistribuidoraVolumes)
+                return volumesDistribuidoraPorPagina == null || volumesDistribuidoraPorPagina.Count == 0
+                    ? 1
+                    : volumesDistribuidoraPorPagina.Count;
+
+            return produtosPorPagina == null || produtosPorPagina.Count == 0
+                ? 1
+                : produtosPorPagina.Count;
+        }
+
+        private bool TemDadosParaImpressao()
+        {
+            if (configuracaoEtiqueta == null)
+                return false;
+
+            if (modoDistribuidoraDocumento)
+                return documentosDistribuidoraPorPagina != null && documentosDistribuidoraPorPagina.Count > 0;
+
+            if (modoDistribuidoraVolumes)
+                return volumesDistribuidoraPorPagina != null && volumesDistribuidoraPorPagina.Count > 0;
+
+            return produtosPorPagina != null && produtosPorPagina.Count > 0;
         }
 
         //private void DesenharVisualizacao()
@@ -256,7 +386,7 @@ namespace EtiquetaFORNew
             panelVisualizacao.Controls.Add(pic);
 
             // Atualiza label de informações (ex: Página 1 de 5 - Zoom 120%)
-            lblInfo.Text = $"Página {paginaAtual + 1} de {produtosPorPagina.Count} ({Math.Round(zoomEscala * 100)}%)";
+            lblInfo.Text = $"Página {paginaAtual + 1} de {ObterTotalPaginas()} ({Math.Round(zoomEscala * 100)}%)";
             AtualizarBotoes();
         }
 
@@ -265,6 +395,18 @@ namespace EtiquetaFORNew
         // Renomeado para DesenharPaginaEtiquetas para diferenciar da impressão
         private void DesenharPaginaEtiquetas(Graphics g, float escala)
         {
+            if (modoDistribuidoraDocumento)
+            {
+                DesenharPaginaDocumentosDistribuidora(g, escala);
+                return;
+            }
+
+            if (modoDistribuidoraVolumes)
+            {
+                DesenharPaginaVolumesDistribuidora(g, escala);
+                return;
+            }
+
             float margemEsquerda = configuracaoEtiqueta.MargemEsquerda * escala;
             float margemSuperior = configuracaoEtiqueta.MargemSuperior * escala;
             float espacamentoColunas = configuracaoEtiqueta.EspacamentoColunas * escala;
@@ -290,6 +432,64 @@ namespace EtiquetaFORNew
                     // Reusa a função de desenho da etiqueta (para visualização)
                     DesenharEtiqueta(g, produtosDaPagina[produtoIndex], x, y, escala);
                     produtoIndex++;
+                }
+            }
+        }
+
+        private void DesenharPaginaDocumentosDistribuidora(Graphics g, float escala)
+        {
+            float margemEsquerda = configuracaoEtiqueta.MargemEsquerda * escala;
+            float margemSuperior = configuracaoEtiqueta.MargemSuperior * escala;
+            float espacamentoColunas = configuracaoEtiqueta.EspacamentoColunas * escala;
+            float espacamentoLinhas = configuracaoEtiqueta.EspacamentoLinhas * escala;
+
+            int numColunas = Math.Max(1, configuracaoEtiqueta.NumColunas);
+            int numLinhas = Math.Max(1, configuracaoEtiqueta.NumLinhas);
+
+            float larguraEtiqueta = template.Largura * escala;
+            float alturaEtiqueta = template.Altura * escala;
+
+            var documentosDaPagina = documentosDistribuidoraPorPagina[paginaAtual];
+            int documentoIndex = 0;
+
+            for (int linha = 0; linha < numLinhas && documentoIndex < documentosDaPagina.Count; linha++)
+            {
+                for (int coluna = 0; coluna < numColunas && documentoIndex < documentosDaPagina.Count; coluna++)
+                {
+                    float x = margemEsquerda + coluna * (larguraEtiqueta + espacamentoColunas);
+                    float y = margemSuperior + linha * (alturaEtiqueta + espacamentoLinhas);
+
+                    DesenharEtiquetaDistribuidora(g, documentosDaPagina[documentoIndex], x, y, escala);
+                    documentoIndex++;
+                }
+            }
+        }
+
+        private void DesenharPaginaVolumesDistribuidora(Graphics g, float escala)
+        {
+            float margemEsquerda = configuracaoEtiqueta.MargemEsquerda * escala;
+            float margemSuperior = configuracaoEtiqueta.MargemSuperior * escala;
+            float espacamentoColunas = configuracaoEtiqueta.EspacamentoColunas * escala;
+            float espacamentoLinhas = configuracaoEtiqueta.EspacamentoLinhas * escala;
+
+            int numColunas = Math.Max(1, configuracaoEtiqueta.NumColunas);
+            int numLinhas = Math.Max(1, configuracaoEtiqueta.NumLinhas);
+
+            float larguraEtiqueta = template.Largura * escala;
+            float alturaEtiqueta = template.Altura * escala;
+
+            var volumesDaPagina = volumesDistribuidoraPorPagina[paginaAtual];
+            int volumeIndex = 0;
+
+            for (int linha = 0; linha < numLinhas && volumeIndex < volumesDaPagina.Count; linha++)
+            {
+                for (int coluna = 0; coluna < numColunas && volumeIndex < volumesDaPagina.Count; coluna++)
+                {
+                    float x = margemEsquerda + coluna * (larguraEtiqueta + espacamentoColunas);
+                    float y = margemSuperior + linha * (alturaEtiqueta + espacamentoLinhas);
+
+                    DesenharEtiquetaVolumeDistribuidora(g, volumesDaPagina[volumeIndex], x, y, escala);
+                    volumeIndex++;
                 }
             }
         }
@@ -339,7 +539,7 @@ namespace EtiquetaFORNew
         // ==========================================
         private void btnImprimir_Click(object sender, EventArgs e)
         {
-            if (produtosPorPagina == null || produtosPorPagina.Count == 0 || configuracaoEtiqueta == null)
+            if (!TemDadosParaImpressao())
             {
                 MessageBox.Show("Não há dados ou configurações para imprimir.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -378,7 +578,7 @@ namespace EtiquetaFORNew
 
             // Lógica de Paginação
             paginaAtual++;
-            e.HasMorePages = (paginaAtual < produtosPorPagina.Count);
+            e.HasMorePages = (paginaAtual < ObterTotalPaginas());
         }
 
         // ==========================================
@@ -422,6 +622,74 @@ namespace EtiquetaFORNew
 
                 // Reusa a função, ela agora deve lidar com a diferença de escala
                 DesenharElemento(g, elem, produto, bounds, escala);
+            }
+        }
+
+        private void DesenharEtiquetaVolumeDistribuidora(Graphics g, EtiquetaVolumeDistribuidora etiqueta, float offsetX, float offsetY, float escala)
+        {
+            RectangleF areaEtiqueta = new RectangleF(
+                offsetX,
+                offsetY,
+                template.Largura * escala,
+                template.Altura * escala
+            );
+
+            if (escala > 1.0f)
+            {
+                g.DrawRectangle(Pens.LightGray,
+                    areaEtiqueta.X, areaEtiqueta.Y,
+                    areaEtiqueta.Width, areaEtiqueta.Height);
+            }
+
+            foreach (var elem in template.Elementos)
+            {
+                RectangleF bounds = new RectangleF(
+                    offsetX + (elem.Bounds.X * escala),
+                    offsetY + (elem.Bounds.Y * escala),
+                    elem.Bounds.Width * escala,
+                    elem.Bounds.Height * escala
+                );
+
+                bounds.Intersect(areaEtiqueta);
+
+                if (bounds.Width <= 0 || bounds.Height <= 0)
+                    continue;
+
+                DesenharElementoVolumeDistribuidora(g, elem, etiqueta, bounds, escala);
+            }
+        }
+
+        private void DesenharEtiquetaDistribuidora(Graphics g, EtiquetaDistribuidora etiqueta, float offsetX, float offsetY, float escala)
+        {
+            RectangleF areaEtiqueta = new RectangleF(
+                offsetX,
+                offsetY,
+                template.Largura * escala,
+                template.Altura * escala
+            );
+
+            if (escala > 1.0f)
+            {
+                g.DrawRectangle(Pens.LightGray,
+                    areaEtiqueta.X, areaEtiqueta.Y,
+                    areaEtiqueta.Width, areaEtiqueta.Height);
+            }
+
+            foreach (var elem in template.Elementos)
+            {
+                RectangleF bounds = new RectangleF(
+                    offsetX + (elem.Bounds.X * escala),
+                    offsetY + (elem.Bounds.Y * escala),
+                    elem.Bounds.Width * escala,
+                    elem.Bounds.Height * escala
+                );
+
+                bounds.Intersect(areaEtiqueta);
+
+                if (bounds.Width <= 0 || bounds.Height <= 0)
+                    continue;
+
+                DesenharElementoDistribuidora(g, elem, etiqueta, bounds, escala);
             }
         }
 
@@ -521,6 +789,142 @@ namespace EtiquetaFORNew
             }
         }
 
+        private void DesenharElementoVolumeDistribuidora(Graphics g, ElementoEtiqueta elem, EtiquetaVolumeDistribuidora etiqueta, RectangleF bounds, float escala)
+        {
+            GraphicsState state = null;
+            if (elem.Rotacao != 0)
+            {
+                state = g.Save();
+
+                PointF centro = new PointF(
+                    bounds.X + bounds.Width / 2f,
+                    bounds.Y + bounds.Height / 2f
+                );
+                g.TranslateTransform(centro.X, centro.Y);
+                g.RotateTransform(elem.Rotacao);
+                g.TranslateTransform(-centro.X, -centro.Y);
+            }
+
+            if (elem.CorFundo.HasValue && elem.CorFundo.Value != Color.Transparent)
+            {
+                using (SolidBrush fundoBrush = new SolidBrush(elem.CorFundo.Value))
+                    g.FillRectangle(fundoBrush, bounds);
+            }
+
+            using (Font fonte = new Font(elem.Fonte.FontFamily, elem.Fonte.Size, elem.Fonte.Style, GraphicsUnit.Point))
+            using (SolidBrush brush = new SolidBrush(elem.Cor))
+            {
+                StringFormat sf = new StringFormat
+                {
+                    Alignment = elem.Alinhamento,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming = StringTrimming.EllipsisCharacter,
+                    FormatFlags = StringFormatFlags.LineLimit
+                };
+
+                switch (elem.Tipo)
+                {
+                    case TipoElemento.Texto:
+                        g.DrawString(elem.Conteudo ?? "Texto", fonte, brush, bounds, sf);
+                        break;
+
+                    case TipoElemento.Campo:
+                        string valor = EtiquetaVolumeDistribuidoraResolver.ObterValorCampo(etiqueta, elem.Conteudo);
+                        g.DrawString(valor, fonte, brush, bounds, sf);
+                        break;
+
+                    case TipoElemento.Expressao:
+                        string valorExpressao = ObterValorExpressaoVolumeDistribuidora(elem.Conteudo, etiqueta);
+                        g.DrawString(valorExpressao, fonte, brush, bounds, sf);
+                        break;
+
+                    case TipoElemento.CodigoBarras:
+                        string codigoBarras = EtiquetaVolumeDistribuidoraResolver.ObterValorCampo(etiqueta, elem.Conteudo);
+                        if (!string.IsNullOrWhiteSpace(codigoBarras))
+                            DesenharCodigoBarras(g, codigoBarras, bounds, escala);
+                        break;
+
+                    case TipoElemento.Imagem:
+                        if (elem.Imagem != null)
+                            g.DrawImage(elem.Imagem, bounds);
+                        break;
+                }
+            }
+
+            DesenharBordaElemento(g, bounds, elem, escala);
+
+            if (state != null)
+                g.Restore(state);
+        }
+
+        private void DesenharElementoDistribuidora(Graphics g, ElementoEtiqueta elem, EtiquetaDistribuidora etiqueta, RectangleF bounds, float escala)
+        {
+            GraphicsState state = null;
+            if (elem.Rotacao != 0)
+            {
+                state = g.Save();
+
+                PointF centro = new PointF(
+                    bounds.X + bounds.Width / 2f,
+                    bounds.Y + bounds.Height / 2f
+                );
+                g.TranslateTransform(centro.X, centro.Y);
+                g.RotateTransform(elem.Rotacao);
+                g.TranslateTransform(-centro.X, -centro.Y);
+            }
+
+            if (elem.CorFundo.HasValue && elem.CorFundo.Value != Color.Transparent)
+            {
+                using (SolidBrush fundoBrush = new SolidBrush(elem.CorFundo.Value))
+                    g.FillRectangle(fundoBrush, bounds);
+            }
+
+            using (Font fonte = new Font(elem.Fonte.FontFamily, elem.Fonte.Size, elem.Fonte.Style, GraphicsUnit.Point))
+            using (SolidBrush brush = new SolidBrush(elem.Cor))
+            {
+                StringFormat sf = new StringFormat
+                {
+                    Alignment = elem.Alinhamento,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming = StringTrimming.EllipsisCharacter,
+                    FormatFlags = StringFormatFlags.LineLimit
+                };
+
+                switch (elem.Tipo)
+                {
+                    case TipoElemento.Texto:
+                        g.DrawString(elem.Conteudo ?? "Texto", fonte, brush, bounds, sf);
+                        break;
+
+                    case TipoElemento.Campo:
+                        string valor = EtiquetaDistribuidoraResolver.ObterValorCampo(etiqueta, elem.Conteudo);
+                        g.DrawString(valor, fonte, brush, bounds, sf);
+                        break;
+
+                    case TipoElemento.Expressao:
+                        string valorExpressao = ObterValorExpressaoDistribuidora(elem.Conteudo, etiqueta);
+                        g.DrawString(valorExpressao, fonte, brush, bounds, sf);
+                        break;
+
+                    case TipoElemento.CodigoBarras:
+                        string codigoBarras = EtiquetaDistribuidoraResolver.ObterValorCampo(etiqueta, elem.Conteudo);
+                        if (!string.IsNullOrWhiteSpace(codigoBarras))
+                            DesenharCodigoBarras(g, codigoBarras, bounds, escala);
+                        break;
+
+                    case TipoElemento.Imagem:
+                        if (elem.Imagem != null)
+                            g.DrawImage(elem.Imagem, bounds);
+                        break;
+                }
+            }
+
+            DesenharBordaElemento(g, bounds, elem, escala);
+
+            if (state != null)
+                g.Restore(state);
+        }
+
         private void DesenharBordaElemento(Graphics g, RectangleF bounds, ElementoEtiqueta elem, float escala)
         {
             if (elem == null || elem.Borda != TipoBordaElemento.SolidaPreta)
@@ -544,6 +948,28 @@ namespace EtiquetaFORNew
 
             ResultadoExpressao resultado = ExpressionEngine.Calcular(expressao, produto);
             return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : "[Erro]";
+        }
+
+        private string ObterValorExpressaoVolumeDistribuidora(string expressao, EtiquetaVolumeDistribuidora etiqueta)
+        {
+            if (etiqueta == null)
+                return string.Empty;
+
+            ResultadoExpressao resultado = ExpressionEngine.Avaliar(expressao, (string nome, out decimal valor, out string mensagemErro) =>
+                EtiquetaVolumeDistribuidoraResolver.TryObterValorDecimal(etiqueta, nome, out valor, out mensagemErro));
+
+            return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : string.Empty;
+        }
+
+        private string ObterValorExpressaoDistribuidora(string expressao, EtiquetaDistribuidora etiqueta)
+        {
+            if (etiqueta == null)
+                return string.Empty;
+
+            ResultadoExpressao resultado = ExpressionEngine.Avaliar(expressao, (string nome, out decimal valor, out string mensagemErro) =>
+                EtiquetaDistribuidoraResolver.TryObterValorDecimal(etiqueta, nome, out valor, out mensagemErro));
+
+            return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : string.Empty;
         }
 
         // ⭐ NOVO MÉTODO: Obtém o valor correto para o código de barras

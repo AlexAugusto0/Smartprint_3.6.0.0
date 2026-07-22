@@ -361,6 +361,7 @@
     <Compile Include="IntegracaoExterna.cs" />
     <Compile Include="Localdatabasemanager .cs" />
     <Compile Include="LocalDatabaseManagerExtensions.cs" />
+    <Compile Include="ModuloAppHelper.cs" />
     <Compile Include="OPS_HUB\Ops_Hub.cs" />
     <Compile Include="PrinterDriverMatcher.cs" />
     <Compile Include="Program.cs" />
@@ -378,6 +379,10 @@
     <Compile Include="Softcomshop\FormSincronizacaoSoftcomShop.Designer.cs">
       <DependentUpon>FormSincronizacaoSoftcomShop.cs</DependentUpon>
     </Compile>
+    <Compile Include="Softcomshop\EtiquetaDistribuidora.cs" />
+    <Compile Include="Softcomshop\EtiquetaDistribuidoraResolver.cs" />
+    <Compile Include="Softcomshop\EtiquetaVolumeDistribuidora.cs" />
+    <Compile Include="Softcomshop\EtiquetaVolumeDistribuidoraResolver.cs" />
     <Compile Include="Softcomshop\SoftcomShopConfig.cs" />
     <Compile Include="Softcomshop\SoftcomShopService.cs" />
     <Compile Include="TemplateManager.cs" />

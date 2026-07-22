@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using System.Threading.Tasks;
 using EtiquetaFORNew.Data;
+using EtiquetaFORNew.Forms;
 
 namespace EtiquetaFORNew
 {
@@ -10,6 +11,7 @@ namespace EtiquetaFORNew
         private ConfiguracaoSistema _config;
         private SoftcomShopDataManager _dataManager;
         private string _connectionString;
+        private bool _modoDistribuidora;
 
         public FormSincronizacaoSoftcomShop()
         {
@@ -41,9 +43,27 @@ namespace EtiquetaFORNew
 
             // Criar gerenciador de dados
             _dataManager = new SoftcomShopDataManager(_config.SoftcomShop, _connectionString);
+            _modoDistribuidora = ModuloAppHelper.EstaEmModuloDistribuidoraWeb();
+            ConfigurarFuncionalidadesDistribuidora();
 
             // Atualizar status
             AtualizarStatus();
+        }
+
+        private void ConfigurarFuncionalidadesDistribuidora()
+        {
+            btnBuscarNotaFiscal.Visible = _modoDistribuidora;
+            btnBuscarNotaFiscal.Enabled = _modoDistribuidora;
+            btnBuscarNotaFiscal.Text = _modoDistribuidora ? "NFe / Volumes" : "Buscar por Nota Fiscal";
+
+            if (!_modoDistribuidora)
+                return;
+
+            btnBuscarNotaFiscal.Location = new System.Drawing.Point(22, 98);
+            btnBuscarNotaFiscal.Size = new System.Drawing.Size(420, 35);
+            panel3.Height = 150;
+            panel2.Top = panel3.Bottom + 10;
+            this.ClientSize = new System.Drawing.Size(this.ClientSize.Width, panel2.Bottom + 10);
         }
 
         private void AtualizarStatus()
@@ -178,6 +198,17 @@ namespace EtiquetaFORNew
 
         private async void btnBuscarNotaFiscal_Click(object sender, EventArgs e)
         {
+            if (_modoDistribuidora)
+            {
+                string numeroNfe = Prompt.ShowDialog("Informe o numero da NF-e:", "NFe / Volumes");
+
+                if (string.IsNullOrWhiteSpace(numeroNfe))
+                    return;
+
+                await BuscarDocumentoLogisticoAsync(numeroNfe.Trim());
+                return;
+            }
+
             // Criar formulÃ¡rio de entrada
             using (var form = new FormBuscarNotaFiscal())
             {
@@ -185,6 +216,194 @@ namespace EtiquetaFORNew
                 {
                     await BuscarNotaFiscalAsync(form.DataEntrada, form.NumeroNota);
                 }
+            }
+        }
+
+        private async Task BuscarDocumentoLogisticoAsync(string numeroNfe)
+        {
+            try
+            {
+                HabilitarBotoes(false);
+
+                var progress = new Progress<string>(mensagem =>
+                {
+                    lblStatus.Text = mensagem;
+                    Application.DoEvents();
+                });
+
+                lblStatus.Text = "Buscando NFe / Volumes...";
+                progressBar.Style = ProgressBarStyle.Marquee;
+                progressBar.Visible = true;
+
+                var resultado = await _dataManager.BuscarDocumentoLogisticoAsync(numeroNfe, progress);
+
+                progressBar.Visible = false;
+
+                if (!resultado.Sucesso)
+                {
+                    MessageBox.Show(
+                        resultado.MensagemErro,
+                        "Atencao",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    lblStatus.Text = "Venda/Pedido nao localizado";
+                    return;
+                }
+
+                if (resultado.Etiquetas == null || resultado.Etiquetas.Count == 0)
+                {
+                    MessageBox.Show(
+                        "A NF-e foi consultada, mas nao ha dados logisticos para imprimir.",
+                        "Atencao",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    lblStatus.Text = "Nenhum documento logistico";
+                    return;
+                }
+
+                lblStatus.Text = "Selecione a etiqueta logistica...";
+
+                using (var formSelecao = new FormSelecaoImpressao())
+                {
+                    if (formSelecao.ShowDialog(this) != DialogResult.OK)
+                    {
+                        lblStatus.Text = "Documento logistico carregado";
+                        return;
+                    }
+
+                    TemplateEtiqueta templateSelecionado = TemplateManager.CarregarTemplate(formSelecao.TemplateSelecionado);
+                    if (templateSelecionado == null)
+                    {
+                        MessageBox.Show(
+                            "Nao foi possivel carregar o template selecionado.",
+                            "Erro",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+
+                        lblStatus.Text = "Erro no template";
+                        return;
+                    }
+
+                    using (var formImpressao = new FormImpressao(resultado.Etiquetas, templateSelecionado, formSelecao.ConfiguracaoSelecionada))
+                    {
+                        formImpressao.ShowDialog(this);
+                    }
+                }
+
+                lblStatus.Text = "Pronto";
+            }
+            catch (Exception ex)
+            {
+                progressBar.Visible = false;
+
+                MessageBox.Show(
+                    $"Erro ao buscar NFe / Volumes:\n\n{ex.Message}",
+                    "Erro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                lblStatus.Text = "Erro";
+            }
+            finally
+            {
+                progressBar.Visible = false;
+                HabilitarBotoes(true);
+            }
+        }
+
+        private async Task BuscarVolumesDistribuidoraAsync(DateTime dataEntrada, int numeroNota)
+        {
+            try
+            {
+                HabilitarBotoes(false);
+
+                var progress = new Progress<string>(mensagem =>
+                {
+                    lblStatus.Text = mensagem;
+                    Application.DoEvents();
+                });
+
+                lblStatus.Text = "Buscando NFe / Volumes...";
+                progressBar.Style = ProgressBarStyle.Marquee;
+                progressBar.Visible = true;
+
+                var resultado = await _dataManager.BuscarVolumesDistribuidoraAsync(dataEntrada, numeroNota, progress);
+
+                progressBar.Visible = false;
+
+                if (!resultado.Sucesso)
+                {
+                    MessageBox.Show(
+                        resultado.MensagemErro,
+                        "Atencao",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    lblStatus.Text = "Nenhum volume gerado";
+                    return;
+                }
+
+                if (resultado.Etiquetas == null || resultado.Etiquetas.Count == 0)
+                {
+                    MessageBox.Show(
+                        "A NFe foi consultada, mas nao ha volumes para imprimir.",
+                        "Atencao",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    lblStatus.Text = "Nenhum volume gerado";
+                    return;
+                }
+
+                lblStatus.Text = "Selecione a etiqueta de expedicao...";
+
+                using (var formSelecao = new FormSelecaoImpressao())
+                {
+                    if (formSelecao.ShowDialog(this) != DialogResult.OK)
+                    {
+                        lblStatus.Text = $"{resultado.TotalVolumes} volumes gerados";
+                        return;
+                    }
+
+                    TemplateEtiqueta templateSelecionado = TemplateManager.CarregarTemplate(formSelecao.TemplateSelecionado);
+                    if (templateSelecionado == null)
+                    {
+                        MessageBox.Show(
+                            "Nao foi possivel carregar o template selecionado.",
+                            "Erro",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+
+                        lblStatus.Text = "Erro no template";
+                        return;
+                    }
+
+                    using (var formImpressao = new FormImpressao(resultado.Etiquetas, templateSelecionado, formSelecao.ConfiguracaoSelecionada))
+                    {
+                        formImpressao.ShowDialog(this);
+                    }
+                }
+
+                lblStatus.Text = "Pronto";
+            }
+            catch (Exception ex)
+            {
+                progressBar.Visible = false;
+
+                MessageBox.Show(
+                    $"Erro ao buscar NFe / Volumes:\n\n{ex.Message}",
+                    "Erro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                lblStatus.Text = "Erro";
+            }
+            finally
+            {
+                progressBar.Visible = false;
+                HabilitarBotoes(true);
             }
         }
 
@@ -442,7 +661,8 @@ namespace EtiquetaFORNew
         private void HabilitarBotoes(bool habilitar)
         {
             btnSincronizarProdutos.Enabled = habilitar;
-            btnBuscarNotaFiscal.Enabled = false;
+            btnBuscarNotaFiscal.Enabled = habilitar && _modoDistribuidora;
+            btnBuscarNotaFiscal.Visible = _modoDistribuidora;
             btnBuscarVenda.Enabled = habilitar;
             btnFechar.Enabled = habilitar;
         }

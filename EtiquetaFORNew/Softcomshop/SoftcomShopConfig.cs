@@ -46,13 +46,13 @@ namespace EtiquetaFORNew
         }
 
         /// <summary>
-        /// Valida se a configuração está completa
+        /// Valida se existem dados suficientes para vincular o dispositivo e autenticar.
+        /// O ClientSecret e derivado do cadastro do dispositivo e pode ser renovado.
         /// </summary>
         public bool IsValid()
         {
             return !string.IsNullOrWhiteSpace(BaseURL) &&
                    !string.IsNullOrWhiteSpace(ClientId) &&
-                   !string.IsNullOrWhiteSpace(ClientSecret) &&
                    !string.IsNullOrWhiteSpace(CompanyName) &&
                    !string.IsNullOrWhiteSpace(CompanyCNPJ) &&
                    !string.IsNullOrWhiteSpace(DeviceName) &&
@@ -106,5 +106,10 @@ namespace EtiquetaFORNew
         public string ComprasV2Router => $"{_baseUrl}/softauth/api/v2/produtos/compras";
         public string DataEntradaNotaFiscalV2 => $"{_baseUrl}/softauth/api/v2/produtos/compras?data_hora_entrada=";
         public string VendasRouter => $"{_baseUrl}/softauth/api/vendas/vendas/completa/";
+        public string VendasFiltroDistribuidoraRouter => $"{_baseUrl}/softauth/api/vendas/filtro";
+        public string VendasCompletaDistribuidoraRouter => $"{_baseUrl}/softauth/api/vendas/vendas/completa";
+        public string ClientesRouter => $"{_baseUrl}/softauth/api/clientes/clientes";
+        public string ClientesRouterV2 => $"{_baseUrl}/softauth/api/v2/clientes/clientes";
+        public string BairroRouter => $"{_baseUrl}/softauth/api/endereco/bairro";
     }
 }

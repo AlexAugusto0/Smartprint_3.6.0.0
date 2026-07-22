@@ -751,6 +751,15 @@ namespace EtiquetaFORNew.Forms
             panelToolbox.Controls.Add(cmbCampos);
             yPos += 35;
 
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+            {
+                yPos = CriarComboCamposDistribuidora("Nota Fiscal:", EtiquetaDistribuidoraResolver.CamposNotaFiscal, yPos);
+                yPos = CriarComboCamposDistribuidora("Destinatario:", EtiquetaDistribuidoraResolver.CamposDestinatario, yPos);
+                yPos = CriarComboCamposDistribuidora("Endereco:", EtiquetaDistribuidoraResolver.CamposEndereco, yPos);
+                yPos = CriarComboCamposDistribuidora("Empresa:", EtiquetaDistribuidoraResolver.CamposEmpresa, yPos);
+                yPos = CriarComboCamposDistribuidora("Volumes:", EtiquetaDistribuidoraResolver.CamposVolumes, yPos);
+            }
+
             Label lblCodigoBarras = new Label
             {
                 Text = "Códigos de Barras:",
@@ -772,6 +781,11 @@ namespace EtiquetaFORNew.Forms
             cmbCodigoBarras.Items.AddRange(new object[] {
                 "CodigoMercadoria", "CodFabricante", "CodBarras", "CodBarras_Grade"
             });
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+            {
+                foreach (string campoCodigo in EtiquetaDistribuidoraResolver.ObterCamposCodigoBarras())
+                    cmbCodigoBarras.Items.Add(campoCodigo);
+            }
             cmbCodigoBarras.SelectedIndexChanged += (s, e) => {
                 if (cmbCodigoBarras.SelectedItem != null)
                 {
@@ -794,6 +808,43 @@ namespace EtiquetaFORNew.Forms
             Button btnRemover = CriarBotaoElemento("🗑️ Remover", yPos, () => RemoverElementoSelecionado());
             btnRemover.BackColor = Color.FromArgb(231, 76, 60);
             CriarPainelPropriedades();
+        }
+
+        private int CriarComboCamposDistribuidora(string titulo, IEnumerable<string> campos, int yPos)
+        {
+            Label lblGrupo = new Label
+            {
+                Text = titulo,
+                Location = new Point(10, yPos),
+                Size = new Size(180, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.FromArgb(52, 73, 94)
+            };
+            panelToolbox.Controls.Add(lblGrupo);
+            yPos += 22;
+
+            ComboBox cmbGrupo = new ComboBox
+            {
+                Location = new Point(10, yPos),
+                Size = new Size(180, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8)
+            };
+
+            foreach (string campo in campos)
+                cmbGrupo.Items.Add(campo);
+
+            cmbGrupo.SelectedIndexChanged += (s, e) =>
+            {
+                if (cmbGrupo.SelectedItem == null)
+                    return;
+
+                AdicionarCampo(cmbGrupo.SelectedItem.ToString());
+                cmbGrupo.SelectedIndex = -1;
+            };
+
+            panelToolbox.Controls.Add(cmbGrupo);
+            return yPos + 35;
         }
 
         private void CriarPainelPropriedades()

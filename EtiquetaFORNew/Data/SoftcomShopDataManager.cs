@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Globalization;
+using System.Net;
 using System.Threading.Tasks;
 using System.Linq;
 using Newtonsoft.Json;
@@ -15,11 +16,13 @@ namespace EtiquetaFORNew
     public class SoftcomShopDataManager
     {
         private readonly SoftcomShopService _service;
+        private readonly SoftcomShopConfig _config;
         private readonly string _connectionString;
         private readonly SoftcomShopService _softcomShopService;
 
         public SoftcomShopDataManager(SoftcomShopConfig config, string sqliteConnectionString)
         {
+            _config = config;
             _service = new SoftcomShopService(config);
             _connectionString = sqliteConnectionString;
             _softcomShopService = new SoftcomShopService(config);
@@ -1027,6 +1030,880 @@ namespace EtiquetaFORNew
             }
 
             return count;
+        }
+
+        #endregion
+
+        #region NFe / Volumes - Distribuidora
+
+        public async Task<DistribuidoraDocumentoLogisticoResult> BuscarDocumentoLogisticoAsync(string numeroNfe, IProgress<string> progress = null)
+        {
+            var result = new DistribuidoraDocumentoLogisticoResult();
+
+            try
+            {
+                numeroNfe = (numeroNfe ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(numeroNfe))
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "Informe o numero da NF-e.";
+                    return result;
+                }
+
+                progress?.Report("Consultando venda pela NF-e...");
+
+                string jsonVendas = await _service.GetVendasFiltroDistribuidoraAsync(numeroNfe);
+                JArray vendas = ExtrairVendasFiltroDistribuidora(ParseJsonDistribuidora(jsonVendas));
+                JObject venda = SelecionarVendaPorNumeroNfeDistribuidora(vendas, numeroNfe);
+
+                if (venda == null)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "Não foi localizada nenhuma Venda/Pedido vinculada à Nota Fiscal informada.";
+                    return result;
+                }
+
+                long clienteId = LerLong(PrimeiroCampoDistribuidora(venda, "cliente_id", "cliente.id"));
+                JObject clienteVenda = ObterObjetoRelacionadoDistribuidora(venda, "cliente");
+
+                if (clienteId <= 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A venda foi localizada, mas nao possui cliente_id para consulta do destinatario.";
+                    return result;
+                }
+
+                JArray itens = ObterItensVendaDistribuidora(venda);
+                if (itens.Count == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A venda foi localizada, mas nao retornou itens para impressao logistica.";
+                    return result;
+                }
+
+                progress?.Report("Consultando cliente da venda...");
+
+                string jsonCliente = await _service.GetClienteDistribuidoraAsync(clienteId);
+                JObject cliente = ObterClienteApiDistribuidora(ParseJsonDistribuidora(jsonCliente), clienteId, out string mensagemErroCliente);
+                if (cliente == null)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = mensagemErroCliente;
+                    return result;
+                }
+
+                cliente = MesclarObjetosDistribuidora(cliente, clienteVenda);
+
+                result.Etiqueta = MontarEtiquetaDistribuidora(venda, cliente, itens, numeroNfe);
+                result.Sucesso = true;
+
+                progress?.Report("Documento logistico carregado para impressao.");
+            }
+            catch (Exception ex)
+            {
+                result.Sucesso = false;
+                result.MensagemErro = ObterMensagemErroDistribuidora(ex);
+                progress?.Report($"Erro: {result.MensagemErro}");
+            }
+
+            return result;
+        }
+
+        private static JArray ExtrairVendasFiltroDistribuidora(JToken response)
+        {
+            var vendas = new JArray();
+            JToken data = ObterTokenDataDistribuidora(response);
+
+            if (data is JArray array)
+            {
+                foreach (JObject item in array.OfType<JObject>())
+                {
+                    JObject venda = ObterObjetoRelacionadoDistribuidora(item, "venda") ?? item;
+                    vendas.Add(venda);
+                }
+
+                return vendas;
+            }
+
+            if (data is JObject obj)
+            {
+                JObject venda = ObterObjetoRelacionadoDistribuidora(obj, "venda") ?? obj;
+                if (venda != null)
+                    vendas.Add(venda);
+            }
+
+            return vendas;
+        }
+
+        private static JObject SelecionarVendaPorNumeroNfeDistribuidora(JArray vendas, string numeroNfe)
+        {
+            if (vendas == null || vendas.Count == 0)
+                return null;
+
+            string numeroNormalizado = NormalizarDocumentoDistribuidora(numeroNfe);
+
+            foreach (JObject venda in vendas.OfType<JObject>())
+            {
+                string[] candidatos =
+                {
+                    TextoCampoDistribuidora(venda, "numero_documento"),
+                    TextoCampoDistribuidora(venda, "numero_nfe", "numero_nf", "nota_fiscal", "nfe.numero", "nfe.numero_nfe"),
+                    TextoCampoDistribuidora(venda, "nfe_id")
+                };
+
+                foreach (string candidato in candidatos)
+                {
+                    string candidatoNormalizado = NormalizarDocumentoDistribuidora(candidato);
+                    if (!string.IsNullOrWhiteSpace(candidatoNormalizado) && candidatoNormalizado == numeroNormalizado)
+                        return venda;
+                }
+            }
+
+            return vendas.Count == 1 ? vendas.OfType<JObject>().FirstOrDefault() : null;
+        }
+
+        private static JArray ObterItensVendaDistribuidora(JObject venda)
+        {
+            JToken itens = PrimeiroCampoDistribuidora(venda, "itens");
+
+            if (itens is JArray array)
+                return array;
+
+            return new JArray();
+        }
+
+        private EtiquetaDistribuidora MontarEtiquetaDistribuidora(JObject venda, JObject cliente, JArray itens, string numeroNfeInformado)
+        {
+            var etiqueta = new EtiquetaDistribuidora
+            {
+                Venda = new DadosVendaDistribuidora
+                {
+                    Id = LerLong(PrimeiroCampoDistribuidora(venda, "id")),
+                    ClienteId = LerLong(PrimeiroCampoDistribuidora(venda, "cliente_id", "cliente.id")),
+                    EmpresaId = LerLong(PrimeiroCampoDistribuidora(venda, "empresa_id", "empresa.id")),
+                    NumeroDocumento = TextoCampoDistribuidora(venda, "numero_documento"),
+                    NumeroNf = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(venda, "numero_nfe", "numero_nf", "nota_fiscal", "nfe.numero", "nfe.numero_nfe"),
+                        numeroNfeInformado),
+                    DataEmissao = DataCampoDistribuidora(venda, "api_data_hora_venda", "data_hora_venda", "created_at"),
+                    Observacao = TextoCampoDistribuidora(venda, "observacao"),
+                    NfeId = LerLong(PrimeiroCampoDistribuidora(venda, "nfe_id"))
+                },
+                Empresa = MontarEmpresaDistribuidora(ObterObjetoRelacionadoDistribuidora(venda, "empresa")),
+                Destinatario = MontarDestinatarioEtiquetaDistribuidora(cliente),
+                Endereco = MontarEnderecoEtiquetaDistribuidora(cliente),
+                Produtos = MontarProdutosVendaDistribuidora(itens, LerLong(PrimeiroCampoDistribuidora(venda, "id")))
+            };
+
+            return etiqueta;
+        }
+
+        private static DadosEmpresaDistribuidora MontarEmpresaDistribuidora(JObject empresa)
+        {
+            return new DadosEmpresaDistribuidora
+            {
+                Id = LerLong(PrimeiroCampoDistribuidora(empresa, "id")),
+                Nome = TextoCampoDistribuidora(empresa, "nome"),
+                Fantasia = TextoCampoDistribuidora(empresa, "fantasia"),
+                RazaoSocial = TextoCampoDistribuidora(empresa, "razao_social"),
+                Cnpj = TextoCampoDistribuidora(empresa, "cnpj")
+            };
+        }
+
+        private static DadosDestinatarioEtiquetaDistribuidora MontarDestinatarioEtiquetaDistribuidora(JObject cliente)
+        {
+            return new DadosDestinatarioEtiquetaDistribuidora
+            {
+                Id = LerLong(PrimeiroCampoDistribuidora(cliente, "id")),
+                Nome = TextoCampoDistribuidora(cliente, "nome"),
+                RazaoSocial = TextoCampoDistribuidora(cliente, "razao_social"),
+                Documento = TextoCampoDistribuidora(cliente, "cpf_cnpj", "documento", "cnpj", "cpf")
+            };
+        }
+
+        private static DadosEnderecoEtiquetaDistribuidora MontarEnderecoEtiquetaDistribuidora(JObject cliente)
+        {
+            return new DadosEnderecoEtiquetaDistribuidora
+            {
+                Endereco = TextoCampoDistribuidora(cliente, "endereco", "logradouro"),
+                Numero = TextoCampoDistribuidora(cliente, "numero"),
+                Complemento = TextoCampoDistribuidora(cliente, "complemento"),
+                Bairro = TextoCampoDistribuidora(cliente, "bairro"),
+                Cidade = TextoCampoDistribuidora(cliente, "cidade"),
+                Uf = TextoCampoDistribuidora(cliente, "uf"),
+                Cep = TextoCampoDistribuidora(cliente, "cep")
+            };
+        }
+
+        private static List<ProdutoVendaDistribuidora> MontarProdutosVendaDistribuidora(JArray itens, long vendaId)
+        {
+            var produtos = new List<ProdutoVendaDistribuidora>();
+
+            foreach (JObject item in itens.OfType<JObject>())
+            {
+                produtos.Add(new ProdutoVendaDistribuidora
+                {
+                    VendaId = LerLong(PrimeiroCampoDistribuidora(item, "venda_id"), vendaId),
+                    ProdutoId = LerLong(PrimeiroCampoDistribuidora(item, "produto_id")),
+                    Quantidade = DecimalCampoDistribuidora(item, "quantidade") ?? 0m,
+                    Preco = DecimalCampoDistribuidora(item, "preco") ?? 0m,
+                    Peso = DecimalCampoDistribuidora(item, "peso") ?? 0m
+                });
+            }
+
+            return produtos;
+        }
+
+        private static string NormalizarDocumentoDistribuidora(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+                return string.Empty;
+
+            string digitos = SomenteDigitos(valor);
+            if (string.IsNullOrWhiteSpace(digitos))
+                return valor.Trim().ToUpperInvariant();
+
+            string semZerosEsquerda = digitos.TrimStart('0');
+            return string.IsNullOrWhiteSpace(semZerosEsquerda) ? "0" : semZerosEsquerda;
+        }
+
+        public async Task<DistribuidoraNFeVolumesResult> BuscarVolumesDistribuidoraAsync(DateTime dataEmissao, int numeroNota, IProgress<string> progress = null)
+        {
+            var result = new DistribuidoraNFeVolumesResult();
+
+            try
+            {
+                progress?.Report("Consultando cabecalho da NFe...");
+
+                string jsonCabecalho = await _service.GetVendaCompletaDistribuidoraAsync(dataEmissao, numeroNota);
+                JToken response = ParseJsonDistribuidora(jsonCabecalho);
+                JObject nota = ObterObjetoNotaDistribuidora(response, numeroNota);
+
+                if (nota == null)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A NFe foi consultada, mas o cabecalho nao foi encontrado no formato esperado.";
+                    return result;
+                }
+
+                DadosNotaDistribuidora dadosNota = MontarDadosNotaDistribuidora(nota, numeroNota, dataEmissao);
+
+                progress?.Report("Consultando cliente da NFe...");
+                JObject cliente = ObterObjetoRelacionadoDistribuidora(nota, "cliente", "destinatario", "pessoa", "consumidor");
+                long clienteId = ObterClienteIdDistribuidora(nota, cliente);
+                dadosNota.ClienteId = clienteId;
+
+                if (clienteId > 0)
+                {
+                    try
+                    {
+                        string jsonCliente = await _service.GetClienteDistribuidoraAsync(clienteId);
+                        JObject clienteApi = ObterPrimeiroObjetoDataDistribuidora(ParseJsonDistribuidora(jsonCliente));
+                        if (clienteApi != null)
+                            cliente = MesclarObjetosDistribuidora(clienteApi, cliente);
+                    }
+                    catch (SoftcomShopApiException ex)
+                    {
+                        if (ex.StatusCode != HttpStatusCode.NotFound || cliente == null)
+                            throw;
+                    }
+                }
+
+                if (cliente == null)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A NFe foi encontrada, mas os dados do cliente/destinatario nao foram retornados.";
+                    return result;
+                }
+
+                progress?.Report("Consultando bairro do destinatario...");
+                JObject bairro = ObterObjetoRelacionadoDistribuidora(cliente, "bairro", "endereco_bairro");
+                long bairroId = ObterBairroIdDistribuidora(cliente, nota);
+
+                if (bairroId > 0)
+                {
+                    try
+                    {
+                        string jsonBairro = await _service.GetBairroDistribuidoraAsync(bairroId);
+                        JObject bairroApi = ObterPrimeiroObjetoDataDistribuidora(ParseJsonDistribuidora(jsonBairro));
+                        if (bairroApi != null)
+                            bairro = MesclarObjetosDistribuidora(bairroApi, bairro);
+                    }
+                    catch (SoftcomShopApiException ex)
+                    {
+                        if (ex.StatusCode != HttpStatusCode.NotFound || bairro == null)
+                            throw;
+                    }
+                }
+
+                DadosDestinatarioDistribuidora destinatario = MontarDadosDestinatarioDistribuidora(cliente, nota);
+                DadosEnderecoDistribuidora endereco = MontarDadosEnderecoDistribuidora(cliente, bairro, bairroId);
+
+                progress?.Report("Consultando itens da NFe...");
+                JArray itensJson = ExtrairItensNotaDistribuidora(nota);
+                if (itensJson.Count == 0)
+                    itensJson = ExtrairItensNotaDistribuidora(response);
+
+                if (itensJson.Count == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "A NFe foi consultada, mas nenhum item foi retornado para gerar volumes.";
+                    return result;
+                }
+
+                List<ItemNotaDistribuidora> itens = MontarItensDistribuidora(itensJson);
+                List<VolumeDistribuidora> volumes = MontarVolumesDistribuidora(dadosNota, itens);
+
+                if (volumes.Count == 0)
+                {
+                    result.Sucesso = false;
+                    result.MensagemErro = "Os itens da NFe foram consultados, mas nenhum volume logistico pode ser gerado.";
+                    return result;
+                }
+
+                result.DadosNota = dadosNota;
+                result.DadosDestinatario = destinatario;
+                result.DadosEndereco = endereco;
+                result.Itens = itens;
+                result.Volumes = volumes;
+                result.Etiquetas = MontarEtiquetasVolumesDistribuidora(dadosNota, destinatario, endereco, itens, volumes);
+                result.Sucesso = true;
+
+                progress?.Report($"{result.TotalVolumes} volumes gerados para impressao.");
+            }
+            catch (Exception ex)
+            {
+                result.Sucesso = false;
+                result.MensagemErro = ObterMensagemErroDistribuidora(ex);
+                progress?.Report($"Erro: {result.MensagemErro}");
+            }
+
+            return result;
+        }
+
+        private DadosNotaDistribuidora MontarDadosNotaDistribuidora(JObject nota, int numeroNota, DateTime dataEmissaoInformada)
+        {
+            return new DadosNotaDistribuidora
+            {
+                NumeroDocumento = TextoCampoDistribuidora(nota, "numero_documento", "documento", "numero", "venda_numero", "id"),
+                NumeroNFe = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(nota, "numero_nfe", "nfe_numero", "numero_nota_fiscal", "nota_fiscal", "numero_nf"),
+                    numeroNota > 0 ? numeroNota.ToString(CultureInfo.InvariantCulture) : string.Empty),
+                Serie = TextoCampoDistribuidora(nota, "serie", "serie_nfe", "nfe_serie"),
+                Modelo = TextoCampoDistribuidora(nota, "modelo", "modelo_nfe", "nfe_modelo"),
+                DataEmissao = DataCampoDistribuidora(nota, "data_emissao", "data_hora_emissao", "emissao", "data") ?? dataEmissaoInformada,
+                ValorTotal = DecimalCampoDistribuidora(nota, "valor_total", "total", "venda_total", "valor_nota", "valor_total_nota"),
+                Observacao = TextoCampoDistribuidora(nota, "observacao", "observacoes", "obs"),
+                ChaveAcesso = TextoCampoDistribuidora(nota, "chave", "chave_acesso", "chave_nfe", "nfe_chave", "chave_acesso_nfe")
+            };
+        }
+
+        private DadosDestinatarioDistribuidora MontarDadosDestinatarioDistribuidora(JObject cliente, JObject nota)
+        {
+            return new DadosDestinatarioDistribuidora
+            {
+                RazaoSocial = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(cliente, "razao_social", "nome_razao_social", "nome", "cliente_nome"),
+                    TextoCampoDistribuidora(nota, "cliente_nome", "razao_social")),
+                NomeFantasia = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(cliente, "nome_fantasia", "fantasia", "apelido"),
+                    TextoCampoDistribuidora(nota, "cliente_fantasia", "nome_fantasia")),
+                Documento = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(cliente, "documento", "cpf_cnpj", "cnpj", "cpf"),
+                    TextoCampoDistribuidora(nota, "cliente_documento", "cpf_cnpj", "cnpj", "cpf")),
+                Telefone = TextoCampoDistribuidora(cliente, "telefone", "fone", "celular", "telefone1"),
+                Email = TextoCampoDistribuidora(cliente, "email", "e_mail")
+            };
+        }
+
+        private DadosEnderecoDistribuidora MontarDadosEnderecoDistribuidora(JObject cliente, JObject bairro, long bairroId)
+        {
+            return new DadosEnderecoDistribuidora
+            {
+                Logradouro = TextoCampoDistribuidora(cliente, "logradouro", "endereco", "rua", "endereco_logradouro"),
+                Numero = TextoCampoDistribuidora(cliente, "numero", "endereco_numero", "num"),
+                Complemento = TextoCampoDistribuidora(cliente, "complemento", "endereco_complemento"),
+                Cep = TextoCampoDistribuidora(cliente, "cep", "codigo_postal"),
+                BairroId = bairroId,
+                Bairro = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(bairro, "nome", "descricao", "bairro", "nome_bairro"),
+                    TextoCampoDistribuidora(cliente, "bairro", "bairro_nome", "nome_bairro")),
+                Cidade = TextoCampoDistribuidora(cliente, "cidade", "cidade_nome", "municipio", "nome_municipio"),
+                Uf = TextoCampoDistribuidora(cliente, "uf", "estado", "estado_sigla")
+            };
+        }
+
+        private List<ItemNotaDistribuidora> MontarItensDistribuidora(JArray itensJson)
+        {
+            var itens = new List<ItemNotaDistribuidora>();
+
+            foreach (JObject item in itensJson.OfType<JObject>())
+            {
+                JObject produto = ObterObjetoRelacionadoDistribuidora(item, "produto", "mercadoria", "produto_empresa", "sku");
+
+                decimal quantidade = DecimalCampoDistribuidora(item, "quantidade", "qtd", "quantidade_item", "qtde") ?? 1m;
+                int quantidadeVolumes = Math.Max(1, LerInteiro(PrimeiroCampoDistribuidora(item,
+                    "quantidade_volumes",
+                    "qtd_volumes",
+                    "volume_quantidade",
+                    "quantidade_volume",
+                    "volumes_quantidade"), 1));
+
+                itens.Add(new ItemNotaDistribuidora
+                {
+                    Codigo = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(item, "codigo", "codigo_mercadoria", "codigo_produto", "produto_id"),
+                        TextoCampoDistribuidora(produto, "codigo", "codigo_mercadoria", "codigo_produto", "produto_id")),
+                    Descricao = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(item, "descricao", "produto_nome", "nome", "mercadoria"),
+                        TextoCampoDistribuidora(produto, "descricao", "produto_nome", "nome", "mercadoria")),
+                    Quantidade = quantidade <= 0 ? 1m : quantidade,
+                    QuantidadeVolumes = quantidadeVolumes,
+                    Peso = DecimalCampoDistribuidora(item, "peso_volume", "peso_bruto", "peso_liquido", "peso", "peso_total")
+                           ?? DecimalCampoDistribuidora(produto, "peso_volume", "peso_bruto", "peso_liquido", "peso", "peso_total")
+                });
+            }
+
+            return itens;
+        }
+
+        private List<VolumeDistribuidora> MontarVolumesDistribuidora(DadosNotaDistribuidora dadosNota, List<ItemNotaDistribuidora> itens)
+        {
+            var volumes = new List<VolumeDistribuidora>();
+            string numeroNFe = PrimeiroTextoValor(dadosNota?.NumeroNFe, dadosNota?.NumeroDocumento, "NFE");
+            string empresaEmitente = _config?.CompanyName ?? string.Empty;
+            string operador = Environment.UserName ?? string.Empty;
+
+            foreach (ItemNotaDistribuidora item in itens)
+            {
+                int quantidadeVolumes = Math.Max(1, item.QuantidadeVolumes);
+
+                for (int i = 0; i < quantidadeVolumes; i++)
+                {
+                    int sequencial = volumes.Count + 1;
+                    volumes.Add(new VolumeDistribuidora
+                    {
+                        VolumeAtual = sequencial,
+                        CodigoVolume = CriarCodigoVolumeDistribuidora(numeroNFe, sequencial),
+                        Peso = item.Peso,
+                        DataImpressao = DateTime.Now,
+                        Operador = operador,
+                        EmpresaEmitente = empresaEmitente
+                    });
+                }
+            }
+
+            int totalVolumes = volumes.Count;
+            foreach (VolumeDistribuidora volume in volumes)
+                volume.TotalVolumes = totalVolumes;
+
+            return volumes;
+        }
+
+        private List<EtiquetaVolumeDistribuidora> MontarEtiquetasVolumesDistribuidora(
+            DadosNotaDistribuidora dadosNota,
+            DadosDestinatarioDistribuidora destinatario,
+            DadosEnderecoDistribuidora endereco,
+            List<ItemNotaDistribuidora> itens,
+            List<VolumeDistribuidora> volumes)
+        {
+            var etiquetas = new List<EtiquetaVolumeDistribuidora>();
+
+            foreach (VolumeDistribuidora volume in volumes)
+            {
+                etiquetas.Add(new EtiquetaVolumeDistribuidora
+                {
+                    DadosNota = dadosNota,
+                    DadosDestinatario = destinatario,
+                    DadosEndereco = endereco,
+                    Itens = itens,
+                    Volumes = volumes,
+                    Volume = volume
+                });
+            }
+
+            return etiquetas;
+        }
+
+        private static JToken ParseJsonDistribuidora(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                throw new JsonReaderException("Resposta vazia da API.");
+
+            return JToken.Parse(json);
+        }
+
+        private static JObject ObterObjetoNotaDistribuidora(JToken response, int numeroNota)
+        {
+            JToken data = ObterTokenDataDistribuidora(response);
+
+            if (data is JArray array)
+            {
+                JObject primeiro = null;
+
+                foreach (JObject item in array.OfType<JObject>())
+                {
+                    if (primeiro == null)
+                        primeiro = item;
+
+                    string numero = TextoCampoDistribuidora(item, "numero_nfe", "numero_nota_fiscal", "nota_fiscal", "numero_nf", "numero_documento", "numero");
+                    if (numeroNota > 0 && string.Equals(SomenteDigitos(numero), numeroNota.ToString(CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
+                        return item;
+                }
+
+                return primeiro;
+            }
+
+            return data as JObject;
+        }
+
+        private static JObject ObterPrimeiroObjetoDataDistribuidora(JToken response)
+        {
+            JToken data = ObterTokenDataDistribuidora(response);
+
+            if (data is JObject obj)
+                return obj;
+
+            if (data is JArray array)
+                return array.OfType<JObject>().FirstOrDefault();
+
+            return null;
+        }
+
+        private static JObject ObterClienteApiDistribuidora(JToken response, long clienteId, out string mensagemErro)
+        {
+            mensagemErro = null;
+
+            JObject envelope = response as JObject;
+            if (envelope != null)
+            {
+                JToken code = ObterCampoIgnoreCaseDistribuidora(envelope, "code");
+                if (ValorCampoPreenchidoDistribuidora(code))
+                {
+                    string codigo = ObterTextoClassificacao(code);
+                    if (!string.Equals(codigo, "1", StringComparison.OrdinalIgnoreCase))
+                    {
+                        mensagemErro = PrimeiroTextoValor(
+                            TextoCampoDistribuidora(envelope, "human"),
+                            TextoCampoDistribuidora(envelope, "message"),
+                            $"A API de clientes retornou code {codigo}."
+                        );
+                        return null;
+                    }
+                }
+            }
+
+            JObject cliente = ObterPrimeiroObjetoDataDistribuidora(response);
+            if (cliente == null)
+            {
+                mensagemErro = $"Cliente {clienteId} nao foi localizado na API SoftcomShop.";
+                return null;
+            }
+
+            mensagemErro = string.Empty;
+            return cliente;
+        }
+
+        private static JToken ObterTokenDataDistribuidora(JToken response)
+        {
+            if (response == null || response.Type == JTokenType.Null)
+                return null;
+
+            if (response.Type == JTokenType.String)
+                return ParseJsonDistribuidora(response.ToString());
+
+            JObject obj = response as JObject;
+            if (obj == null)
+                return response;
+
+            JToken data = ObterCampoIgnoreCaseDistribuidora(obj, "data");
+            if (data == null)
+                return response;
+
+            if (data.Type == JTokenType.String)
+                return ParseJsonDistribuidora(data.ToString());
+
+            return data;
+        }
+
+        private static JArray ExtrairItensNotaDistribuidora(JToken token)
+        {
+            var itens = new JArray();
+            AdicionarItensNotaDistribuidora(itens, token);
+            return itens;
+        }
+
+        private static void AdicionarItensNotaDistribuidora(JArray destino, JToken token)
+        {
+            if (token == null || token.Type == JTokenType.Null)
+                return;
+
+            if (token.Type == JTokenType.String)
+            {
+                AdicionarItensNotaDistribuidora(destino, ParseJsonDistribuidora(token.ToString()));
+                return;
+            }
+
+            if (token is JArray array)
+            {
+                foreach (JToken item in array)
+                    AdicionarItensNotaDistribuidora(destino, item);
+
+                return;
+            }
+
+            JObject obj = token as JObject;
+            if (obj == null)
+                return;
+
+            JToken itens = PrimeiroCampoDistribuidora(obj, "itens", "items", "produtos", "mercadorias", "venda_itens", "nota_itens");
+            if (itens != null)
+            {
+                AdicionarItensNotaDistribuidora(destino, itens);
+                return;
+            }
+
+            if (TemCampoItemNotaDistribuidora(obj))
+                destino.Add(obj);
+        }
+
+        private static bool TemCampoItemNotaDistribuidora(JObject item)
+        {
+            return PrimeiroCampoDistribuidora(item,
+                "produto_id",
+                "codigo_produto",
+                "codigo_mercadoria",
+                "descricao",
+                "produto_nome",
+                "quantidade",
+                "qtd",
+                "quantidade_item") != null ||
+                ObterObjetoRelacionadoDistribuidora(item, "produto", "mercadoria", "sku") != null;
+        }
+
+        private static long ObterClienteIdDistribuidora(JObject nota, JObject cliente)
+        {
+            long clienteId = LerLong(PrimeiroCampoDistribuidora(nota,
+                "cliente_id",
+                "id_cliente",
+                "destinatario_id",
+                "pessoa_id",
+                "cliente.id",
+                "destinatario.id"));
+
+            if (clienteId <= 0)
+                clienteId = LerLong(PrimeiroCampoDistribuidora(cliente, "id", "cliente_id", "pessoa_id"));
+
+            return clienteId;
+        }
+
+        private static long ObterBairroIdDistribuidora(JObject cliente, JObject nota)
+        {
+            long bairroId = LerLong(PrimeiroCampoDistribuidora(cliente,
+                "bairro_id",
+                "id_bairro",
+                "endereco_bairro_id",
+                "bairro.id"));
+
+            if (bairroId <= 0)
+            {
+                bairroId = LerLong(PrimeiroCampoDistribuidora(nota,
+                    "bairro_id",
+                    "id_bairro",
+                    "cliente.bairro_id",
+                    "destinatario.bairro_id",
+                    "cliente.bairro.id",
+                    "destinatario.bairro.id"));
+            }
+
+            return bairroId;
+        }
+
+        private static JObject ObterObjetoRelacionadoDistribuidora(JObject obj, params string[] campos)
+        {
+            JToken token = PrimeiroCampoDistribuidora(obj, campos);
+            return token as JObject;
+        }
+
+        private static JObject MesclarObjetosDistribuidora(JObject principal, JObject fallback)
+        {
+            if (principal == null)
+                return fallback;
+
+            if (fallback == null)
+                return principal;
+
+            var resultado = new JObject();
+            CopiarCamposDistribuidora(resultado, fallback);
+            CopiarCamposDistribuidora(resultado, principal);
+            return resultado;
+        }
+
+        private static void CopiarCamposDistribuidora(JObject destino, JObject origem)
+        {
+            if (destino == null || origem == null)
+                return;
+
+            foreach (var prop in origem.Properties())
+                destino[prop.Name] = prop.Value.DeepClone();
+        }
+
+        private static JToken PrimeiroCampoDistribuidora(JObject obj, params string[] campos)
+        {
+            if (obj == null || campos == null)
+                return null;
+
+            foreach (string campo in campos)
+            {
+                JToken valor = ObterCampoCaminhoDistribuidora(obj, campo);
+                if (ValorCampoPreenchidoDistribuidora(valor))
+                    return valor;
+            }
+
+            return null;
+        }
+
+        private static JToken ObterCampoCaminhoDistribuidora(JObject obj, string caminho)
+        {
+            if (obj == null || string.IsNullOrWhiteSpace(caminho))
+                return null;
+
+            string[] partes = caminho.Split('.');
+            JToken atual = obj;
+
+            foreach (string parte in partes)
+            {
+                JObject atualObj = atual as JObject;
+                if (atualObj == null)
+                    return null;
+
+                atual = ObterCampoIgnoreCaseDistribuidora(atualObj, parte);
+                if (atual == null)
+                    return null;
+            }
+
+            return atual;
+        }
+
+        private static JToken ObterCampoIgnoreCaseDistribuidora(JObject obj, string nomeCampo)
+        {
+            if (obj == null || string.IsNullOrWhiteSpace(nomeCampo))
+                return null;
+
+            foreach (var prop in obj.Properties())
+            {
+                if (string.Equals(prop.Name, nomeCampo, StringComparison.OrdinalIgnoreCase))
+                    return prop.Value;
+            }
+
+            return null;
+        }
+
+        private static bool ValorCampoPreenchidoDistribuidora(JToken valor)
+        {
+            if (valor == null || valor.Type == JTokenType.Null)
+                return false;
+
+            if (valor is JValue)
+                return !string.IsNullOrWhiteSpace(valor.ToString());
+
+            if (valor is JArray array)
+                return array.Count > 0;
+
+            if (valor is JObject obj)
+                return obj.Properties().Any();
+
+            return true;
+        }
+
+        private static string TextoCampoDistribuidora(JObject obj, params string[] campos)
+        {
+            return ObterTextoClassificacao(PrimeiroCampoDistribuidora(obj, campos));
+        }
+
+        private static decimal? DecimalCampoDistribuidora(JObject obj, params string[] campos)
+        {
+            JToken valor = PrimeiroCampoDistribuidora(obj, campos);
+            if (!ValorCampoPreenchidoDistribuidora(valor))
+                return null;
+
+            return LerDecimal(valor, 0m);
+        }
+
+        private static DateTime? DataCampoDistribuidora(JObject obj, params string[] campos)
+        {
+            string texto = TextoCampoDistribuidora(obj, campos);
+            if (string.IsNullOrWhiteSpace(texto))
+                return null;
+
+            if (long.TryParse(texto, NumberStyles.Integer, CultureInfo.InvariantCulture, out long unix))
+            {
+                if (unix > 100000000000)
+                    unix = unix / 1000;
+
+                return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                    .AddSeconds(unix)
+                    .ToLocalTime();
+            }
+
+            DateTime data;
+            if (DateTime.TryParse(texto, CultureInfo.GetCultureInfo("pt-BR"), DateTimeStyles.AssumeLocal, out data))
+                return data;
+
+            if (DateTime.TryParse(texto, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out data))
+                return data;
+
+            return null;
+        }
+
+        private static string CriarCodigoVolumeDistribuidora(string numeroNFe, int sequencial)
+        {
+            string numero = SomenteLetrasNumeros(PrimeiroTextoValor(numeroNFe, "NFE"));
+            return $"{numero}-VOL{sequencial.ToString("000", CultureInfo.InvariantCulture)}";
+        }
+
+        private static string SomenteDigitos(string texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto))
+                return string.Empty;
+
+            return new string(texto.Where(char.IsDigit).ToArray());
+        }
+
+        private static string SomenteLetrasNumeros(string texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto))
+                return string.Empty;
+
+            return new string(texto.Where(char.IsLetterOrDigit).ToArray());
+        }
+
+        private static string ObterMensagemErroDistribuidora(Exception ex)
+        {
+            if (ex is SoftcomShopApiException apiEx)
+            {
+                switch (apiEx.StatusCode)
+                {
+                    case HttpStatusCode.Unauthorized:
+                        return "A API recusou a autenticacao. Verifique Client ID, Client Secret e dispositivo.";
+                    case HttpStatusCode.Forbidden:
+                        return "A API negou acesso a esta rotina. Verifique as permissoes do cliente SoftcomShop.";
+                    case HttpStatusCode.NotFound:
+                        return "A NFe, cliente ou bairro informado nao foi encontrado na API SoftcomShop.";
+                    case HttpStatusCode.InternalServerError:
+                        return "A API SoftcomShop retornou erro interno. Tente novamente ou acione o suporte.";
+                    default:
+                        return $"A API SoftcomShop retornou HTTP {(int)apiEx.StatusCode}.";
+                }
+            }
+
+            if (ex is TimeoutException)
+                return "Tempo limite excedido ao comunicar com a API SoftcomShop. Tente novamente.";
+
+            if (ex is JsonReaderException || ex is JsonSerializationException)
+                return "A API retornou um JSON invalido ou em formato inesperado.";
+
+            return $"Falha ao consultar NFe / Volumes: {ex.Message}";
         }
 
         #endregion

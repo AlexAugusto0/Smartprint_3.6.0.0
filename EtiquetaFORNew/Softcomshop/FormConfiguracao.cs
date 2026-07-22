@@ -58,8 +58,9 @@ namespace EtiquetaFORNew
             // 2. Configuração do ComboBox de Módulo (Novo código que você adicionou)
             if (comboModuloApp.Items.Count == 0)
             {
-                comboModuloApp.Items.Add("Padrao");
-                comboModuloApp.Items.Add("Confeccao");
+                comboModuloApp.Items.Add(ModuloAppHelper.ModuloPadrao);
+                comboModuloApp.Items.Add(ModuloAppHelper.ModuloConfeccao);
+                comboModuloApp.Items.Add(ModuloAppHelper.ModuloDistribuidora);
             }
 
             // Carrega a configuração do DatabaseConfig para o módulo
@@ -145,7 +146,7 @@ namespace EtiquetaFORNew
                     _config.Salvar();
 
                 var configDb = DatabaseConfig.LoadConfiguration();
-                configDb.ModuloAppWeb = comboModuloApp.SelectedItem?.ToString() ?? "Padrao";
+                configDb.ModuloAppWeb = comboModuloApp.SelectedItem?.ToString() ?? ModuloAppHelper.ModuloPadrao;
                 DatabaseConfig.SaveConfiguration(configDb);
 
                 this.Close();
