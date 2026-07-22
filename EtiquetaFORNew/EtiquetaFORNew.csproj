@@ -250,92 +250,92 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CalibracaoManager.cs" />
-    <Compile Include="CarregadorDados.cs" />
-    <Compile Include="CalculadoraCamposEtiqueta.cs" />
-    <Compile Include="CampoEtiquetaResolver.cs" />
-    <Compile Include="Classes.cs" />
-    <Compile Include="ConfiguracaoManager.cs" />
-    <Compile Include="DescricaoMercadoriaDisplayHelper.cs" />
-    <Compile Include="ExpressionEngine.cs" />
-    <Compile Include="FormatadorMonetario.cs" />
-    <Compile Include="Data\Funcoes.cs" />
-    <Compile Include="Data\Promocoesmanager.cs" />
-    <Compile Include="Data\RawPrinterHelper.cs" />
-    <Compile Include="Data\SmartPrintRepository.cs" />
-    <Compile Include="Data\SoftcomShopDataManager.cs" />
-    <Compile Include="FormNomeTemplate.cs">
+    <Compile Include="Printing\Drivers\CalibracaoManager.cs" />
+    <Compile Include="Core\Business\CarregadorDados.cs" />
+    <Compile Include="Printing\Elements\CalculadoraCamposEtiqueta.cs" />
+    <Compile Include="Printing\Elements\CampoEtiquetaResolver.cs" />
+    <Compile Include="Core\Models\Classes.cs" />
+    <Compile Include="Core\Configuration\ConfiguracaoManager.cs" />
+    <Compile Include="Printing\Elements\DescricaoMercadoriaDisplayHelper.cs" />
+    <Compile Include="Printing\Elements\ExpressionEngine.cs" />
+    <Compile Include="Core\Utilities\FormatadorMonetario.cs" />
+    <Compile Include="Core\Utilities\Funcoes.cs" />
+    <Compile Include="Core\Business\Promocoesmanager.cs" />
+    <Compile Include="Printing\Drivers\RawPrinterHelper.cs" />
+    <Compile Include="Core\Repositories\SmartPrintRepository.cs" />
+    <Compile Include="Core\Repositories\SoftcomShopDataManager.cs" />
+    <Compile Include="Forms\Design\FormNomeTemplateDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\calibracao.cs">
+    <Compile Include="Forms\Impressao\calibracao.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\calibracao.Designer.cs">
+    <Compile Include="Forms\Impressao\calibracao.Designer.cs">
       <DependentUpon>calibracao.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormFiltrosCarregamento.cs">
+    <Compile Include="Forms\Carregamento\FormFiltrosCarregamento.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormPreview.cs">
+    <Compile Include="Forms\Design\FormPreview.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\ConfigForm.cs">
+    <Compile Include="Forms\Configuracao\ConfigForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\ConfigForm.Designer.cs">
+    <Compile Include="Forms\Configuracao\ConfigForm.Designer.cs">
       <DependentUpon>ConfigForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Data\DatabaseConfig.cs" />
-    <Compile Include="Driverinstaller.cs" />
-    <Compile Include="Forms\Formconfigetiqueta.cs">
+    <Compile Include="Core\Configuration\DatabaseConfig.cs" />
+    <Compile Include="Printing\Drivers\Driverinstaller.cs" />
+    <Compile Include="Forms\Configuracao\Formconfigetiqueta.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\Formconfigetiqueta.Designer.cs">
+    <Compile Include="Forms\Configuracao\Formconfigetiqueta.Designer.cs">
       <DependentUpon>Formconfigetiqueta.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormDesignNovo.cs">
+    <Compile Include="Forms\Design\FormDesignNovo.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormDesignNovo.Designer.cs">
+    <Compile Include="Forms\Design\FormDesignNovo.Designer.cs">
       <DependentUpon>FormDesignNovo.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormImpressao.cs">
+    <Compile Include="Forms\Impressao\FormImpressao.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormImpressao.Designer.cs">
+    <Compile Include="Forms\Impressao\FormImpressao.Designer.cs">
       <DependentUpon>FormImpressao.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormListaConfiguracoes.cs">
+    <Compile Include="Forms\Configuracao\FormListaConfiguracoes.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormListaConfiguracoes.Designer.cs">
+    <Compile Include="Forms\Configuracao\FormListaConfiguracoes.Designer.cs">
       <DependentUpon>FormListaConfiguracoes.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormListaTemplates.cs">
+    <Compile Include="Forms\Design\FormListaTemplates.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormMenuConfiguracao.cs">
+    <Compile Include="Forms\Configuracao\FormMenuConfiguracao.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormMenuConfiguracao.Designer.cs">
+    <Compile Include="Forms\Configuracao\FormMenuConfiguracao.Designer.cs">
       <DependentUpon>FormMenuConfiguracao.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormNomeTemplate.cs">
+    <Compile Include="Forms\Design\FormNomeTemplate.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormPrincipal.cs">
+    <Compile Include="Forms\Carregamento\FormPrincipal.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormPrincipal.Designer.cs">
+    <Compile Include="Forms\Carregamento\FormPrincipal.Designer.cs">
       <DependentUpon>FormPrincipal.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormSelecaoImpressao.cs">
+    <Compile Include="Forms\Impressao\FormSelecaoImpressao.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormTemplateApi.cs">
+    <Compile Include="Forms\Design\FormTemplateApi.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormTemplateApi.Designer.cs">
+    <Compile Include="Forms\Design\FormTemplateApi.Designer.cs">
       <DependentUpon>FormTemplateApi.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\telaTecnico.cs">
@@ -356,60 +356,60 @@
     <Compile Include="Forms\Main.Designer.cs">
       <DependentUpon>Main.cs</DependentUpon>
     </Compile>
-    <Compile Include="GerenciadorConfiguracoesEtiqueta.cs" />
-    <Compile Include="Impressoramanager.cs" />
-    <Compile Include="IntegracaoExterna.cs" />
-    <Compile Include="Localdatabasemanager .cs" />
-    <Compile Include="LocalDatabaseManagerExtensions.cs" />
-    <Compile Include="ModuloAppHelper.cs" />
+    <Compile Include="Core\Configuration\GerenciadorConfiguracoesEtiqueta.cs" />
+    <Compile Include="Printing\Drivers\Impressoramanager.cs" />
+    <Compile Include="Core\Business\IntegracaoExterna.cs" />
+    <Compile Include="Core\Repositories\LocalDatabaseManager.cs" />
+    <Compile Include="Core\Repositories\LocalDatabaseManagerExtensions.cs" />
+    <Compile Include="Core\Utilities\ModuloAppHelper.cs" />
     <Compile Include="OPS_HUB\Ops_Hub.cs" />
-    <Compile Include="PrinterDriverMatcher.cs" />
+    <Compile Include="Printing\Drivers\PrinterDriverMatcher.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Softcomshop\ConfiguracaoSistema.cs" />
-    <Compile Include="Softcomshop\FormConfiguracao.cs">
+    <Compile Include="Core\Configuration\ConfiguracaoSistema.cs" />
+    <Compile Include="Forms\Configuracao\FormConfiguracao.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Softcomshop\FormConfiguracao.Designer.cs">
+    <Compile Include="Forms\Configuracao\FormConfiguracao.Designer.cs">
       <DependentUpon>FormConfiguracao.cs</DependentUpon>
     </Compile>
-    <Compile Include="Softcomshop\FormSincronizacaoSoftcomShop.cs">
+    <Compile Include="Forms\Carregamento\FormSincronizacaoSoftcomShop.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Softcomshop\FormSincronizacaoSoftcomShop.Designer.cs">
+    <Compile Include="Forms\Carregamento\FormSincronizacaoSoftcomShop.Designer.cs">
       <DependentUpon>FormSincronizacaoSoftcomShop.cs</DependentUpon>
     </Compile>
-    <Compile Include="Softcomshop\EtiquetaDistribuidora.cs" />
-    <Compile Include="Softcomshop\EtiquetaDistribuidoraResolver.cs" />
-    <Compile Include="Softcomshop\EtiquetaVolumeDistribuidora.cs" />
-    <Compile Include="Softcomshop\EtiquetaVolumeDistribuidoraResolver.cs" />
-    <Compile Include="Softcomshop\SoftcomShopConfig.cs" />
-    <Compile Include="Softcomshop\SoftcomShopService.cs" />
-    <Compile Include="TemplateManager.cs" />
-    <Compile Include="TemplatePadraoManager.cs" />
-    <Compile Include="TemplatesPreDefinidos.cs" />
-    <Compile Include="Properties\VersaoHelper.cs" />
-    <EmbeddedResource Include="Forms\calibracao.resx">
+    <Compile Include="SmartPrint\Etiqueta\EtiquetaDistribuidora.cs" />
+    <Compile Include="SmartPrint\Etiqueta\EtiquetaDistribuidoraResolver.cs" />
+    <Compile Include="SmartPrint\Volumes\EtiquetaVolumeDistribuidora.cs" />
+    <Compile Include="SmartPrint\Volumes\EtiquetaVolumeDistribuidoraResolver.cs" />
+    <Compile Include="Core\Configuration\SoftcomShopConfig.cs" />
+    <Compile Include="Core\API\SoftcomShopService.cs" />
+    <Compile Include="Printing\Layouts\TemplateManager.cs" />
+    <Compile Include="Printing\Layouts\TemplatePadraoManager.cs" />
+    <Compile Include="Printing\Layouts\TemplatesPreDefinidos.cs" />
+    <Compile Include="Core\Utilities\VersaoHelper.cs" />
+    <EmbeddedResource Include="Forms\Impressao\calibracao.resx">
       <DependentUpon>calibracao.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\ConfigForm.resx">
+    <EmbeddedResource Include="Forms\Configuracao\ConfigForm.resx">
       <DependentUpon>ConfigForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormDesignNovo.resx">
+    <EmbeddedResource Include="Forms\Design\FormDesignNovo.resx">
       <DependentUpon>FormDesignNovo.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormImpressao.resx">
+    <EmbeddedResource Include="Forms\Impressao\FormImpressao.resx">
       <DependentUpon>FormImpressao.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormMenuConfiguracao.resx">
+    <EmbeddedResource Include="Forms\Configuracao\FormMenuConfiguracao.resx">
       <DependentUpon>FormMenuConfiguracao.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormPrincipal.resx">
+    <EmbeddedResource Include="Forms\Carregamento\FormPrincipal.resx">
       <DependentUpon>FormPrincipal.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormTemplateApi.resx">
+    <EmbeddedResource Include="Forms\Design\FormTemplateApi.resx">
       <DependentUpon>FormTemplateApi.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\telaEntrada.resx">
@@ -431,10 +431,10 @@
     <EmbeddedResource Include="Forms\telaTecnico.resx">
       <DependentUpon>telaTecnico.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Softcomshop\FormConfiguracao.resx">
+    <EmbeddedResource Include="Forms\Configuracao\FormConfiguracao.resx">
       <DependentUpon>FormConfiguracao.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Softcomshop\FormSincronizacaoSoftcomShop.resx">
+    <EmbeddedResource Include="Forms\Carregamento\FormSincronizacaoSoftcomShop.resx">
       <DependentUpon>FormSincronizacaoSoftcomShop.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="packages.config" />
