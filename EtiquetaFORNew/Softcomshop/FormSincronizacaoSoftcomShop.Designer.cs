@@ -62,9 +62,9 @@ namespace EtiquetaFORNew
             // 
             this.btnBuscarNotaFiscal.Enabled = false;
             this.btnBuscarNotaFiscal.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnBuscarNotaFiscal.Location = new System.Drawing.Point(22, 79);
+            this.btnBuscarNotaFiscal.Location = new System.Drawing.Point(136, 75);
             this.btnBuscarNotaFiscal.Name = "btnBuscarNotaFiscal";
-            this.btnBuscarNotaFiscal.Size = new System.Drawing.Size(23, 35);
+            this.btnBuscarNotaFiscal.Size = new System.Drawing.Size(167, 35);
             this.btnBuscarNotaFiscal.TabIndex = 1;
             this.btnBuscarNotaFiscal.Text = "Buscar por Nota Fiscal";
             this.btnBuscarNotaFiscal.UseVisualStyleBackColor = true;
