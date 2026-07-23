@@ -404,16 +404,34 @@ namespace EtiquetaFORNew.Forms
             };
 
             // ==================== PAINEL LATERAL ESQUERDO - TOOLBOX ====================
-            panelToolbox = new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 220,
-                BackColor = Color.FromArgb(236, 240, 241),
-                Padding = new Padding(10),
-                AutoScroll = true,
-                AutoScrollMinSize = new Size(0, 800)
-            };
-            this.Controls.Add(panelToolbox);
+
+            //if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+            //{
+                panelToolbox = new Panel
+                {
+                    Dock = DockStyle.Left,
+                    Width = 390,
+                    BackColor = Color.FromArgb(236, 240, 241),
+                    Padding = new Padding(10),
+                    AutoScroll = true,
+                    AutoScrollMinSize = new Size(0, 800)
+                };
+                this.Controls.Add(panelToolbox);
+            //}
+            //else { 
+            //    panelToolbox = new Panel
+            //    {
+            //        Dock = DockStyle.Left,
+            //        Width = 220,
+            //        BackColor = Color.FromArgb(236, 240, 241),
+            //        Padding = new Padding(10),
+            //        AutoScroll = true,
+            //        AutoScrollMinSize = new Size(0, 800)
+            //    };
+            //this.Controls.Add(panelToolbox);
+            //}
+
+
 
             CriarToolbox();
 
@@ -750,14 +768,16 @@ namespace EtiquetaFORNew.Forms
             };
             panelToolbox.Controls.Add(cmbCampos);
             yPos += 35;
+            
 
             if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
             {
-                yPos = CriarComboCamposDistribuidora("Nota Fiscal:", EtiquetaDistribuidoraResolver.CamposNotaFiscal, yPos);
-                yPos = CriarComboCamposDistribuidora("Destinatario:", EtiquetaDistribuidoraResolver.CamposDestinatario, yPos);
-                yPos = CriarComboCamposDistribuidora("Endereco:", EtiquetaDistribuidoraResolver.CamposEndereco, yPos);
-                yPos = CriarComboCamposDistribuidora("Empresa:", EtiquetaDistribuidoraResolver.CamposEmpresa, yPos);
-                yPos = CriarComboCamposDistribuidora("Volumes:", EtiquetaDistribuidoraResolver.CamposVolumes, yPos);
+                int yPos2 = 45;
+                yPos2 = CriarComboCamposDistribuidora("Nota Fiscal:", EtiquetaDistribuidoraResolver.CamposNotaFiscal, yPos2);
+                yPos2 = CriarComboCamposDistribuidora("Destinatario:", EtiquetaDistribuidoraResolver.CamposDestinatario, yPos2);
+                yPos2 = CriarComboCamposDistribuidora("Endereco:", EtiquetaDistribuidoraResolver.CamposEndereco, yPos2);
+                yPos2 = CriarComboCamposDistribuidora("Empresa:", EtiquetaDistribuidoraResolver.CamposEmpresa, yPos2);
+                yPos2 = CriarComboCamposDistribuidora("Volumes:", EtiquetaDistribuidoraResolver.CamposVolumes, yPos2);
             }
 
             Label lblCodigoBarras = new Label
@@ -795,37 +815,59 @@ namespace EtiquetaFORNew.Forms
             };
             panelToolbox.Controls.Add(cmbCodigoBarras);
             yPos += 35;
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+            {
+                Button btnTexto = CriarBotaoElemento("📝 Texto", yPos, () => AdicionarElemento(TipoElemento.Texto));
+                yPos += 40;
 
-            Button btnTexto = CriarBotaoElemento("📝 Texto", yPos, () => AdicionarElemento(TipoElemento.Texto));
-            yPos += 40;
+                Button btnExpressao = CriarBotaoElemento("∑ Expressão", yPos, () => AdicionarElemento(TipoElemento.Expressao));
+                yPos += 40;
 
-            Button btnExpressao = CriarBotaoElemento("∑ Expressão", yPos, () => AdicionarElemento(TipoElemento.Expressao));
-            yPos += 40;
+                Button btnImagem = CriarBotaoElemento("🖼️ Imagem", yPos, () => AdicionarImagem());
+                yPos += 40;
 
-            Button btnImagem = CriarBotaoElemento("🖼️ Imagem", yPos, () => AdicionarImagem());
-            yPos += 40;
+                Button btnRemover = CriarBotaoElemento("🗑️ Remover", yPos, () => RemoverElementoSelecionado());
+                btnRemover.BackColor = Color.FromArgb(231, 76, 60);
+                CriarPainelPropriedades();
+            }
+            else
+            {
+                {
+                    int yPos2 = 48;
+                    Button btnTexto = CriarBotaoElemento("📝 Texto", yPos2, () => AdicionarElemento(TipoElemento.Texto));
+                    yPos2 += 40;
 
-            Button btnRemover = CriarBotaoElemento("🗑️ Remover", yPos, () => RemoverElementoSelecionado());
-            btnRemover.BackColor = Color.FromArgb(231, 76, 60);
-            CriarPainelPropriedades();
+                    Button btnExpressao = CriarBotaoElemento("∑ Expressão", yPos2, () => AdicionarElemento(TipoElemento.Expressao));
+                    yPos2 += 40;
+
+                    Button btnImagem = CriarBotaoElemento("🖼️ Imagem", yPos2, () => AdicionarImagem());
+                    yPos2 += 40;
+
+                    Button btnRemover = CriarBotaoElemento("🗑️ Remover", yPos2, () => RemoverElementoSelecionado());
+                    btnRemover.BackColor = Color.FromArgb(231, 76, 60);
+                    CriarPainelPropriedades();
+                }
+
+            }
         }
 
         private int CriarComboCamposDistribuidora(string titulo, IEnumerable<string> campos, int yPos)
         {
+
             Label lblGrupo = new Label
             {
                 Text = titulo,
-                Location = new Point(10, yPos),
+                Location = new Point(200, yPos),
                 Size = new Size(180, 20),
                 Font = new Font("Segoe UI", 8, FontStyle.Bold),
                 ForeColor = Color.FromArgb(52, 73, 94)
             };
             panelToolbox.Controls.Add(lblGrupo);
-            yPos += 22;
+            yPos += 22;                ;
 
             ComboBox cmbGrupo = new ComboBox
             {
-                Location = new Point(10, yPos),
+                Location = new Point(200, yPos),
                 Size = new Size(180, 23),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = new Font("Segoe UI", 8)
@@ -849,10 +891,11 @@ namespace EtiquetaFORNew.Forms
 
         private void CriarPainelPropriedades()
         {
+
             panelPropriedades = new Panel
             {
                 Location = new Point(1, 400),
-                Size = new Size(210, 600),
+                Size = new Size(380, 550),
                 AutoScroll = true,
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -865,7 +908,7 @@ namespace EtiquetaFORNew.Forms
             lblPropriedadesElemento = new Label
             {
                 Text = "⚙ PROPRIEDADES",
-                Location = new Point(10, yPos),
+                Location = new Point(90, yPos),
                 Size = new Size(160, 25),
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 ForeColor = Color.FromArgb(52, 73, 94)
@@ -878,7 +921,7 @@ namespace EtiquetaFORNew.Forms
                 Name = "lblNomeElementoAtual",
                 Text = "",
                 Location = new Point(10, yPos),
-                Size = new Size(160, 34),
+                Size = new Size(350, 34),
                 Font = new Font("Segoe UI", 8),
                 ForeColor = Color.FromArgb(230, 126, 34),
                 BackColor = Color.FromArgb(255, 243, 224),
@@ -889,6 +932,77 @@ namespace EtiquetaFORNew.Forms
             };
             panelPropriedades.Controls.Add(lblNomeElemento);
             yPos += 42;
+
+            {
+                //Linhas Propriedades
+                int yPos2 = 82;
+                Panel linha1 = new Panel
+                {
+                    Location = new Point(180, yPos2),
+                    Size = new Size(2, 452),
+                    //BackColor = Color.FromArgb(230, 126, 34)
+                    BackColor = Color.FromArgb(0, 0, 0)
+
+                };
+                panelPropriedades.Controls.Add(linha1);
+                yPos2 += 15;
+
+                {
+                    int yPos3 = 82;
+                    Panel linha2 = new Panel
+                    {
+                        Location = new Point(3, yPos3),
+                        Size = new Size(359, 2),
+                        //BackColor = Color.FromArgb(230, 126, 34)
+                        BackColor = Color.FromArgb(0, 0, 0)
+                    };
+                    panelPropriedades.Controls.Add(linha2);
+                    yPos3 += 35;
+                }
+
+                {
+                    int yPos4 = 533;
+                    Panel linha2 = new Panel
+                    {
+                        Location = new Point(3, yPos4),
+                        Size = new Size(359, 2),
+                        //BackColor = Color.FromArgb(230, 126, 34)
+                        BackColor = Color.FromArgb(0, 0, 0)
+                    };
+                    panelPropriedades.Controls.Add(linha2);
+                    yPos4 += 35;
+                }
+
+                //Linhas Propriedades Laterais
+                {
+                    int yPos5 = 82;
+                    Panel linha5 = new Panel
+                    {
+                        Location = new Point(360, yPos5),
+                        Size = new Size(2, 452),
+                        //BackColor = Color.FromArgb(230, 126, 34)
+                        BackColor = Color.FromArgb(0, 0, 0)
+
+                    };
+                    panelPropriedades.Controls.Add(linha5);
+                    yPos5 += 15;
+                    {
+                        int yPos6 = 82;
+                        Panel linha6 = new Panel
+                        {
+                            Location = new Point(3, yPos6),
+                            Size = new Size(2, 452),
+                            //BackColor = Color.FromArgb(230, 126, 34)
+                            BackColor = Color.FromArgb(0, 0, 0)
+
+                        };
+                        panelPropriedades.Controls.Add(linha6);
+                        yPos6 += 15;
+                    }
+
+                }
+            }
+
 
             Label lblDimensoesElemento = new Label
             {
@@ -1052,141 +1166,148 @@ namespace EtiquetaFORNew.Forms
             panelPropriedades.Controls.Add(btnEditorExpressao);
             yPos += 38;
 
-            Label lblAlinhamento = new Label
-            {
-                Text = "Alinhamento:",
-                Location = new Point(10, yPos),
-                Size = new Size(160, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold),
-                ForeColor = Color.Gray
-            };
-            panelPropriedades.Controls.Add(lblAlinhamento);
-            yPos += 25;
 
-            btnAlinharEsquerda = new Button
+            //Reposicionamento
             {
-                Text = "←",
-                Location = new Point(10, yPos),
-                Size = new Size(50, 35),
-                Font = new Font("Segoe UI", 12),
-                BackColor = Color.FromArgb(236, 240, 241),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            btnAlinharEsquerda.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
-            btnAlinharEsquerda.Click += (s, e) => AlterarAlinhamento(StringAlignment.Near);
-            panelPropriedades.Controls.Add(btnAlinharEsquerda);
+                int yPos2 = 85;
+                Label lblAlinhamento = new Label
+                {
 
-            btnAlinharCentro = new Button
-            {
-                Text = "←→",
-                Location = new Point(65, yPos),
-                Size = new Size(50, 35),
-                Font = new Font("Segoe UI", 12),
-                BackColor = Color.FromArgb(236, 240, 241),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            btnAlinharCentro.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
-            btnAlinharCentro.Click += (s, e) => AlterarAlinhamento(StringAlignment.Center);
-            panelPropriedades.Controls.Add(btnAlinharCentro);
+                    Text = "Alinhamento:",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = Color.Gray
+                };
+                panelPropriedades.Controls.Add(lblAlinhamento);
+                yPos2 += 25;
 
-            btnAlinharDireita = new Button
-            {
-                Text = "→",
-                Location = new Point(120, yPos),
-                Size = new Size(50, 35),
-                Font = new Font("Segoe UI", 12),
-                BackColor = Color.FromArgb(236, 240, 241),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            btnAlinharDireita.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
-            btnAlinharDireita.Click += (s, e) => AlterarAlinhamento(StringAlignment.Far);
-            panelPropriedades.Controls.Add(btnAlinharDireita);
-            yPos += 45;
+                btnAlinharEsquerda = new Button
+                {
+                    Text = "←",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(50, 35),
+                    Font = new Font("Segoe UI", 12),
+                    BackColor = Color.FromArgb(236, 240, 241),
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand
+                };
+                btnAlinharEsquerda.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
+                btnAlinharEsquerda.Click += (s, e) => AlterarAlinhamento(StringAlignment.Near);
+                panelPropriedades.Controls.Add(btnAlinharEsquerda);
 
-            Label lblFamilia = new Label
-            {
-                Text = "Família da Fonte:",
-                Location = new Point(10, yPos),
-                Size = new Size(160, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold),
-                ForeColor = Color.Gray
-            };
-            panelPropriedades.Controls.Add(lblFamilia);
-            yPos += 25;
+                btnAlinharCentro = new Button
+                {
+                    Text = "←→",
+                    Location = new Point(245, yPos2),
+                    Size = new Size(50, 35),
+                    Font = new Font("Segoe UI", 12),
+                    BackColor = Color.FromArgb(236, 240, 241),
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand
+                };
+                btnAlinharCentro.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
+                btnAlinharCentro.Click += (s, e) => AlterarAlinhamento(StringAlignment.Center);
+                panelPropriedades.Controls.Add(btnAlinharCentro);
 
-            cmbFonte = new ComboBox
-            {
-                Location = new Point(10, yPos),
-                Size = new Size(160, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 9)
-            };
-            foreach (var fontFamily in FontFamily.Families)
-            {
-                cmbFonte.Items.Add(fontFamily.Name);
+                btnAlinharDireita = new Button
+                {
+                    Text = "→",
+                    Location = new Point(300, yPos2),
+                    Size = new Size(50, 35),
+                    Font = new Font("Segoe UI", 12),
+                    BackColor = Color.FromArgb(236, 240, 241),
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand
+                };
+                btnAlinharDireita.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
+                btnAlinharDireita.Click += (s, e) => AlterarAlinhamento(StringAlignment.Far);
+                panelPropriedades.Controls.Add(btnAlinharDireita);
+                yPos2 += 45;
+
+
+                Label lblFamilia = new Label
+                {
+                    Text = "Família da Fonte:",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = Color.Gray
+                };
+                panelPropriedades.Controls.Add(lblFamilia);
+                yPos2 += 25;
+
+
+                cmbFonte = new ComboBox
+                {
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 23),
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Font = new Font("Segoe UI", 9)
+                };
+                foreach (var fontFamily in FontFamily.Families)
+                {
+                    cmbFonte.Items.Add(fontFamily.Name);
+                }
+                cmbFonte.SelectedIndexChanged += CmbFonte_SelectedIndexChanged;
+                panelPropriedades.Controls.Add(cmbFonte);
+                yPos2 += 35;
+
+                Label lblFonte = new Label
+                {
+                    Text = "Tamanho da Fonte:",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = Color.Gray
+                };
+                panelPropriedades.Controls.Add(lblFonte);
+                yPos2 += 25;
+
+                numTamanhoFonte = new NumericUpDown
+                {
+                    Location = new Point(190, yPos2),
+                    Size = new Size(70, 23),
+                    Minimum = 3,
+                    Maximum = 72,
+                    Value = 10
+                };
+                numTamanhoFonte.ValueChanged += (s, e) => AlterarTamanhoFonte();
+                panelPropriedades.Controls.Add(numTamanhoFonte);
+                yPos2 += 35;
+
+                Label lblEstilo = new Label
+                {
+                    Text = "Estilo:",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = Color.Gray
+                };
+                panelPropriedades.Controls.Add(lblEstilo);
+                yPos2 += 25;
+
+                chkNegrito = new CheckBox
+                {
+                    Text = "Negrito",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(80, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold)
+                };
+                chkNegrito.CheckedChanged += (s, e) => AlterarEstiloFonte();
+                panelPropriedades.Controls.Add(chkNegrito);
+
+                chkItalico = new CheckBox
+                {
+                    Text = "Itálico",
+                    Location = new Point(275, yPos2),
+                    Size = new Size(75, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Italic)
+                };
+                chkItalico.CheckedChanged += (s, e) => AlterarEstiloFonte();
+                panelPropriedades.Controls.Add(chkItalico);
+                yPos2 += 35;
             }
-            cmbFonte.SelectedIndexChanged += CmbFonte_SelectedIndexChanged;
-            panelPropriedades.Controls.Add(cmbFonte);
-            yPos += 35;
-
-            Label lblFonte = new Label
-            {
-                Text = "Tamanho da Fonte:",
-                Location = new Point(10, yPos),
-                Size = new Size(160, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold),
-                ForeColor = Color.Gray
-            };
-            panelPropriedades.Controls.Add(lblFonte);
-            yPos += 25;
-
-            numTamanhoFonte = new NumericUpDown
-            {
-                Location = new Point(10, yPos),
-                Size = new Size(70, 23),
-                Minimum = 3,
-                Maximum = 72,
-                Value = 10
-            };
-            numTamanhoFonte.ValueChanged += (s, e) => AlterarTamanhoFonte();
-            panelPropriedades.Controls.Add(numTamanhoFonte);
-            yPos += 35;
-
-            Label lblEstilo = new Label
-            {
-                Text = "Estilo:",
-                Location = new Point(10, yPos),
-                Size = new Size(160, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold),
-                ForeColor = Color.Gray
-            };
-            panelPropriedades.Controls.Add(lblEstilo);
-            yPos += 25;
-
-            chkNegrito = new CheckBox
-            {
-                Text = "Negrito",
-                Location = new Point(10, yPos),
-                Size = new Size(80, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold)
-            };
-            chkNegrito.CheckedChanged += (s, e) => AlterarEstiloFonte();
-            panelPropriedades.Controls.Add(chkNegrito);
-
-            chkItalico = new CheckBox
-            {
-                Text = "Itálico",
-                Location = new Point(95, yPos),
-                Size = new Size(75, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Italic)
-            };
-            chkItalico.CheckedChanged += (s, e) => AlterarEstiloFonte();
-            panelPropriedades.Controls.Add(chkItalico);
-            yPos += 35;
-
             Label lblCor = new Label
             {
                 Text = "Cor do Texto:",
@@ -1327,73 +1448,637 @@ namespace EtiquetaFORNew.Forms
             panelPropriedades.Controls.Add(btnFundoTransparente);
             yPos += 35;
 
-            Label lblBorda = new Label
+            //Novo Posicionamento
             {
-                Text = "Borda:",
-                Location = new Point(10, yPos),
-                Size = new Size(160, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold),
-                ForeColor = Color.Gray
-            };
-            panelPropriedades.Controls.Add(lblBorda);
-            yPos += 25;
+                int yPos2 = 325;
+                Label lblBorda = new Label
+                {
+                    Text = "Borda:",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = Color.Gray
+                };
+                panelPropriedades.Controls.Add(lblBorda);
+                yPos2 += 25;
 
-            cmbBordaElemento = new ComboBox
-            {
-                Location = new Point(10, yPos),
-                Size = new Size(160, 23),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 9)
-            };
-            cmbBordaElemento.Items.AddRange(new object[] { "Transparente", "Sólida Preta" });
-            cmbBordaElemento.SelectedIndexChanged += (s, e) => AlterarBordaElementosSelecionados();
-            panelPropriedades.Controls.Add(cmbBordaElemento);
-            yPos += 35;
+                cmbBordaElemento = new ComboBox
+                {
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 23),
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Font = new Font("Segoe UI", 9)
+                };
+                cmbBordaElemento.Items.AddRange(new object[] { "Transparente", "Sólida Preta" });
+                cmbBordaElemento.SelectedIndexChanged += (s, e) => AlterarBordaElementosSelecionados();
+                panelPropriedades.Controls.Add(cmbBordaElemento);
+                yPos2 += 35;
 
-            Label lblEspessuraBorda = new Label
-            {
-                Text = "Espessura da Borda:",
-                Location = new Point(10, yPos),
-                Size = new Size(160, 20),
-                Font = new Font("Segoe UI", 8, FontStyle.Bold),
-                ForeColor = Color.Gray
-            };
-            panelPropriedades.Controls.Add(lblEspessuraBorda);
-            yPos += 25;
+                Label lblEspessuraBorda = new Label
+                {
+                    Text = "Espessura da Borda:",
+                    Location = new Point(190, yPos2),
+                    Size = new Size(160, 20),
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                    ForeColor = Color.Gray
+                };
+                panelPropriedades.Controls.Add(lblEspessuraBorda);
+                yPos2 += 25;
 
-            numEspessuraBorda = new NumericUpDown
-            {
-                Location = new Point(10, yPos),
-                Size = new Size(70, 23),
-                Minimum = 0.1m,
-                Maximum = 20,
-                DecimalPlaces = 1,
-                Increment = 0.1m,
-                Value = 1,
-                Enabled = false
-            };
-            numEspessuraBorda.ValueChanged += (s, e) => AlterarEspessuraBordaElementosSelecionados();
-            panelPropriedades.Controls.Add(numEspessuraBorda);
+                numEspessuraBorda = new NumericUpDown
+                {
+                    Location = new Point(190, yPos2),
+                    Size = new Size(70, 23),
+                    Minimum = 0.1m,
+                    Maximum = 20,
+                    DecimalPlaces = 1,
+                    Increment = 0.1m,
+                    Value = 1,
+                    Enabled = false
+                };
+                numEspessuraBorda.ValueChanged += (s, e) => AlterarEspessuraBordaElementosSelecionados();
+                panelPropriedades.Controls.Add(numEspessuraBorda);
+
+
+            }
         }
+        //    else 
+        //    { 
+        //        panelPropriedades = new Panel
+        //        {
+        //            Location = new Point(1, 400),
+        //            Size = new Size(210, 600),
+        //            AutoScroll = true,
+        //            BackColor = Color.White,
+        //            BorderStyle = BorderStyle.FixedSingle,
+        //            Visible = false
+        //        };
+        //    panelToolbox.Controls.Add(panelPropriedades);
+
+        //    int yPos = 10;
+
+        //    lblPropriedadesElemento = new Label
+        //    {
+        //        Text = "⚙ PROPRIEDADES",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 25),
+        //        Font = new Font("Segoe UI", 10, FontStyle.Bold),
+        //        ForeColor = Color.FromArgb(52, 73, 94)
+        //    };
+        //    panelPropriedades.Controls.Add(lblPropriedadesElemento);
+        //    yPos += 35;
+
+        //    Label lblNomeElemento = new Label
+        //    {
+        //        Name = "lblNomeElementoAtual",
+        //        Text = "",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 34),
+        //        Font = new Font("Segoe UI", 8),
+        //        ForeColor = Color.FromArgb(230, 126, 34),
+        //        BackColor = Color.FromArgb(255, 243, 224),
+        //        BorderStyle = BorderStyle.FixedSingle,
+        //        Padding = new Padding(3, 2, 3, 2),
+        //        AutoEllipsis = true,
+        //        Visible = false
+        //    };
+        //    panelPropriedades.Controls.Add(lblNomeElemento);
+        //    yPos += 42;
+
+        //    Label lblDimensoesElemento = new Label
+        //    {
+        //        Text = "Dimensoes (mm):",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblDimensoesElemento);
+        //    yPos += 25;
+
+        //    numElementoLargura = new NumericUpDown
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(75, 23),
+        //        Minimum = 1,
+        //        Maximum = 500,
+        //        Value = 1
+        //    };
+        //    numElementoLargura.ValueChanged += (s, e) => AlterarLarguraElementosSelecionados();
+        //    panelPropriedades.Controls.Add(numElementoLargura);
+
+        //    numElementoAltura = new NumericUpDown
+        //    {
+        //        Location = new Point(95, yPos),
+        //        Size = new Size(75, 23),
+        //        Minimum = 1,
+        //        Maximum = 500,
+        //        Value = 1
+        //    };
+        //    numElementoAltura.ValueChanged += (s, e) => AlterarAlturaElementosSelecionados();
+        //    panelPropriedades.Controls.Add(numElementoAltura);
+        //    yPos += 35;
+
+        //    Label lblConteudo = new Label
+        //    {
+        //        Name = "lblConteudoTexto",
+        //        Text = "Conteúdo:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray,
+        //        Visible = false
+        //    };
+        //    panelPropriedades.Controls.Add(lblConteudo);
+        //    yPos += 25;
+
+        //    TextBox txtConteudo = new TextBox
+        //    {
+        //        Name = "txtConteudoElemento",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 25),
+        //        Font = new Font("Segoe UI", 9),
+        //        Visible = false
+        //    };
+        //    txtConteudo.TextChanged += (s, e) =>
+        //    {
+        //        if (!atualizandoPropriedades && elementoSelecionado != null && elementoSelecionado.Tipo == TipoElemento.Texto)
+        //        {
+        //            elementoSelecionado.Conteudo = txtConteudo.Text;
+        //            SalvarEstadoHistorico();
+        //            pbCanvas.Invalidate();
+        //        }
+        //    };
+        //    panelPropriedades.Controls.Add(txtConteudo);
+        //    yPos += 35;
+
+        //    lblCalculoPreco = new Label
+        //    {
+        //        Text = "Calculo de Preco:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray,
+        //        Visible = false
+        //    };
+        //    //panelPropriedades.Controls.Add(lblCalculoPreco);
+        //    //yPos += 25;
+
+        //    cmbOperadorCalculoPreco = new ComboBox
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(70, 23),
+        //        DropDownStyle = ComboBoxStyle.DropDownList,
+        //        Font = new Font("Segoe UI", 9),
+        //        Visible = false
+        //    };
+        //    cmbOperadorCalculoPreco.Items.AddRange(new object[] { "Nenhum", "+", "-", "*", "/" });
+        //    cmbOperadorCalculoPreco.SelectedIndexChanged += (s, e) => AlterarCalculoPreco();
+        //    //panelPropriedades.Controls.Add(cmbOperadorCalculoPreco);
+
+        //    numValorCalculoPreco = new NumericUpDown
+        //    {
+        //        Location = new Point(90, yPos),
+        //        Size = new Size(80, 23),
+        //        Minimum = 0m,
+        //        Maximum = 999999m,
+        //        DecimalPlaces = 4,
+        //        Increment = 0.01m,
+        //        Value = 0m,
+        //        Visible = false
+        //    };
+        //    numValorCalculoPreco.ValueChanged += (s, e) => AlterarCalculoPreco();
+        //    //panelPropriedades.Controls.Add(numValorCalculoPreco);
+        //    //yPos += 35;
+
+        //    lblExpressaoFormula = new Label
+        //    {
+        //        Text = "Expressão:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray,
+        //        Visible = false
+        //    };
+        //    panelPropriedades.Controls.Add(lblExpressaoFormula);
+        //    yPos += 25;
+
+        //    txtExpressaoFormula = new TextBox
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 25),
+        //        Font = new Font("Segoe UI", 9),
+        //        Visible = false,
+        //        AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+        //        AutoCompleteSource = AutoCompleteSource.CustomSource
+        //    };
+        //    txtExpressaoFormula.AutoCompleteCustomSource.AddRange(CampoEtiquetaResolver.ObterCamposDisponiveis().ToArray());
+        //    txtExpressaoFormula.TextChanged += (s, e) => AlterarExpressao();
+        //    txtExpressaoFormula.Leave += (s, e) => ValidarExpressaoSelecionada(true);
+        //    panelPropriedades.Controls.Add(txtExpressaoFormula);
+        //    yPos += 32;
+
+        //    btnInserirCampoExpressao = new Button
+        //    {
+        //        Text = "Inserir Campo",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(110, 28),
+        //        Font = new Font("Segoe UI", 8),
+        //        BackColor = Color.FromArgb(236, 240, 241),
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Visible = false
+        //    };
+        //    btnInserirCampoExpressao.Click += (s, e) => AbrirMenuCamposExpressao();
+        //    panelPropriedades.Controls.Add(btnInserirCampoExpressao);
+
+        //    btnEditorExpressao = new Button
+        //    {
+        //        Text = "...",
+        //        Location = new Point(130, yPos),
+        //        Size = new Size(40, 28),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        BackColor = Color.FromArgb(236, 240, 241),
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Visible = false
+        //    };
+        //    btnEditorExpressao.Click += (s, e) => AbrirEditorExpressao();
+        //    panelPropriedades.Controls.Add(btnEditorExpressao);
+        //    yPos += 38;
+
+        //    Label lblAlinhamento = new Label
+        //    {
+        //        Text = "Alinhamento:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblAlinhamento);
+        //    yPos += 25;
+
+        //    btnAlinharEsquerda = new Button
+        //    {
+        //        Text = "←",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(50, 35),
+        //        Font = new Font("Segoe UI", 12),
+        //        BackColor = Color.FromArgb(236, 240, 241),
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand
+        //    };
+        //    btnAlinharEsquerda.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
+        //    btnAlinharEsquerda.Click += (s, e) => AlterarAlinhamento(StringAlignment.Near);
+        //    panelPropriedades.Controls.Add(btnAlinharEsquerda);
+
+        //    btnAlinharCentro = new Button
+        //    {
+        //        Text = "←→",
+        //        Location = new Point(65, yPos),
+        //        Size = new Size(50, 35),
+        //        Font = new Font("Segoe UI", 12),
+        //        BackColor = Color.FromArgb(236, 240, 241),
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand
+        //    };
+        //    btnAlinharCentro.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
+        //    btnAlinharCentro.Click += (s, e) => AlterarAlinhamento(StringAlignment.Center);
+        //    panelPropriedades.Controls.Add(btnAlinharCentro);
+
+        //    btnAlinharDireita = new Button
+        //    {
+        //        Text = "→",
+        //        Location = new Point(120, yPos),
+        //        Size = new Size(50, 35),
+        //        Font = new Font("Segoe UI", 12),
+        //        BackColor = Color.FromArgb(236, 240, 241),
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand
+        //    };
+        //    btnAlinharDireita.FlatAppearance.BorderColor = Color.FromArgb(189, 195, 199);
+        //    btnAlinharDireita.Click += (s, e) => AlterarAlinhamento(StringAlignment.Far);
+        //    panelPropriedades.Controls.Add(btnAlinharDireita);
+        //    yPos += 45;
+
+        //    Label lblFamilia = new Label
+        //    {
+        //        Text = "Família da Fonte:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblFamilia);
+        //    yPos += 25;
+
+        //    cmbFonte = new ComboBox
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 23),
+        //        DropDownStyle = ComboBoxStyle.DropDownList,
+        //        Font = new Font("Segoe UI", 9)
+        //    };
+        //    foreach (var fontFamily in FontFamily.Families)
+        //    {
+        //        cmbFonte.Items.Add(fontFamily.Name);
+        //    }
+        //    cmbFonte.SelectedIndexChanged += CmbFonte_SelectedIndexChanged;
+        //    panelPropriedades.Controls.Add(cmbFonte);
+        //    yPos += 35;
+
+        //    Label lblFonte = new Label
+        //    {
+        //        Text = "Tamanho da Fonte:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblFonte);
+        //    yPos += 25;
+
+        //    numTamanhoFonte = new NumericUpDown
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(70, 23),
+        //        Minimum = 3,
+        //        Maximum = 72,
+        //        Value = 10
+        //    };
+        //    numTamanhoFonte.ValueChanged += (s, e) => AlterarTamanhoFonte();
+        //    panelPropriedades.Controls.Add(numTamanhoFonte);
+        //    yPos += 35;
+
+        //    Label lblEstilo = new Label
+        //    {
+        //        Text = "Estilo:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblEstilo);
+        //    yPos += 25;
+
+        //    chkNegrito = new CheckBox
+        //    {
+        //        Text = "Negrito",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(80, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold)
+        //    };
+        //    chkNegrito.CheckedChanged += (s, e) => AlterarEstiloFonte();
+        //    panelPropriedades.Controls.Add(chkNegrito);
+
+        //    chkItalico = new CheckBox
+        //    {
+        //        Text = "Itálico",
+        //        Location = new Point(95, yPos),
+        //        Size = new Size(75, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Italic)
+        //    };
+        //    chkItalico.CheckedChanged += (s, e) => AlterarEstiloFonte();
+        //    panelPropriedades.Controls.Add(chkItalico);
+        //    yPos += 35;
+
+        //    Label lblCor = new Label
+        //    {
+        //        Text = "Cor do Texto:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblCor);
+        //    yPos += 25;
+
+        //    btnCor = new Button
+        //    {
+        //        Text = "Escolher Cor",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 30),
+        //        BackColor = Color.Black,
+        //        ForeColor = Color.White,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand
+        //    };
+        //    btnCor.Click += BtnCor_Click;
+        //    panelPropriedades.Controls.Add(btnCor);
+        //    yPos += 35;
+
+        //    Label lblCoresRapidas = new Label
+        //    {
+        //        Text = "Atalhos:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(70, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblCoresRapidas);
+
+        //    Button btnTextoPreto = new Button
+        //    {
+        //        Text = "T▓",
+        //        Location = new Point(85, yPos),
+        //        Size = new Size(40, 25),
+        //        BackColor = Color.White,
+        //        ForeColor = Color.Black,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Font = new Font("Segoe UI", 9, FontStyle.Bold)
+        //    };
+        //    btnTextoPreto.Click += (s, e) => AplicarCorTexto(Color.Black);
+        //    panelPropriedades.Controls.Add(btnTextoPreto);
+
+        //    Button btnTextoBranco = new Button
+        //    {
+        //        Text = "T▓",
+        //        Location = new Point(130, yPos),
+        //        Size = new Size(40, 25),
+        //        BackColor = Color.Black,
+        //        ForeColor = Color.White,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Font = new Font("Segoe UI", 9, FontStyle.Bold)
+        //    };
+        //    btnTextoBranco.Click += (s, e) => AplicarCorTexto(Color.White);
+        //    panelPropriedades.Controls.Add(btnTextoBranco);
+        //    yPos += 35;
+
+        //    Label lblCorFundo = new Label
+        //    {
+        //        Text = "Cor de Fundo:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblCorFundo);
+        //    yPos += 25;
+
+        //    btnCorFundo = new Button
+        //    {
+        //        Text = "Escolher Fundo",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 30),
+        //        BackColor = Color.Transparent,
+        //        ForeColor = Color.Black,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand
+        //    };
+        //    btnCorFundo.Click += BtnCorFundo_Click;
+        //    panelPropriedades.Controls.Add(btnCorFundo);
+        //    yPos += 35;
+
+        //    Label lblFundoRapido = new Label
+        //    {
+        //        Text = "Atalhos:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(50, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblFundoRapido);
+
+        //    btnFundoPreto = new Button
+        //    {
+        //        Location = new Point(65, yPos),
+        //        Size = new Size(30, 25),
+        //        BackColor = Color.Black,
+        //        ForeColor = Color.White,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Font = new Font("Segoe UI", 10, FontStyle.Bold)
+        //    };
+        //    btnFundoPreto.Click += (s, e) => AplicarCorFundo(Color.Black);
+        //    panelPropriedades.Controls.Add(btnFundoPreto);
+
+        //    btnFundoBranco = new Button
+        //    {
+        //        Location = new Point(100, yPos),
+        //        Size = new Size(30, 25),
+        //        BackColor = Color.White,
+        //        ForeColor = Color.Black,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Font = new Font("Segoe UI", 10, FontStyle.Bold)
+        //    };
+        //    btnFundoBranco.Click += (s, e) => AplicarCorFundo(Color.White);
+        //    panelPropriedades.Controls.Add(btnFundoBranco);
+
+        //    btnFundoTransparente = new Button
+        //    {
+        //        Text = "Ø",
+        //        Location = new Point(135, yPos),
+        //        Size = new Size(30, 25),
+        //        BackColor = Color.LightGray,
+        //        ForeColor = Color.Black,
+        //        FlatStyle = FlatStyle.Flat,
+        //        Cursor = Cursors.Hand,
+        //        Font = new Font("Segoe UI", 10, FontStyle.Bold)
+        //    };
+        //    btnFundoTransparente.Click += (s, e) => AplicarCorFundo(null);
+        //    panelPropriedades.Controls.Add(btnFundoTransparente);
+        //    yPos += 35;
+
+        //    Label lblBorda = new Label
+        //    {
+        //        Text = "Borda:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblBorda);
+        //    yPos += 25;
+
+        //    cmbBordaElemento = new ComboBox
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 23),
+        //        DropDownStyle = ComboBoxStyle.DropDownList,
+        //        Font = new Font("Segoe UI", 9)
+        //    };
+        //    cmbBordaElemento.Items.AddRange(new object[] { "Transparente", "Sólida Preta" });
+        //    cmbBordaElemento.SelectedIndexChanged += (s, e) => AlterarBordaElementosSelecionados();
+        //    panelPropriedades.Controls.Add(cmbBordaElemento);
+        //    yPos += 35;
+
+        //    Label lblEspessuraBorda = new Label
+        //    {
+        //        Text = "Espessura da Borda:",
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(160, 20),
+        //        Font = new Font("Segoe UI", 8, FontStyle.Bold),
+        //        ForeColor = Color.Gray
+        //    };
+        //    panelPropriedades.Controls.Add(lblEspessuraBorda);
+        //    yPos += 25;
+
+        //    numEspessuraBorda = new NumericUpDown
+        //    {
+        //        Location = new Point(10, yPos),
+        //        Size = new Size(70, 23),
+        //        Minimum = 0.1m,
+        //        Maximum = 20,
+        //        DecimalPlaces = 1,
+        //        Increment = 0.1m,
+        //        Value = 1,
+        //        Enabled = false
+        //    };
+        //    numEspessuraBorda.ValueChanged += (s, e) => AlterarEspessuraBordaElementosSelecionados();
+        //    panelPropriedades.Controls.Add(numEspessuraBorda);
+        //}
+        //} //final do Else 
 
         private Button CriarBotaoElemento(string texto, int yPos, Action onClick)
         {
-            Button btn = new Button
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
             {
-                Text = texto,
-                Location = new Point(10, yPos),
-                Size = new Size(180, 35),
-                Font = new Font("Segoe UI", 9),
-                BackColor = Color.FromArgb(255, 143, 0),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            btn.FlatAppearance.BorderSize = 0;
-            btn.Click += (s, e) => onClick();
-            panelToolbox.Controls.Add(btn);
-            return btn;
+                Button btn = new Button
+                {
+
+                    Text = texto,
+                    Location = new Point(10, yPos),
+                    Size = new Size(180, 35),
+                    Font = new Font("Segoe UI", 9),
+                    BackColor = Color.FromArgb(255, 143, 0),
+                    ForeColor = Color.Black,
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand,
+                    TextAlign = ContentAlignment.MiddleLeft
+
+
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                btn.Click += (s, e) => onClick();
+                panelToolbox.Controls.Add(btn);
+                return btn;
+            }
+            else
+            {
+                Button btn = new Button
+                {
+
+                    Text = texto,
+                    Location = new Point(200, yPos),
+                    Size = new Size(180, 35),
+                    Font = new Font("Segoe UI", 9),
+                    BackColor = Color.FromArgb(255, 143, 0),
+                    ForeColor = Color.Black,
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand,
+                    TextAlign = ContentAlignment.MiddleLeft
+
+
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                btn.Click += (s, e) => onClick();
+                panelToolbox.Controls.Add(btn);
+                return btn;
+
+            }
         }
 
         #endregion
