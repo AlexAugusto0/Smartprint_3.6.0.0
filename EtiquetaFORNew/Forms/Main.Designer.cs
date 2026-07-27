@@ -42,20 +42,21 @@
             this.label4 = new System.Windows.Forms.Label();
             this.Versao = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.button1 = new System.Windows.Forms.Button();
             this.btnConfig = new System.Windows.Forms.Button();
+            this.BtnFaq = new System.Windows.Forms.Button();
             this.pictureBox5 = new System.Windows.Forms.PictureBox();
             this.pictureBox4 = new System.Windows.Forms.PictureBox();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.pictureBox3 = new System.Windows.Forms.PictureBox();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
             this.SuspendLayout();
             // 
@@ -185,6 +186,26 @@
             this.label2.TabIndex = 12;
             this.label2.Text = "Olá, Seja Bem Vindo!";
             // 
+            // pictureBox1
+            // 
+            this.pictureBox1.Image = global::EtiquetaFORNew.Properties.Resources.icone_novo_2025_PNG;
+            this.pictureBox1.Location = new System.Drawing.Point(16, 14);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(58, 78);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox1.TabIndex = 0;
+            this.pictureBox1.TabStop = false;
+            // 
+            // pictureBox2
+            // 
+            this.pictureBox2.Image = global::EtiquetaFORNew.Properties.Resources.SoftcomTecnologia2;
+            this.pictureBox2.Location = new System.Drawing.Point(33, 14);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(304, 78);
+            this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox2.TabIndex = 1;
+            this.pictureBox2.TabStop = false;
+            // 
             // button1
             // 
             this.button1.BackColor = System.Drawing.Color.Transparent;
@@ -215,6 +236,21 @@
             this.btnConfig.UseVisualStyleBackColor = false;
             this.btnConfig.Click += new System.EventHandler(this.pictureBox4_Click);
             // 
+            // BtnFaq
+            // 
+            this.BtnFaq.BackColor = System.Drawing.Color.Transparent;
+            this.BtnFaq.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.BtnFaq.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.BtnFaq.FlatAppearance.BorderSize = 0;
+            this.BtnFaq.Location = new System.Drawing.Point(663, 398);
+            this.BtnFaq.Name = "BtnFaq";
+            this.BtnFaq.Size = new System.Drawing.Size(32, 22);
+            this.BtnFaq.TabIndex = 15;
+            this.BtnFaq.Text = "?";
+            this.toolTip1.SetToolTip(this.BtnFaq, "Configurações");
+            this.BtnFaq.UseVisualStyleBackColor = false;
+            this.BtnFaq.Click += new System.EventHandler(this.BtnFaq_Click);
+            // 
             // pictureBox5
             // 
             this.pictureBox5.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -241,26 +277,6 @@
             this.pictureBox4.Visible = false;
             this.pictureBox4.Click += new System.EventHandler(this.pictureBox4_Click);
             // 
-            // pictureBox1
-            // 
-            this.pictureBox1.Image = global::EtiquetaFORNew.Properties.Resources.icone_novo_2025_PNG;
-            this.pictureBox1.Location = new System.Drawing.Point(16, 14);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(58, 78);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox1.TabIndex = 0;
-            this.pictureBox1.TabStop = false;
-            // 
-            // pictureBox2
-            // 
-            this.pictureBox2.Image = global::EtiquetaFORNew.Properties.Resources.SoftcomTecnologia2;
-            this.pictureBox2.Location = new System.Drawing.Point(33, 14);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(304, 78);
-            this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox2.TabIndex = 1;
-            this.pictureBox2.TabStop = false;
-            // 
             // pictureBox3
             // 
             this.pictureBox3.Image = global::EtiquetaFORNew.Properties.Resources.LogoLogin;
@@ -277,6 +293,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(235)))), ((int)(((byte)(255)))));
             this.ClientSize = new System.Drawing.Size(707, 432);
+            this.Controls.Add(this.BtnFaq);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.btnConfig);
             this.Controls.Add(this.pictureBox5);
@@ -291,10 +308,10 @@
             this.panel1.ResumeLayout(false);
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
             this.ResumeLayout(false);
 
@@ -322,6 +339,7 @@
         private System.Windows.Forms.Button btnConfig;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.ToolTip toolTip1;
+        private System.Windows.Forms.Button BtnFaq;
     }
 }
 

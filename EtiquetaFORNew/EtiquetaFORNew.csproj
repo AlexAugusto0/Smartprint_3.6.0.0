@@ -250,6 +250,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Forms\Faq.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Faq.Designer.cs">
+      <DependentUpon>Faq.cs</DependentUpon>
+    </Compile>
     <Compile Include="Printing\Drivers\CalibracaoManager.cs" />
     <Compile Include="Core\Business\CarregadorDados.cs" />
     <Compile Include="Printing\Elements\CalculadoraCamposEtiqueta.cs" />
@@ -389,6 +395,9 @@
     <Compile Include="Printing\Layouts\TemplatePadraoManager.cs" />
     <Compile Include="Printing\Layouts\TemplatesPreDefinidos.cs" />
     <Compile Include="Core\Utilities\VersaoHelper.cs" />
+    <EmbeddedResource Include="Forms\Faq.resx">
+      <DependentUpon>Faq.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Forms\Impressao\calibracao.resx">
       <DependentUpon>calibracao.cs</DependentUpon>
       <SubType>Designer</SubType>

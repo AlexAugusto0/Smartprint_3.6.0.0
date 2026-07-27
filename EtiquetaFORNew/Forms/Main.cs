@@ -1,5 +1,6 @@
 ﻿using EtiquetaFORNew;
 using EtiquetaFORNew.Data;
+using EtiquetaFORNew.Forms;
 using Newtonsoft.Json;
 using System;
 using System.Data;
@@ -39,6 +40,8 @@ namespace EtiquetaFORNew
             // Aplicar versão usando helper
             VersaoHelper.AplicarVersaoLabel(Versao);
             VersaoHelper.DefinirTituloComVersao(this);
+
+            
         }
 
 
@@ -378,10 +381,18 @@ namespace EtiquetaFORNew
             }
         }
 
+        
+
         private void pictureBox5_Click(object sender, EventArgs e)
         {
             telaTecnico tela = new telaTecnico();
             tela.ShowDialog();
+        }
+
+        private void BtnFaq_Click(object sender, EventArgs e)
+        {
+            Faq faq = new Faq();
+            faq.Show();
         }
     }
 
