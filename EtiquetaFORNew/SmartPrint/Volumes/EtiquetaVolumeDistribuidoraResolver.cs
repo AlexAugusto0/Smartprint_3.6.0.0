@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace EtiquetaFORNew
@@ -9,6 +10,9 @@ namespace EtiquetaFORNew
     {
         public static readonly string[] CamposNotaFiscal =
         {
+            "Pedido",
+            "FormaPagamento",
+            "Emitente",
             "Numero Documento",
             "Numero NFe",
             "Data Emissao",
@@ -58,6 +62,12 @@ namespace EtiquetaFORNew
 
             switch (NormalizarCampo(campo))
             {
+                case "PEDIDO":
+                    return nota.Pedido ?? string.Empty;
+                case "FORMAPAGAMENTO":
+                    return nota.FormaPagamento ?? string.Empty;
+                case "EMITENTE":
+                    return nota.Emitente ?? string.Empty;
                 case "NUMERODOCUMENTO":
                     return nota.NumeroDocumento ?? string.Empty;
                 case "NUMERONFE":
@@ -137,6 +147,8 @@ namespace EtiquetaFORNew
 
             switch (campoNormalizado)
             {
+                case "PEDIDO":
+                    return decimal.TryParse(etiqueta.DadosNota?.Pedido, NumberStyles.Number, CultureInfo.InvariantCulture, out valor);
                 case "VALORTOTAL":
                     if (etiqueta.DadosNota != null && etiqueta.DadosNota.ValorTotal.HasValue)
                     {
@@ -169,6 +181,27 @@ namespace EtiquetaFORNew
             yield return "Codigo do Volume";
             yield return "Chave de Acesso";
             yield return "Numero NFe";
+        }
+
+        public static IEnumerable<string> ObterCamposDisponiveis()
+        {
+            return CamposNotaFiscal
+                .Concat(CamposDestinatario)
+                .Concat(CamposVolumes)
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static bool CampoExiste(string campo)
+        {
+            string campoNormalizado = NormalizarCampo(campo);
+            return ObterCamposDisponiveis().Any(item => NormalizarCampo(item) == campoNormalizado);
+        }
+
+        public static bool NovoCampoTextualEmExpressao(string campo)
+        {
+            string campoNormalizado = NormalizarCampo(campo);
+            return new[] { "Pedido", "FormaPagamento", "Telefone" }
+                .Any(item => NormalizarCampo(item) == campoNormalizado);
         }
 
         private static string NormalizarCampo(string campo)

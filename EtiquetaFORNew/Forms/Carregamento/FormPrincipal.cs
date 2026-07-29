@@ -128,7 +128,6 @@ namespace EtiquetaFORNew
 
             dgvProdutos.CellEndEdit += dgvProdutos_CellEndEdit;
 
-            if (cmbTamanho != null) cmbTamanho.SelectedIndexChanged += CmbTamanho_SelectedIndexChanged;
             if (cmbCor != null) cmbCor.SelectedIndexChanged += CmbCor_SelectedIndexChanged;
 
         }
@@ -524,7 +523,7 @@ namespace EtiquetaFORNew
             {
                 using (var formDesigner = new FormDesignNovo(templateParaAbrir, nomeTemplate))
                 {
-                    if (formDesigner.ShowDialog() == DialogResult.OK)
+                    if (formDesigner.ShowDialog(this) == DialogResult.OK)
                     {
                         MessageBox.Show(
                             $"Template '{nomeTemplate}' salvo com sucesso!",
@@ -1604,6 +1603,37 @@ namespace EtiquetaFORNew
 
 
 
+            if (isConfeccao && ConexaoSqlServerAtiva())
+            {
+                string tamanho = cmbTamanho?.SelectedItem?.ToString();
+                string cor = cmbCor?.SelectedItem?.ToString();
+
+                if (string.IsNullOrWhiteSpace(tamanho) || string.IsNullOrWhiteSpace(cor))
+                {
+                    MessageBox.Show(
+                        "Selecione um tamanho e uma cor válidos para o produto.",
+                        "Grade inválida",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DataTable gradeSelecionada = LocalDatabaseManager.BuscarMercadoriaPorCodTamCor(
+                    txtCodigo.Text, tamanho, cor);
+
+                if (gradeSelecionada == null || gradeSelecionada.Rows.Count == 0)
+                {
+                    MessageBox.Show(
+                        "A combinação de tamanho e cor selecionada não existe no cadastro SQL.",
+                        "Grade inválida",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                produtoAtualCompleto = gradeSelecionada.Rows[0];
+            }
+
             // Criação do objeto Produto
             var produto = new Produto
             {
@@ -2448,8 +2478,7 @@ namespace EtiquetaFORNew
                 if (!int.TryParse(codigoMercadoria, out int codigo))
                     return;
 
-                // ⭐ NOVO: Buscar TODOS os tamanhos e cores daquele produto
-                // Este método retorna listas distintas de TODOS os registros
+                // A consulta legada continua sendo usada pela conexão Web.
                 var (tamanhos, cores) = LocalDatabaseManager.BuscarTamanhosECoresPorCodigo(codigo);
 
                 // Adicionar tamanhos encontrados
@@ -2459,17 +2488,21 @@ namespace EtiquetaFORNew
                         cmbTamanho.Items.Add(tamanho);
                 }
 
-                // Adicionar cores encontradas
-                foreach (var cor in cores)
+                // No SQL, as cores serão carregadas pelo tamanho selecionado.
+                // No SoftcomShop, preserva o comportamento existente.
+                if (!ConexaoSqlServerAtiva())
                 {
-                    if (!string.IsNullOrEmpty(cor))
-                        cmbCor.Items.Add(cor);
+                    foreach (var cor in cores)
+                    {
+                        if (!string.IsNullOrEmpty(cor))
+                            cmbCor.Items.Add(cor);
+                    }
                 }
 
                 // Seleciona primeiro item se disponível
                 if (cmbTamanho.Items.Count > 0)
                     cmbTamanho.SelectedIndex = 0;
-                if (cmbCor.Items.Count > 0)
+                if (!ConexaoSqlServerAtiva() && cmbCor.Items.Count > 0)
                     cmbCor.SelectedIndex = 0;
             }
             catch (Exception ex)
@@ -2500,12 +2533,43 @@ namespace EtiquetaFORNew
 
         }
 
-        /// <summary>
-        /// ⭐ CONFECÇÃO: Atualiza o código de barras quando o tamanho é alterado
-        /// </summary>
-        private void CmbTamanho_SelectedIndexChanged(object sender, EventArgs e)
+
+        private bool ConexaoSqlServerAtiva()
         {
-            AtualizarCodigoBarrasPorTamanhoECor();
+            try
+            {
+                ConfiguracaoSistema config = ConfiguracaoSistema.Carregar();
+                return config == null || config.TipoConexaoAtiva == TipoConexao.SqlServer;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"Erro ao identificar a conexão ativa: {ex.Message}");
+                return false;
+            }
+        }
+
+        private void CarregarCoresDoTamanhoSelecionado()
+        {
+            if (!isConfeccao || !ConexaoSqlServerAtiva() ||
+                cmbTamanho == null || cmbCor == null)
+                return;
+
+            cmbCor.Items.Clear();
+
+            string tamanho = cmbTamanho.SelectedItem?.ToString();
+            if (string.IsNullOrWhiteSpace(tamanho) ||
+                !int.TryParse(txtCodigo.Text, out int codigo))
+                return;
+
+            List<string> cores =
+                LocalDatabaseManager.BuscarCoresPorCodigoETamanho(codigo, tamanho);
+
+            foreach (string cor in cores)
+                cmbCor.Items.Add(cor);
+
+            if (cmbCor.Items.Count > 0)
+                cmbCor.SelectedIndex = 0;
         }
 
         /// <summary>
@@ -2586,7 +2650,19 @@ namespace EtiquetaFORNew
 
         private void cmbTamanho_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            try
+            {
+                CarregarCoresDoTamanhoSelecionado();
+                AtualizarCodigoBarrasPorTamanhoECor();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erro ao carregar as cores do tamanho selecionado: {ex.Message}",
+                    "Erro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>
@@ -3871,6 +3947,12 @@ namespace EtiquetaFORNew
                 // Abre como modal
                 form.ShowDialog();
             }
+        }
+
+        private void BtnFaq_Click(object sender, EventArgs e)
+        {
+            Faq faq = new Faq();
+            faq.Show();
         }
     }
 

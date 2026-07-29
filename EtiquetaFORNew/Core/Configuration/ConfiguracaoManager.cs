@@ -146,6 +146,47 @@ namespace EtiquetaFORNew
         }
 
         /// <summary>
+        /// Renomeia a configuração vinculada, preservando os dados existentes.
+        /// </summary>
+        public static bool RenomearConfiguracao(string nomeAtual, string novoNome)
+        {
+            try
+            {
+                string caminhoAtual = ObterCaminhoConfiguracao(nomeAtual);
+                if (!File.Exists(caminhoAtual))
+                    return true;
+
+                string novoCaminho = ObterCaminhoConfiguracao(novoNome);
+                if (File.Exists(novoCaminho))
+                    return false;
+
+                ConfiguracaoEtiqueta configuracao = CarregarConfiguracao(nomeAtual);
+                if (configuracao == null)
+                    return false;
+
+                configuracao.NomeEtiqueta = novoNome;
+                if (!SalvarConfiguracao(novoNome, configuracao))
+                    return false;
+
+                try
+                {
+                    File.Delete(caminhoAtual);
+                    return true;
+                }
+                catch
+                {
+                    File.Delete(novoCaminho);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"Erro ao renomear configuração: {ex.Message}");
+                return false;
+            }
+        }
+        /// <summary>
         /// Lista todas as configurações salvas
         /// </summary>
         public static List<string> ListarConfiguracoes()

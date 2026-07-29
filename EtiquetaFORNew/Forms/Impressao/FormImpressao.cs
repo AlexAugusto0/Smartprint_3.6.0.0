@@ -955,6 +955,10 @@ namespace EtiquetaFORNew
             if (etiqueta == null)
                 return string.Empty;
 
+            string campo = (expressao ?? string.Empty).Trim();
+            if (EtiquetaVolumeDistribuidoraResolver.NovoCampoTextualEmExpressao(campo))
+                return EtiquetaVolumeDistribuidoraResolver.ObterValorCampo(etiqueta, campo);
+
             ResultadoExpressao resultado = ExpressionEngine.Avaliar(expressao, (string nome, out decimal valor, out string mensagemErro) =>
                 EtiquetaVolumeDistribuidoraResolver.TryObterValorDecimal(etiqueta, nome, out valor, out mensagemErro));
 
@@ -965,6 +969,10 @@ namespace EtiquetaFORNew
         {
             if (etiqueta == null)
                 return string.Empty;
+
+            string campo = (expressao ?? string.Empty).Trim();
+            if (EtiquetaDistribuidoraResolver.NovoCampoTextualEmExpressao(campo))
+                return EtiquetaDistribuidoraResolver.ObterValorCampo(etiqueta, campo);
 
             ResultadoExpressao resultado = ExpressionEngine.Avaliar(expressao, (string nome, out decimal valor, out string mensagemErro) =>
                 EtiquetaDistribuidoraResolver.TryObterValorDecimal(etiqueta, nome, out valor, out mensagemErro));

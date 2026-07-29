@@ -247,7 +247,7 @@
             this.BtnFaq.Size = new System.Drawing.Size(32, 22);
             this.BtnFaq.TabIndex = 15;
             this.BtnFaq.Text = "?";
-            this.toolTip1.SetToolTip(this.BtnFaq, "Configurações");
+            this.toolTip1.SetToolTip(this.BtnFaq, "Dúvidas - Consulte os Faq\'s");
             this.BtnFaq.UseVisualStyleBackColor = false;
             this.BtnFaq.Click += new System.EventHandler(this.BtnFaq_Click);
             // 

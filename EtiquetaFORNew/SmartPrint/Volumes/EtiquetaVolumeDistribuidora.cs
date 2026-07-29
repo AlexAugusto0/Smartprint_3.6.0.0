@@ -25,6 +25,9 @@ namespace EtiquetaFORNew
 
     public class DadosNotaDistribuidora
     {
+        public string Pedido { get; set; }
+        public string FormaPagamento { get; set; }
+        public string Emitente { get; set; }
         public string NumeroDocumento { get; set; }
         public string NumeroNFe { get; set; }
         public string Serie { get; set; }

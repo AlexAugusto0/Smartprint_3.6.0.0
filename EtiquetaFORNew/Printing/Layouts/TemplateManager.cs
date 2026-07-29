@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -104,6 +104,39 @@ namespace EtiquetaFORNew
             return templates.OrderBy(x => x).ToList();
         }
 
+        public static bool TemplateExiste(string nomeArquivo)
+        {
+            if (string.IsNullOrWhiteSpace(nomeArquivo))
+                return false;
+
+            return ListarTemplates().Any(nome =>
+                nome.Equals(nomeArquivo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static bool RenomearTemplate(string nomeAtual, string novoNome)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(nomeAtual) ||
+                    string.IsNullOrWhiteSpace(novoNome))
+                    return false;
+
+                string caminhoAtual = Path.Combine(pastaTemplates, nomeAtual + ".json");
+                string novoCaminho = Path.Combine(pastaTemplates, novoNome + ".json");
+
+                if (!File.Exists(caminhoAtual) || File.Exists(novoCaminho))
+                    return false;
+
+                File.Move(caminhoAtual, novoCaminho);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"Erro ao renomear template: {ex.Message}");
+                return false;
+            }
+        }
         // Excluir template
         public static bool ExcluirTemplate(string nomeArquivo)
         {

@@ -28,8 +28,13 @@ namespace EtiquetaFORNew
         public long Id { get; set; }
         public long ClienteId { get; set; }
         public long EmpresaId { get; set; }
+        public string Pedido { get; set; }
+        public string FormaPagamento { get; set; }
         public string NumeroDocumento { get; set; }
         public string NumeroNf { get; set; }
+        public string Serie { get; set; }
+        public string Modelo { get; set; }
+        public string ChaveAcesso { get; set; }
         public DateTime? DataEmissao { get; set; }
         public string Observacao { get; set; }
         public long NfeId { get; set; }
@@ -50,6 +55,7 @@ namespace EtiquetaFORNew
         public string Nome { get; set; }
         public string RazaoSocial { get; set; }
         public string Documento { get; set; }
+        public string Telefone { get; set; }
     }
 
     public class DadosEnderecoEtiquetaDistribuidora
@@ -67,6 +73,9 @@ namespace EtiquetaFORNew
     {
         public long VendaId { get; set; }
         public long ProdutoId { get; set; }
+        public string Codigo { get; set; }
+        public string Referencia { get; set; }
+        public string Descricao { get; set; }
         public decimal Quantidade { get; set; }
         public decimal Preco { get; set; }
         public decimal Peso { get; set; }
@@ -85,7 +94,7 @@ namespace EtiquetaFORNew
                 if (Etiqueta == null)
                     return new List<EtiquetaDistribuidora>();
 
-                int totalEtiquetas = CalcularTotalEtiquetas(Etiqueta);
+                int totalEtiquetas = CalcularTotalVolumes(Etiqueta);
                 var etiquetas = new List<EtiquetaDistribuidora>();
 
                 for (int volume = 1; volume <= totalEtiquetas; volume++)
@@ -97,22 +106,22 @@ namespace EtiquetaFORNew
             }
         }
 
-        private static int CalcularTotalEtiquetas(EtiquetaDistribuidora etiqueta)
+        public static int CalcularTotalVolumes(EtiquetaDistribuidora etiqueta)
         {
             if (etiqueta.Produtos == null || etiqueta.Produtos.Count == 0)
                 return 1;
 
-            int total = 0;
+            decimal total = 0m;
 
             foreach (var produto in etiqueta.Produtos)
             {
                 if (produto == null || produto.Quantidade <= 0)
                     continue;
 
-                total += (int)Math.Ceiling(produto.Quantidade);
+                total += produto.Quantidade;
             }
 
-            return Math.Max(1, total);
+            return Math.Max(1, (int)Math.Ceiling(total));
         }
 
         private static EtiquetaDistribuidora CriarEtiquetaVolume(EtiquetaDistribuidora origem, int volume, int totalEtiquetas)

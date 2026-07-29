@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace EtiquetaFORNew
@@ -8,16 +9,24 @@ namespace EtiquetaFORNew
     {
         public static readonly string[] CamposNotaFiscal =
         {
+            "Pedido",
+            "FormaPagamento",
             "Numero NF",
             "Numero Documento",
-            "Data Emissao"
+            "Serie",
+            "Modelo",
+            "Chave de Acesso",
+            "Data Emissao",
+            "Observacao"
         };
 
         public static readonly string[] CamposDestinatario =
         {
+            "Cliente",
             "Razao Social",
             "Nome",
-            "CPF/CNPJ"
+            "CPF/CNPJ",
+            "Telefone"
         };
 
         public static readonly string[] CamposEndereco =
@@ -33,6 +42,7 @@ namespace EtiquetaFORNew
 
         public static readonly string[] CamposEmpresa =
         {
+            "Emitente",
             "Nome Empresa",
             "Fantasia",
             "CNPJ"
@@ -56,12 +66,28 @@ namespace EtiquetaFORNew
 
             switch (NormalizarCampo(campo))
             {
+                case "PEDIDO":
+                    return venda.Pedido ?? string.Empty;
+                case "FORMAPAGAMENTO":
+                    return venda.FormaPagamento ?? string.Empty;
                 case "NUMERONF":
                     return venda.NumeroNf ?? string.Empty;
                 case "NUMERODOCUMENTO":
                     return venda.NumeroDocumento ?? string.Empty;
+                case "SERIE":
+                    return venda.Serie ?? string.Empty;
+                case "MODELO":
+                    return venda.Modelo ?? string.Empty;
+                case "CHAVEDEACESSO":
+                case "CHAVEACESSO":
+                    return venda.ChaveAcesso ?? string.Empty;
                 case "DATAEMISSAO":
                     return venda.DataEmissao.HasValue ? venda.DataEmissao.Value.ToString("dd/MM/yyyy") : string.Empty;
+                case "OBSERVACAO":
+                case "OBSERVACOES":
+                    return venda.Observacao ?? string.Empty;
+                case "CLIENTE":
+                    return PrimeiroValor(destinatario.RazaoSocial, destinatario.Nome);
                 case "RAZAOSOCIAL":
                     return destinatario.RazaoSocial ?? string.Empty;
                 case "NOME":
@@ -69,6 +95,8 @@ namespace EtiquetaFORNew
                 case "CPFCNPJ":
                 case "DOCUMENTO":
                     return destinatario.Documento ?? string.Empty;
+                case "TELEFONE":
+                    return destinatario.Telefone ?? string.Empty;
                 case "ENDERECO":
                     return endereco.Endereco ?? string.Empty;
                 case "NUMERO":
@@ -85,6 +113,8 @@ namespace EtiquetaFORNew
                     return endereco.Cep ?? string.Empty;
                 case "NOMEEMPRESA":
                     return empresa.Nome ?? string.Empty;
+                case "EMITENTE":
+                    return PrimeiroValor(empresa.RazaoSocial, empresa.Nome, empresa.Fantasia);
                 case "FANTASIA":
                     return empresa.Fantasia ?? string.Empty;
                 case "CNPJ":
@@ -114,6 +144,8 @@ namespace EtiquetaFORNew
 
             switch (NormalizarCampo(campo))
             {
+                case "PEDIDO":
+                    return decimal.TryParse(etiqueta.Venda?.Pedido, NumberStyles.Number, CultureInfo.InvariantCulture, out valor);
                 case "NUMERONF":
                     return decimal.TryParse(etiqueta.Venda?.NumeroNf, NumberStyles.Number, CultureInfo.InvariantCulture, out valor);
                 case "NUMERODOCUMENTO":
@@ -136,6 +168,39 @@ namespace EtiquetaFORNew
         public static string[] ObterCamposCodigoBarras()
         {
             return new[] { "Numero NF", "Numero Documento" };
+        }
+
+        public static string[] ObterCamposDisponiveis()
+        {
+            return CamposNotaFiscal
+                .Concat(CamposDestinatario)
+                .Concat(CamposEndereco)
+                .Concat(CamposEmpresa)
+                .Concat(CamposVolumes)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        public static bool CampoExiste(string campo)
+        {
+            string campoNormalizado = NormalizarCampo(campo);
+            return ObterCamposDisponiveis().Any(item => NormalizarCampo(item) == campoNormalizado);
+        }
+
+        public static string[] ObterNovosCamposExpressao()
+        {
+            return new[] { "Pedido", "FormaPagamento", "Telefone" };
+        }
+
+        public static bool NovoCampoTextualEmExpressao(string campo)
+        {
+            string campoNormalizado = NormalizarCampo(campo);
+            return ObterNovosCamposExpressao().Any(item => NormalizarCampo(item) == campoNormalizado);
+        }
+
+        private static string PrimeiroValor(params string[] valores)
+        {
+            return valores.FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
         }
 
         private static string NormalizarCampo(string campo)

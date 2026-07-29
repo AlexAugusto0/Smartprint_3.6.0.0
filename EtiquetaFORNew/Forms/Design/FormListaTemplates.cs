@@ -18,6 +18,7 @@ namespace EtiquetaFORNew
         {
             InitializeComponent();
             CarregarLista();
+            
         }
 
         private void InitializeComponent()
@@ -101,6 +102,20 @@ namespace EtiquetaFORNew
             btnExcluir.FlatAppearance.BorderSize = 0;
             btnExcluir.Click += BtnExcluir_Click;
 
+            Button btnRenomear = new Button
+            {
+                Text = "Renomear",
+                Location = new Point(240, 355),
+                Size = new Size(100, 30),
+                //BackColor = Color.FromArgb(52, 152, 219)
+                BackColor = Color.FromArgb(237, 222, 31),
+                ForeColor = Color.Black,
+                FlatStyle = FlatStyle.Flat
+            };
+
+            btnRenomear.FlatAppearance.BorderSize = 0;
+            btnRenomear.Click += BtnRenomear_Click;
+
             Button btnCarregar = new Button
             {
                 Text = "Carregar",
@@ -147,7 +162,7 @@ namespace EtiquetaFORNew
 
             this.Controls.AddRange(new Control[] {
                 lblInstrucao, lblInstrucao2, lstTemplates, chkDefinirPadrao, lblInfo,
-                btnNovo, btnExcluir, btnCarregar, btnTemplateApi, // btnCancelar
+                btnNovo, btnExcluir, btnRenomear, btnCarregar, btnTemplateApi, // btnCancelar
             });
         }
 
@@ -305,6 +320,17 @@ namespace EtiquetaFORNew
                     if (formNome.ShowDialog() == DialogResult.OK)
                     {
                         nomeTemplate = formNome.NomeTemplate;
+
+                        if (TemplateManager.TemplateExiste(nomeTemplate))
+                        {
+                            MessageBox.Show(
+                                $"Já existe um template chamado '{nomeTemplate}'. Escolha outro nome.",
+                                "Template existente",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                            return;
+                        }
+
                         templateParaAbrir = new TemplateEtiqueta
                         {
                             Largura = 100,
@@ -323,7 +349,7 @@ namespace EtiquetaFORNew
                 {
                     using (var formDesigner = new FormDesignNovo(templateParaAbrir, nomeTemplate))
                     {
-                        if (formDesigner.ShowDialog() == DialogResult.OK)
+                        if (formDesigner.ShowDialog(this) == DialogResult.OK)
                         {
                             MessageBox.Show(
                                 $"Template '{nomeTemplate}' salvo com sucesso!",
@@ -371,5 +397,94 @@ namespace EtiquetaFORNew
                 }
             }
         }
+
+        private void BtnRenomear_Click(object sender, EventArgs e)
+        {
+            if (lstTemplates.SelectedItem == null ||
+                lstTemplates.SelectedItem.ToString() == "(Nenhum template salvo)")
+            {
+                MessageBox.Show(
+                    "Selecione um template para renomear!",
+                    "Atenção",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            string nomeAtual = lstTemplates.SelectedItem.ToString();
+
+            using (var formNome = new FormNomeTemplate(
+                nomeAtual,
+                "Renomear Template",
+                "Digite o novo nome para o template:",
+                "Renomear",
+                Color.FromArgb(209, 196, 27)))
+            {
+                if (formNome.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                string novoNome = formNome.NomeTemplate;
+
+                if (nomeAtual.Equals(novoNome, StringComparison.Ordinal))
+                    return;
+
+                if (TemplateManager.TemplateExiste(novoNome))
+                {
+                    MessageBox.Show(
+                        $"Já existe um template chamado '{novoNome}'. Escolha outro nome.",
+                        "Template existente",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                bool eraTemplatePadrao = TemplatePadraoManager.EhTemplatePadrao(nomeAtual);
+                string ultimoTemplate = ConfiguracaoManager.CarregarUltimoTemplateUsado();
+                bool eraUltimoTemplate = nomeAtual.Equals(
+                    ultimoTemplate,
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (!TemplateManager.RenomearTemplate(nomeAtual, novoNome))
+                {
+                    MessageBox.Show(
+                        "Não foi possível renomear o arquivo do template.",
+                        "Erro",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (!ConfiguracaoManager.RenomearConfiguracao(nomeAtual, novoNome))
+                {
+                    TemplateManager.RenomearTemplate(novoNome, nomeAtual);
+                    MessageBox.Show(
+                        "Não foi possível renomear a configuração vinculada. " +
+                        "O template original foi preservado.",
+                        "Erro",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (eraTemplatePadrao)
+                    TemplatePadraoManager.DefinirTemplatePadrao(novoNome);
+
+                if (eraUltimoTemplate)
+                    ConfiguracaoManager.SalvarUltimoTemplateUsado(novoNome);
+
+                CarregarLista();
+
+                int indiceRenomeado = lstTemplates.FindStringExact(novoNome);
+                if (indiceRenomeado >= 0)
+                    lstTemplates.SelectedIndex = indiceRenomeado;
+
+                MessageBox.Show(
+                    $"Template '{nomeAtual}' renomeado para '{novoNome}' com sucesso!",
+                    "Sucesso",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+        }
+
     }
 }

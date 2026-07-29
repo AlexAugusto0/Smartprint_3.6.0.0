@@ -200,12 +200,12 @@ namespace EtiquetaFORNew
         {
             if (_modoDistribuidora)
             {
-                string numeroNfe = Prompt.ShowDialog("Informe o numero da NF-e:", "NFe / Volumes");
+                using (var form = new FormBuscarPedidoDistribuidora())
+                {
+                    if (form.ShowDialog(this) == DialogResult.OK)
+                        await BuscarDocumentoLogisticoPorPedidoAsync(form.NumeroPedido);
+                }
 
-                if (string.IsNullOrWhiteSpace(numeroNfe))
-                    return;
-
-                await BuscarDocumentoLogisticoAsync(numeroNfe.Trim());
                 return;
             }
 
@@ -216,6 +216,137 @@ namespace EtiquetaFORNew
                 {
                     await BuscarNotaFiscalAsync(form.DataEntrada, form.NumeroNota);
                 }
+            }
+        }
+
+        private async Task BuscarDocumentoLogisticoPorPedidoAsync(string numeroPedido)
+        {
+            try
+            {
+                HabilitarBotoes(false);
+
+                var progress = new Progress<string>(mensagem =>
+                {
+                    lblStatus.Text = mensagem;
+                    Application.DoEvents();
+                });
+
+                lblStatus.Text = "Buscando pedido / NF-e / Volumes...";
+                progressBar.Style = ProgressBarStyle.Marquee;
+                progressBar.Visible = true;
+
+                var resultado = await _dataManager.BuscarDocumentoLogisticoPorPedidoAsync(numeroPedido, progress);
+                progressBar.Visible = false;
+
+                if (!resultado.Sucesso)
+                {
+                    MessageBox.Show(
+                        resultado.MensagemErro,
+                        "Atencao",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    lblStatus.Text = "Documento logistico nao localizado";
+                    return;
+                }
+
+                if (resultado.DeveSolicitarQuantidadeVolumes)
+                {
+                    int? quantidadeInformada = SolicitarQuantidadeVolumesNfe();
+                    if (!quantidadeInformada.HasValue)
+                    {
+                        lblStatus.Text = "Operacao cancelada";
+                        return;
+                    }
+
+                    resultado.QuantidadeVolumes = quantidadeInformada.Value;
+                }
+
+                if (resultado.Etiquetas.Count == 0)
+                {
+                    MessageBox.Show(
+                        "A venda foi consultada, mas nao ha dados logisticos para imprimir.",
+                        "Atencao",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    lblStatus.Text = "Nenhum documento logistico";
+                    return;
+                }
+
+                lblStatus.Text = "Selecione a etiqueta logistica...";
+
+                using (var formSelecao = new FormSelecaoImpressao())
+                {
+                    if (formSelecao.ShowDialog(this) != DialogResult.OK)
+                    {
+                        lblStatus.Text = "Documento logistico carregado";
+                        return;
+                    }
+
+                    TemplateEtiqueta templateSelecionado = TemplateManager.CarregarTemplate(formSelecao.TemplateSelecionado);
+                    if (templateSelecionado == null)
+                    {
+                        MessageBox.Show(
+                            "Nao foi possivel carregar o template selecionado.",
+                            "Erro",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+
+                        lblStatus.Text = "Erro no template";
+                        return;
+                    }
+
+                    using (var formImpressao = new FormImpressao(
+                        resultado.Etiquetas,
+                        templateSelecionado,
+                        formSelecao.ConfiguracaoSelecionada))
+                    {
+                        formImpressao.ShowDialog(this);
+                    }
+                }
+
+                lblStatus.Text = "Pronto";
+            }
+            catch (Exception ex)
+            {
+                progressBar.Visible = false;
+
+                MessageBox.Show(
+                    $"Erro ao buscar NF-e / Volumes pelo pedido:\n\n{ex.Message}",
+                    "Erro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                lblStatus.Text = "Erro";
+            }
+            finally
+            {
+                progressBar.Visible = false;
+                HabilitarBotoes(true);
+            }
+        }
+
+        private int? SolicitarQuantidadeVolumesNfe()
+        {
+            while (true)
+            {
+                string valor = Prompt.ShowDialog(
+                    "Informe a quantidade de volumes desta NF-e:",
+                    "NF-e / Volumes");
+
+                if (string.IsNullOrWhiteSpace(valor))
+                    return null;
+
+                int quantidade;
+                if (int.TryParse(valor.Trim(), out quantidade) && quantidade > 0)
+                    return quantidade;
+
+                MessageBox.Show(
+                    "Informe uma quantidade de volumes valida, maior que zero.",
+                    "Atencao",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
             }
         }
 

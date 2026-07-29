@@ -60,6 +60,7 @@ namespace EtiquetaFORNew
             // 
             // btnBuscarNotaFiscal
             // 
+            this.btnBuscarNotaFiscal.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(143)))), ((int)(((byte)(0)))));
             this.btnBuscarNotaFiscal.Enabled = false;
             this.btnBuscarNotaFiscal.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnBuscarNotaFiscal.Location = new System.Drawing.Point(136, 75);
@@ -67,7 +68,7 @@ namespace EtiquetaFORNew
             this.btnBuscarNotaFiscal.Size = new System.Drawing.Size(167, 35);
             this.btnBuscarNotaFiscal.TabIndex = 1;
             this.btnBuscarNotaFiscal.Text = "Buscar por Nota Fiscal";
-            this.btnBuscarNotaFiscal.UseVisualStyleBackColor = true;
+            this.btnBuscarNotaFiscal.UseVisualStyleBackColor = false;
             this.btnBuscarNotaFiscal.Visible = false;
             this.btnBuscarNotaFiscal.Click += new System.EventHandler(this.btnBuscarNotaFiscal_Click);
             // 

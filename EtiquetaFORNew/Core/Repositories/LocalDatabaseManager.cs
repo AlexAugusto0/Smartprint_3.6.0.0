@@ -1134,6 +1134,53 @@ namespace EtiquetaFORNew.Data
             return (tamanhos, cores);
         }
 
+        public static List<string> BuscarCoresPorCodigoETamanho(int codigo, string tamanho)
+        {
+            var cores = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(tamanho))
+                return cores;
+
+            try
+            {
+                using (var conn = new SQLiteConnection(ConnectionString))
+                {
+                    conn.Open();
+
+                    const string query = @"
+                        SELECT DISTINCT Cores
+                        FROM Mercadorias
+                        WHERE CodigoMercadoria = @codigo
+                        AND Tam = @tamanho
+                        AND Cores IS NOT NULL
+                        AND TRIM(Cores) <> ''
+                        ORDER BY Cores
+                    ";
+
+                    using (var cmd = new SQLiteCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigo", codigo);
+                        cmd.Parameters.AddWithValue("@tamanho", tamanho);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string cor = reader["Cores"]?.ToString();
+                                if (!string.IsNullOrWhiteSpace(cor))
+                                    cores.Add(cor);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Erro ao buscar cores por tamanho: {ex.Message}", ex);
+            }
+
+            return cores;
+        }
         public static string BuscarCodigoBarrasPorCodTamCor(string codigo, string tamanho, string cor)
         {
             try

@@ -1036,6 +1036,585 @@ namespace EtiquetaFORNew
 
         #region NFe / Volumes - Distribuidora
 
+        /// <summary>
+        /// Consulta a mesma rota do carregamento por venda, preservando a resposta completa.
+        /// Esta rotina nao grava produtos nem altera as marcacoes de impressao.
+        /// </summary>
+        public async Task<VendaCompleta> BuscarVendaCompletaAsync(string numeroPedido)
+        {
+            var vendaCompleta = new VendaCompleta();
+
+            try
+            {
+                int pedido;
+                if (!int.TryParse((numeroPedido ?? string.Empty).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out pedido) ||
+                    pedido <= 0)
+                {
+                    vendaCompleta.MensagemErro = "Informe um Numero do Pedido valido.";
+                    return vendaCompleta;
+                }
+
+                string jsonResponse = await _service.GetVendaAsync(pedido);
+                JToken resposta = ParseJsonDistribuidora(jsonResponse);
+                vendaCompleta.JsonCompleto = resposta.DeepClone();
+
+                JObject objetoResposta = resposta as JObject;
+                JToken codigo = objetoResposta == null ? null : PrimeiroCampoDistribuidora(objetoResposta, "code");
+                if (codigo != null && LerInteiro(codigo) != 1)
+                {
+                    vendaCompleta.MensagemErro = TextoCampoDistribuidora(objetoResposta, "human", "message", "mensagem");
+                    if (string.IsNullOrWhiteSpace(vendaCompleta.MensagemErro))
+                        vendaCompleta.MensagemErro = "Venda/Pedido nao localizado.";
+
+                    return vendaCompleta;
+                }
+
+                JToken data = ObterTokenDataDistribuidora(resposta);
+                JObject venda = ConverterParaObjetoDistribuidora(data);
+                if (venda != null)
+                    venda = ConverterParaObjetoDistribuidora(PrimeiroCampoDistribuidora(venda, "venda")) ?? venda;
+
+                if (venda == null)
+                {
+                    vendaCompleta.MensagemErro = "Venda/Pedido nao localizado.";
+                    return vendaCompleta;
+                }
+
+                vendaCompleta.Data = venda;
+                vendaCompleta.Sucesso = true;
+            }
+            catch (Exception ex)
+            {
+                vendaCompleta.MensagemErro = ObterMensagemErroDistribuidora(ex);
+            }
+
+            return vendaCompleta;
+        }
+
+        /// <summary>
+        /// Fluxo independente de NF-e / Volumes iniciado exclusivamente pelo pedido.
+        /// </summary>
+        public async Task<DistribuidoraDocumentoPedidoResult> BuscarDocumentoLogisticoPorPedidoAsync(
+            string numeroPedido,
+            IProgress<string> progress = null)
+        {
+            var result = new DistribuidoraDocumentoPedidoResult();
+
+            try
+            {
+                progress?.Report("Consultando venda completa pelo pedido...");
+                VendaCompleta vendaCompleta = await BuscarVendaCompletaAsync(numeroPedido);
+
+                if (!vendaCompleta.Sucesso || vendaCompleta.Data == null)
+                {
+                    result.MensagemErro = vendaCompleta.MensagemErro ?? "Venda/Pedido nao localizado.";
+                    return result;
+                }
+
+                JObject venda = vendaCompleta.Data;
+                JObject notaFiscal = ObterNotaFiscalVendaCompletaDistribuidora(venda);
+                if (notaFiscal == null)
+                {
+                    result.MensagemErro =
+                        "Este pedido ainda nao possui uma Nota Fiscal vinculada.\n\n" +
+                        "Nao e possivel gerar etiquetas logisticas.";
+                    return result;
+                }
+
+                JObject cliente = ConverterParaObjetoDistribuidora(
+                    PrimeiroCampoDistribuidora(venda, "cliente", "destinatario", "pessoa", "consumidor"));
+
+                JObject clienteVenda = cliente;
+                long clienteId = ObterClienteIdDistribuidora(venda, clienteVenda);
+
+                if (clienteId > 0)
+                {
+                    progress?.Report("Consultando cadastro e endereco do cliente...");
+
+                    try
+                    {
+                        string jsonCliente = await _service.GetClienteDistribuidoraAsync(clienteId);
+                        string mensagemErroCliente;
+                        JObject clienteApi = ObterClienteApiDistribuidora(
+                            ParseJsonDistribuidora(jsonCliente),
+                            clienteId,
+                            out mensagemErroCliente);
+
+                        if (clienteApi != null)
+                        {
+                            JObject clienteInterno = ConverterParaObjetoDistribuidora(
+                                PrimeiroCampoDistribuidora(clienteApi, "cliente", "pessoa", "destinatario"));
+
+                            cliente = MesclarObjetosDistribuidora(clienteInterno ?? clienteApi, clienteVenda);
+                        }
+                        else if (clienteVenda == null)
+                        {
+                            result.MensagemErro = mensagemErroCliente;
+                            return result;
+                        }
+                    }
+                    catch (SoftcomShopApiException)
+                    {
+                        if (clienteVenda == null ||
+                            (!PossuiDadosEnderecoVendaCompletaDistribuidora(clienteVenda) &&
+                             !PossuiDadosEnderecoVendaCompletaDistribuidora(venda)))
+                            throw;
+                    }
+                }
+
+                if (cliente == null &&
+                    PrimeiroCampoDistribuidora(
+                        venda,
+                        "cliente_nome",
+                        "cliente_razao_social",
+                        "cliente_documento",
+                        "cpf_cnpj") != null)
+                {
+                    cliente = venda;
+                }
+
+                if (cliente == null)
+                {
+                    result.MensagemErro = "A venda foi localizada, mas os dados do cliente nao foram retornados.";
+                    return result;
+                }
+
+                JToken enderecoToken = PrimeiroCampoDistribuidora(
+                    cliente,
+                    "endereco",
+                    "endereco_entrega",
+                    "endereco_principal",
+                    "endereco_cliente",
+                    "enderecos",
+                    "enderecos_cliente");
+
+                if (enderecoToken == null)
+                {
+                    enderecoToken = PrimeiroCampoDistribuidora(
+                        venda,
+                        "endereco",
+                        "endereco_entrega",
+                        "endereco_principal",
+                        "endereco_cliente",
+                        "enderecos",
+                        "enderecos_cliente");
+                }
+
+                JObject endereco = ConverterParaObjetoDistribuidora(enderecoToken);
+
+                JObject clienteComEndereco = MesclarObjetosDistribuidora(endereco, cliente);
+                JObject bairro = ConverterParaObjetoDistribuidora(
+                    PrimeiroCampoDistribuidora(clienteComEndereco, "bairro", "endereco_bairro"));
+                long bairroId = ObterBairroIdDistribuidora(clienteComEndereco, venda);
+
+                if (bairroId > 0)
+                {
+                    progress?.Report("Consultando bairro e cidade do endereco...");
+
+                    try
+                    {
+                        string jsonBairro = await _service.GetBairroDistribuidoraAsync(bairroId);
+                        JObject bairroApi = ObterPrimeiroObjetoDataDistribuidora(
+                            ParseJsonDistribuidora(jsonBairro));
+
+                        if (bairroApi != null)
+                            bairro = MesclarObjetosDistribuidora(bairroApi, bairro);
+                    }
+                    catch (SoftcomShopApiException)
+                    {
+                        if (!PossuiDadosEnderecoVendaCompletaDistribuidora(clienteComEndereco))
+                            throw;
+                    }
+                }
+
+                JArray itens = ObterItensVendaDistribuidora(venda);
+                if (itens.Count == 0)
+                    itens = ExtrairItensNotaDistribuidora(venda);
+
+                if (itens.Count == 0)
+                {
+                    result.MensagemErro = "A venda foi localizada, mas nao retornou produtos para impressao logistica.";
+                    return result;
+                }
+
+                result.Etiqueta = MontarEtiquetaPorPedidoDistribuidora(
+                    venda,
+                    notaFiscal,
+                    clienteComEndereco,
+                    bairro,
+                    itens,
+                    numeroPedido);
+
+                result.QuantidadeVolumes = DistribuidoraDocumentoLogisticoResult.CalcularTotalVolumes(result.Etiqueta);
+
+                result.Sucesso = true;
+                progress?.Report("Documento logistico carregado para impressao.");
+            }
+            catch (Exception ex)
+            {
+                result.MensagemErro = ObterMensagemErroDistribuidora(ex);
+                progress?.Report($"Erro: {result.MensagemErro}");
+            }
+
+            return result;
+        }
+
+        private EtiquetaDistribuidora MontarEtiquetaPorPedidoDistribuidora(
+            JObject venda,
+            JObject notaFiscal,
+            JObject cliente,
+            JObject bairro,
+            JArray itens,
+            string numeroPedido)
+        {
+            string numeroNfe = TextoCampoDistribuidora(
+                notaFiscal,
+                "numero",
+                "numero_nfe",
+                "nfe_numero",
+                "numero_nf",
+                "numero_nota_fiscal",
+                "numero_documento");
+
+            var etiqueta = new EtiquetaDistribuidora
+            {
+                Venda = new DadosVendaDistribuidora
+                {
+                    Id = LerLong(PrimeiroCampoDistribuidora(venda, "id", "venda_id")),
+                    ClienteId = LerLong(PrimeiroCampoDistribuidora(venda, "cliente_id", "cliente.id")),
+                    EmpresaId = LerLong(PrimeiroCampoDistribuidora(venda, "empresa_id", "empresa.id")),
+                    Pedido = ObterNumeroPedidoDistribuidora(venda, numeroPedido),
+                    FormaPagamento = ObterFormaPagamentoDistribuidora(venda, notaFiscal),
+                    NumeroDocumento = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(venda, "numero_documento", "numero_pedido", "numero_venda", "pedido"),
+                        numeroPedido),
+                    NumeroNf = numeroNfe,
+                    Serie = TextoCampoDistribuidora(notaFiscal, "serie", "serie_nfe"),
+                    Modelo = TextoCampoDistribuidora(notaFiscal, "modelo", "modelo_nfe"),
+                    ChaveAcesso = TextoCampoDistribuidora(
+                        notaFiscal,
+                        "chave",
+                        "chave_acesso",
+                        "chave_nfe",
+                        "chave_acesso_nfe"),
+                    DataEmissao =
+                        DataCampoDistribuidora(notaFiscal, "data_emissao", "data_hora_emissao", "emissao", "data") ??
+                        DataCampoDistribuidora(venda, "api_data_hora_venda", "data_hora_venda", "created_at"),
+                    Observacao = TextoCampoDistribuidora(venda, "observacao"),
+                    NfeId = LerLong(PrimeiroCampoDistribuidora(notaFiscal, "id", "nfe_id", "nota_fiscal_id"))
+                },
+                Empresa = MontarEmpresaDistribuidora(
+                    ObterEmpresaEmitenteDistribuidora(venda, notaFiscal),
+                    venda,
+                    notaFiscal),
+                Destinatario = MontarDestinatarioVendaCompletaDistribuidora(cliente, venda),
+                Endereco = MontarEnderecoVendaCompletaDistribuidora(cliente, bairro),
+                Produtos = MontarProdutosVendaCompletaDistribuidora(
+                    itens,
+                    LerLong(PrimeiroCampoDistribuidora(venda, "id", "venda_id")))
+            };
+
+            return etiqueta;
+        }
+
+        private static DadosEnderecoEtiquetaDistribuidora MontarEnderecoVendaCompletaDistribuidora(
+            JObject cliente,
+            JObject bairro)
+        {
+            return new DadosEnderecoEtiquetaDistribuidora
+            {
+                Endereco = TextoCampoDistribuidora(
+                    cliente,
+                    "endereco",
+                    "logradouro",
+                    "rua",
+                    "endereco_logradouro"),
+                Numero = TextoCampoDistribuidora(cliente, "numero", "endereco_numero", "num"),
+                Complemento = TextoCampoDistribuidora(cliente, "complemento", "endereco_complemento"),
+                Bairro = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(
+                        cliente,
+                        "bairro.nome",
+                        "bairro.descricao",
+                        "bairro_nome",
+                        "nome_bairro",
+                        "bairro"),
+                    TextoCampoDistribuidora(
+                        bairro,
+                        "nome",
+                        "descricao",
+                        "bairro_nome",
+                        "nome_bairro",
+                        "bairro")),
+                Cidade = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(
+                        cliente,
+                        "cidade.nome",
+                        "municipio.nome",
+                        "cidade_nome",
+                        "nome_cidade",
+                        "municipio",
+                        "cidade"),
+                    TextoCampoDistribuidora(
+                        bairro,
+                        "cidade.nome",
+                        "municipio.nome",
+                        "cidade_nome",
+                        "nome_cidade",
+                        "municipio",
+                        "cidade")),
+                Uf = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(
+                        cliente,
+                        "uf.sigla",
+                        "estado.sigla",
+                        "cidade.uf",
+                        "cidade.estado.sigla",
+                        "estado_sigla",
+                        "uf"),
+                    TextoCampoDistribuidora(
+                        bairro,
+                        "uf.sigla",
+                        "estado.sigla",
+                        "cidade.uf",
+                        "cidade.estado.sigla",
+                        "estado_sigla",
+                        "uf")),
+                Cep = TextoCampoDistribuidora(cliente, "cep", "codigo_postal", "endereco_cep")
+            };
+        }
+
+        private static bool PossuiDadosEnderecoVendaCompletaDistribuidora(JObject origem)
+        {
+            return PrimeiroCampoDistribuidora(
+                origem,
+                "endereco",
+                "logradouro",
+                "rua",
+                "cep",
+                "cidade",
+                "uf",
+                "bairro",
+                "endereco_entrega",
+                "endereco_principal",
+                "endereco_cliente",
+                "enderecos",
+                "enderecos_cliente") != null;
+        }
+
+        private static DadosDestinatarioEtiquetaDistribuidora MontarDestinatarioVendaCompletaDistribuidora(
+            JObject cliente,
+            JObject venda)
+        {
+            return new DadosDestinatarioEtiquetaDistribuidora
+            {
+                Id = LerLong(PrimeiroCampoDistribuidora(cliente, "id", "cliente_id", "pessoa_id")),
+                Nome = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(cliente, "nome", "nome_fantasia", "fantasia"),
+                    TextoCampoDistribuidora(venda, "cliente_nome", "nome_cliente", "cliente_fantasia")),
+                RazaoSocial = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(cliente, "razao_social", "nome_razao_social", "nome"),
+                    TextoCampoDistribuidora(venda, "cliente_razao_social", "razao_social_cliente")),
+                Documento = PrimeiroTextoValor(
+                    TextoCampoDistribuidora(cliente, "cpf_cnpj", "documento", "cnpj", "cpf"),
+                    TextoCampoDistribuidora(venda, "cliente_documento", "cliente_cpf_cnpj", "cpf_cnpj")),
+                Telefone = ObterTelefonePrincipalDistribuidora(cliente, venda)
+            };
+        }
+
+        private static List<ProdutoVendaDistribuidora> MontarProdutosVendaCompletaDistribuidora(
+            JArray itens,
+            long vendaId)
+        {
+            var produtos = new List<ProdutoVendaDistribuidora>();
+
+            foreach (JObject item in itens.OfType<JObject>())
+            {
+                JObject produto = ConverterParaObjetoDistribuidora(
+                    PrimeiroCampoDistribuidora(item, "produto", "mercadoria", "produto_empresa", "sku"));
+
+                produtos.Add(new ProdutoVendaDistribuidora
+                {
+                    VendaId = LerLong(PrimeiroCampoDistribuidora(item, "venda_id"), vendaId),
+                    ProdutoId = LerLong(PrimeiroCampoDistribuidora(item, "produto_id", "produto.id")),
+                    Codigo = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(item, "codigo", "codigo_produto", "codigo_mercadoria"),
+                        TextoCampoDistribuidora(produto, "codigo", "codigo_produto", "codigo_mercadoria")),
+                    Referencia = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(item, "referencia", "referencia_produto", "ref"),
+                        TextoCampoDistribuidora(produto, "referencia", "referencia_produto", "ref")),
+                    Descricao = PrimeiroTextoValor(
+                        TextoCampoDistribuidora(item, "descricao", "produto_nome", "nome"),
+                        TextoCampoDistribuidora(produto, "descricao", "produto_nome", "nome")),
+                    Quantidade = DecimalCampoDistribuidora(item, "quantidade", "qtd", "quantidade_item", "qtde") ?? 0m,
+                    Preco = DecimalCampoDistribuidora(item, "preco", "valor_unitario", "preco_unitario") ?? 0m,
+                    Peso = DecimalCampoDistribuidora(item, "peso", "peso_bruto", "peso_liquido", "peso_total")
+                           ?? DecimalCampoDistribuidora(produto, "peso", "peso_bruto", "peso_liquido", "peso_total")
+                           ?? 0m
+                });
+            }
+
+            return produtos;
+        }
+
+        private static JObject ObterNotaFiscalVendaCompletaDistribuidora(JObject venda)
+        {
+            string[] nomesNota =
+            {
+                "nota_fiscal_eletronica",
+                "notaFiscalEletronica",
+                "nfe",
+                "nf_e",
+                "nota_fiscal",
+                "documento_fiscal"
+            };
+
+            JToken nota = LocalizarCampoRecursivoDistribuidora(venda, nomesNota, false);
+            JObject objetoNota = ConverterParaObjetoDistribuidora(nota);
+            if (objetoNota != null)
+                return objetoNota;
+
+            if (PrimeiroCampoDistribuidora(
+                    venda,
+                    "nfe_id",
+                    "nota_fiscal_eletronica_id",
+                    "numero_nfe",
+                    "nfe_numero",
+                    "chave_nfe",
+                    "chave_acesso_nfe") != null)
+            {
+                return venda;
+            }
+
+            return null;
+        }
+
+        private static int? ObterQuantidadeVolumesDistribuidora(JObject origem)
+        {
+            if (origem == null)
+                return null;
+
+            string[] campos =
+            {
+                "quantidade_volumes",
+                "qtd_volumes",
+                "volume_quantidade",
+                "total_volumes",
+                "volumes"
+            };
+
+            foreach (string campo in campos)
+            {
+                JToken valor = LocalizarCampoRecursivoDistribuidora(origem, new[] { campo }, true);
+                if (valor == null)
+                    continue;
+
+                if (valor is JArray array && array.Count > 0)
+                    return array.Count;
+
+                int quantidade = LerInteiro(valor);
+                if (quantidade > 0)
+                    return quantidade;
+            }
+
+            return null;
+        }
+
+        private static JToken LocalizarCampoRecursivoDistribuidora(
+            JToken token,
+            IEnumerable<string> nomes,
+            bool ignorarColecoesDeItens)
+        {
+            if (token == null || nomes == null)
+                return null;
+
+            var nomesNormalizados = new HashSet<string>(nomes, StringComparer.OrdinalIgnoreCase);
+            return LocalizarCampoRecursivoDistribuidora(token, nomesNormalizados, ignorarColecoesDeItens);
+        }
+
+        private static JToken LocalizarCampoRecursivoDistribuidora(
+            JToken token,
+            HashSet<string> nomes,
+            bool ignorarColecoesDeItens)
+        {
+            JObject obj = token as JObject;
+            if (obj != null)
+            {
+                foreach (JProperty propriedade in obj.Properties())
+                {
+                    if (nomes.Contains(propriedade.Name) &&
+                        ValorCampoPreenchidoDistribuidora(propriedade.Value))
+                    {
+                        return propriedade.Value;
+                    }
+                }
+
+                foreach (JProperty propriedade in obj.Properties())
+                {
+                    if (ignorarColecoesDeItens &&
+                        (string.Equals(propriedade.Name, "itens", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(propriedade.Name, "items", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(propriedade.Name, "produtos", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(propriedade.Name, "mercadorias", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(propriedade.Name, "venda_itens", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(propriedade.Name, "nota_itens", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
+                    JToken encontrado = LocalizarCampoRecursivoDistribuidora(
+                        propriedade.Value,
+                        nomes,
+                        ignorarColecoesDeItens);
+
+                    if (encontrado != null)
+                        return encontrado;
+                }
+            }
+
+            JArray array = token as JArray;
+            if (array != null)
+            {
+                foreach (JToken item in array)
+                {
+                    JToken encontrado = LocalizarCampoRecursivoDistribuidora(
+                        item,
+                        nomes,
+                        ignorarColecoesDeItens);
+
+                    if (encontrado != null)
+                        return encontrado;
+                }
+            }
+
+            return null;
+        }
+
+        private static JObject ConverterParaObjetoDistribuidora(JToken token)
+        {
+            if (token == null || token.Type == JTokenType.Null)
+                return null;
+
+            if (token.Type == JTokenType.String)
+            {
+                try
+                {
+                    return ConverterParaObjetoDistribuidora(ParseJsonDistribuidora(token.ToString()));
+                }
+                catch (JsonReaderException)
+                {
+                    return null;
+                }
+            }
+
+            JObject obj = token as JObject;
+            if (obj != null)
+                return obj;
+
+            JArray array = token as JArray;
+            return array == null ? null : array.OfType<JObject>().FirstOrDefault();
+        }
+
         public async Task<DistribuidoraDocumentoLogisticoResult> BuscarDocumentoLogisticoAsync(string numeroNfe, IProgress<string> progress = null)
         {
             var result = new DistribuidoraDocumentoLogisticoResult();
@@ -1181,15 +1760,21 @@ namespace EtiquetaFORNew
                     Id = LerLong(PrimeiroCampoDistribuidora(venda, "id")),
                     ClienteId = LerLong(PrimeiroCampoDistribuidora(venda, "cliente_id", "cliente.id")),
                     EmpresaId = LerLong(PrimeiroCampoDistribuidora(venda, "empresa_id", "empresa.id")),
+                    Pedido = ObterNumeroPedidoDistribuidora(venda),
+                    FormaPagamento = ObterFormaPagamentoDistribuidora(venda),
                     NumeroDocumento = TextoCampoDistribuidora(venda, "numero_documento"),
                     NumeroNf = PrimeiroTextoValor(
                         TextoCampoDistribuidora(venda, "numero_nfe", "numero_nf", "nota_fiscal", "nfe.numero", "nfe.numero_nfe"),
                         numeroNfeInformado),
+                    Serie = TextoCampoDistribuidora(venda, "serie", "serie_nfe", "nfe.serie"),
+                    Modelo = TextoCampoDistribuidora(venda, "modelo", "modelo_nfe", "nfe.modelo"),
+                    ChaveAcesso = TextoCampoDistribuidora(venda,
+                        "chave", "chave_acesso", "chave_nfe", "nfe.chave", "nfe.chave_acesso"),
                     DataEmissao = DataCampoDistribuidora(venda, "api_data_hora_venda", "data_hora_venda", "created_at"),
                     Observacao = TextoCampoDistribuidora(venda, "observacao"),
                     NfeId = LerLong(PrimeiroCampoDistribuidora(venda, "nfe_id"))
                 },
-                Empresa = MontarEmpresaDistribuidora(ObterObjetoRelacionadoDistribuidora(venda, "empresa")),
+                Empresa = MontarEmpresaDistribuidora(ObterEmpresaEmitenteDistribuidora(venda), venda),
                 Destinatario = MontarDestinatarioEtiquetaDistribuidora(cliente),
                 Endereco = MontarEnderecoEtiquetaDistribuidora(cliente),
                 Produtos = MontarProdutosVendaDistribuidora(itens, LerLong(PrimeiroCampoDistribuidora(venda, "id")))
@@ -1198,16 +1783,87 @@ namespace EtiquetaFORNew
             return etiqueta;
         }
 
-        private static DadosEmpresaDistribuidora MontarEmpresaDistribuidora(JObject empresa)
+        private static DadosEmpresaDistribuidora MontarEmpresaDistribuidora(JObject empresa, params JObject[] fallbacks)
         {
+            string nomeFallback = PrimeiroTextoDasOrigensDistribuidora(fallbacks,
+                "empresa_nome", "emitente_nome", "nome_emitente");
+            string fantasiaFallback = PrimeiroTextoDasOrigensDistribuidora(fallbacks,
+                "empresa_fantasia", "emitente_fantasia", "fantasia_emitente");
+            string razaoFallback = PrimeiroTextoDasOrigensDistribuidora(fallbacks,
+                "empresa_razao_social", "emitente_razao_social", "razao_social_emitente");
+            string cnpjFallback = PrimeiroTextoDasOrigensDistribuidora(fallbacks,
+                "empresa_cnpj", "emitente_cnpj", "cnpj_emitente");
+
             return new DadosEmpresaDistribuidora
             {
                 Id = LerLong(PrimeiroCampoDistribuidora(empresa, "id")),
-                Nome = TextoCampoDistribuidora(empresa, "nome"),
-                Fantasia = TextoCampoDistribuidora(empresa, "fantasia"),
-                RazaoSocial = TextoCampoDistribuidora(empresa, "razao_social"),
-                Cnpj = TextoCampoDistribuidora(empresa, "cnpj")
+                Nome = PrimeiroTextoValor(TextoCampoDistribuidora(empresa, "nome"), nomeFallback),
+                Fantasia = PrimeiroTextoValor(TextoCampoDistribuidora(empresa, "fantasia", "nome_fantasia"), fantasiaFallback),
+                RazaoSocial = PrimeiroTextoValor(TextoCampoDistribuidora(empresa, "razao_social"), razaoFallback, nomeFallback),
+                Cnpj = PrimeiroTextoValor(TextoCampoDistribuidora(empresa, "cnpj", "cpf_cnpj", "documento"), cnpjFallback)
             };
+        }
+
+        private static JObject ObterEmpresaEmitenteDistribuidora(params JObject[] origens)
+        {
+            if (origens == null)
+                return null;
+
+            foreach (JObject origem in origens)
+            {
+                JObject empresa = ConverterParaObjetoDistribuidora(PrimeiroCampoDistribuidora(
+                    origem,
+                    "empresa",
+                    "emitente",
+                    "empresa_emitente",
+                    "emissor"));
+
+                if (empresa != null)
+                    return empresa;
+            }
+
+            return null;
+        }
+
+        private static string PrimeiroTextoDasOrigensDistribuidora(IEnumerable<JObject> origens, params string[] campos)
+        {
+            if (origens == null)
+                return string.Empty;
+
+            foreach (JObject origem in origens)
+            {
+                string texto = TextoCampoDistribuidora(origem, campos);
+                if (!string.IsNullOrWhiteSpace(texto))
+                    return texto;
+            }
+
+            return string.Empty;
+        }
+
+        private static string ObterNumeroPedidoDistribuidora(JObject venda, string fallback = null)
+        {
+            string[] campos =
+            {
+                "numero_pedido",
+                "pedido.numero",
+                "pedido.id",
+                "numero_venda",
+                "venda_numero",
+                "id",
+                "numero_documento"
+            };
+
+            foreach (string campo in campos)
+            {
+                string pedido = TextoCampoDistribuidora(venda, campo);
+                if (!string.IsNullOrWhiteSpace(pedido) &&
+                    !string.Equals(pedido.Trim(), "0", StringComparison.OrdinalIgnoreCase))
+                {
+                    return pedido;
+                }
+            }
+
+            return PrimeiroTextoValor(fallback);
         }
 
         private static DadosDestinatarioEtiquetaDistribuidora MontarDestinatarioEtiquetaDistribuidora(JObject cliente)
@@ -1217,7 +1873,8 @@ namespace EtiquetaFORNew
                 Id = LerLong(PrimeiroCampoDistribuidora(cliente, "id")),
                 Nome = TextoCampoDistribuidora(cliente, "nome"),
                 RazaoSocial = TextoCampoDistribuidora(cliente, "razao_social"),
-                Documento = TextoCampoDistribuidora(cliente, "cpf_cnpj", "documento", "cnpj", "cpf")
+                Documento = TextoCampoDistribuidora(cliente, "cpf_cnpj", "documento", "cnpj", "cpf"),
+                Telefone = ObterTelefonePrincipalDistribuidora(cliente)
             };
         }
 
@@ -1385,6 +2042,9 @@ namespace EtiquetaFORNew
         {
             return new DadosNotaDistribuidora
             {
+                Pedido = TextoCampoDistribuidora(nota, "numero_pedido", "pedido", "numero_venda", "venda_numero", "numero_documento"),
+                FormaPagamento = ObterFormaPagamentoDistribuidora(nota),
+                Emitente = ObterDescricaoEmitenteDistribuidora(nota),
                 NumeroDocumento = TextoCampoDistribuidora(nota, "numero_documento", "documento", "numero", "venda_numero", "id"),
                 NumeroNFe = PrimeiroTextoValor(
                     TextoCampoDistribuidora(nota, "numero_nfe", "nfe_numero", "numero_nota_fiscal", "nota_fiscal", "numero_nf"),
@@ -1411,9 +2071,105 @@ namespace EtiquetaFORNew
                 Documento = PrimeiroTextoValor(
                     TextoCampoDistribuidora(cliente, "documento", "cpf_cnpj", "cnpj", "cpf"),
                     TextoCampoDistribuidora(nota, "cliente_documento", "cpf_cnpj", "cnpj", "cpf")),
-                Telefone = TextoCampoDistribuidora(cliente, "telefone", "fone", "celular", "telefone1"),
+                Telefone = ObterTelefonePrincipalDistribuidora(cliente, nota),
                 Email = TextoCampoDistribuidora(cliente, "email", "e_mail")
             };
+        }
+
+        private static string ObterFormaPagamentoDistribuidora(params JObject[] origens)
+        {
+            if (origens == null)
+                return string.Empty;
+
+            foreach (JObject origem in origens)
+            {
+                string descricao = TextoCampoDistribuidora(
+                    origem,
+                    "forma_pagamento.descricao",
+                    "forma_pagamento.nome",
+                    "pagamento.forma_pagamento.descricao",
+                    "pagamento.forma_pagamento.nome",
+                    "forma_pagamento_descricao",
+                    "descricao_forma_pagamento",
+                    "forma_pagamento");
+
+                if (!string.IsNullOrWhiteSpace(descricao))
+                    return descricao;
+
+                JToken pagamentos = PrimeiroCampoDistribuidora(origem, "pagamentos", "formas_pagamento");
+                IEnumerable<JObject> itens = pagamentos is JArray array
+                    ? array.OfType<JObject>()
+                    : new[] { pagamentos as JObject }.Where(item => item != null);
+
+                foreach (JObject item in itens)
+                {
+                    descricao = TextoCampoDistribuidora(
+                        item,
+                        "forma_pagamento.descricao",
+                        "forma_pagamento.nome",
+                        "forma_pagamento",
+                        "descricao",
+                        "nome");
+
+                    if (!string.IsNullOrWhiteSpace(descricao))
+                        return descricao;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static string ObterTelefonePrincipalDistribuidora(params JObject[] origens)
+        {
+            if (origens == null)
+                return string.Empty;
+
+            foreach (JObject origem in origens)
+            {
+                string telefone = TextoCampoDistribuidora(
+                    origem,
+                    "telefone.numero",
+                    "telefone",
+                    "telefone1",
+                    "fone",
+                    "celular");
+
+                if (!string.IsNullOrWhiteSpace(telefone))
+                    return telefone;
+
+                JArray telefones = PrimeiroCampoDistribuidora(origem, "telefones") as JArray;
+                if (telefones == null)
+                    continue;
+
+                JObject principal = telefones
+                    .OfType<JObject>()
+                    .FirstOrDefault(item => LerBooleanoDistribuidora(PrimeiroCampoDistribuidora(item, "principal", "padrao")));
+
+                IEnumerable<JObject> candidatos = principal == null
+                    ? telefones.OfType<JObject>()
+                    : new[] { principal }.Concat(telefones.OfType<JObject>().Where(item => !ReferenceEquals(item, principal)));
+
+                foreach (JObject candidato in candidatos)
+                {
+                    telefone = TextoCampoDistribuidora(candidato, "numero", "telefone", "fone", "valor");
+                    if (!string.IsNullOrWhiteSpace(telefone))
+                        return telefone;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static bool LerBooleanoDistribuidora(JToken valor)
+        {
+            if (valor == null || valor.Type == JTokenType.Null)
+                return false;
+
+            bool resultado;
+            if (bool.TryParse(valor.ToString(), out resultado))
+                return resultado;
+
+            return LerInteiro(valor) == 1;
         }
 
         private DadosEnderecoDistribuidora MontarDadosEnderecoDistribuidora(JObject cliente, JObject bairro, long bairroId)
@@ -1471,12 +2227,12 @@ namespace EtiquetaFORNew
         {
             var volumes = new List<VolumeDistribuidora>();
             string numeroNFe = PrimeiroTextoValor(dadosNota?.NumeroNFe, dadosNota?.NumeroDocumento, "NFE");
-            string empresaEmitente = _config?.CompanyName ?? string.Empty;
+            string empresaEmitente = PrimeiroTextoValor(dadosNota?.Emitente, _config?.CompanyName);
             string operador = Environment.UserName ?? string.Empty;
 
             foreach (ItemNotaDistribuidora item in itens)
             {
-                int quantidadeVolumes = Math.Max(1, item.QuantidadeVolumes);
+                int quantidadeVolumes = Math.Max(1, (int)Math.Ceiling(item.Quantidade));
 
                 for (int i = 0; i < quantidadeVolumes; i++)
                 {
@@ -1498,6 +2254,18 @@ namespace EtiquetaFORNew
                 volume.TotalVolumes = totalVolumes;
 
             return volumes;
+        }
+
+        private static string ObterDescricaoEmitenteDistribuidora(JObject origem)
+        {
+            JObject emitente = ObterEmpresaEmitenteDistribuidora(origem);
+            return PrimeiroTextoValor(
+                TextoCampoDistribuidora(emitente, "razao_social", "nome", "nome_fantasia", "fantasia"),
+                TextoCampoDistribuidora(origem,
+                    "emitente_razao_social",
+                    "empresa_razao_social",
+                    "emitente_nome",
+                    "empresa_nome"));
         }
 
         private List<EtiquetaVolumeDistribuidora> MontarEtiquetasVolumesDistribuidora(

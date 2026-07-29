@@ -463,6 +463,9 @@ namespace EtiquetaFORNew
 
         private string ObterValorCampo(string campo, Produto produto, ElementoEtiqueta elemento = null)
         {
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb() && EtiquetaDistribuidoraResolver.CampoExiste(campo))
+                return $"[{campo}]";
+
             if (produto == null) return $"[{campo}]";
 
             decimal valorCalculado;
@@ -535,6 +538,9 @@ namespace EtiquetaFORNew
 
         private string ObterValorExpressao(string expressao, Produto produto)
         {
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb() && EtiquetaDistribuidoraResolver.NovoCampoTextualEmExpressao(expressao))
+                return $"[{expressao}]";
+
             if (produto == null)
                 return $"[{(string.IsNullOrWhiteSpace(expressao) ? "Expressão" : expressao)}]";
 

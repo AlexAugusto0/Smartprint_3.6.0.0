@@ -6,16 +6,27 @@ namespace EtiquetaFORNew
 {
     public partial class FormNomeTemplate : Form
     {
-        public string NomeTemplate { get; private set; }
-
-        public FormNomeTemplate()
+        public string NomeTemplate { get; private set; }   
+                  
+        
+        public FormNomeTemplate(
+            string nomeInicial = null,
+            string titulo = "Salvar Template",
+            string instrucao = "Digite um nome para o template:",
+            string textoBotao = "Salvar",
+            Color? corBotao = null)
         {
-            InitializeComponent();
+            InitializeComponent(nomeInicial, titulo, instrucao, textoBotao, corBotao);
         }
 
-        private void InitializeComponent()
+        private void InitializeComponent(
+            string nomeInicial,
+            string titulo,
+            string instrucao,
+            string textoBotao,
+            Color? corBotao)
         {
-            this.Text = "Salvar Template";
+            this.Text = titulo;
             this.Size = new Size(400, 180);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -24,7 +35,7 @@ namespace EtiquetaFORNew
 
             Label lblInstrucao = new Label
             {
-                Text = "Digite um nome para o template:",
+                Text = instrucao,
                 Location = new Point(20, 20),
                 Size = new Size(350, 20),
                 Font = new Font("Segoe UI", 10)
@@ -35,16 +46,21 @@ namespace EtiquetaFORNew
                 Name = "txtNome",
                 Location = new Point(20, 50),
                 Size = new Size(340, 25),
-                Font = new Font("Segoe UI", 10)
+                Font = new Font("Segoe UI", 10),
+                Text = nomeInicial ?? ""
             };
+
+            //Color corFundoBotao = corBotao ?? Color.FromArgb(237, 222, 31);
+            Color corFundoBotao = corBotao ?? Color.FromArgb(209, 196, 27);
 
             Button btnSalvar = new Button
             {
-                Text = "Salvar",
+                Text = textoBotao,
                 Location = new Point(190, 100),
                 Size = new Size(80, 30),
-                BackColor = Color.FromArgb(46, 204, 113),
-                ForeColor = Color.White,
+                //BackColor = Color.FromArgb(46, 204, 113),
+                BackColor = corFundoBotao,
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 DialogResult = DialogResult.OK
             };
@@ -66,6 +82,14 @@ namespace EtiquetaFORNew
                     nome = nome.Replace(c.ToString(), "");
                 }
 
+                if (string.IsNullOrWhiteSpace(nome))
+                {
+                    MessageBox.Show("Digite um nome válido!", "Atenção",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    this.DialogResult = DialogResult.None;
+                    return;
+                }
+
                 NomeTemplate = nome;
             };
 
@@ -75,7 +99,7 @@ namespace EtiquetaFORNew
                 Location = new Point(280, 100),
                 Size = new Size(80, 30),
                 BackColor = Color.FromArgb(149, 165, 166),
-                ForeColor = Color.White,
+                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 DialogResult = DialogResult.Cancel
             };
@@ -84,6 +108,8 @@ namespace EtiquetaFORNew
             this.Controls.AddRange(new Control[] { lblInstrucao, txtNome, btnSalvar, btnCancelar });
             this.AcceptButton = btnSalvar;
             this.CancelButton = btnCancelar;
+            txtNome.SelectAll();
+            txtNome.Focus();
         }
     }
 }

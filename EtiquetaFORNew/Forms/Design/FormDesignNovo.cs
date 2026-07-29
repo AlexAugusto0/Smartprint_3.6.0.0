@@ -12,7 +12,7 @@ namespace EtiquetaFORNew.Forms
     /// <summary>
     /// FormDesign modernizado com configuração de página integrada e funcionalidade completa de elementos
     /// </summary>
-    public partial class FormDesignNovo : Form
+    public partial class FormDesignNovo : Form, IMessageFilter
     {
         #region Campos Privados
 
@@ -23,6 +23,12 @@ namespace EtiquetaFORNew.Forms
         // Controles do canvas
         private Panel panelCanvas;
         private PictureBox pbCanvas;
+        private Panel panelTop;
+        private Panel panelBotoes;
+        private Button btnZoomMenos;
+        private Button btnZoomMais;
+        private Label lblZoomPercentual;
+        private ContextMenuStrip menuContextoCanvas;
 
         // Controles do painel de configuração
         private Panel panelConfiguracao;
@@ -115,6 +121,9 @@ namespace EtiquetaFORNew.Forms
         // Constantes
         private const float MM_PARA_PIXEL = 3.78f;
         private float zoom = 1.0f;
+        private string elementosCopiados;
+        private int sequenciaColagem;
+        private bool filtroMouseAtivo;
 
         //Pilha que armazena os estados para desfazer do template
         private Stack<string> historicoUndo = new Stack<string>();
@@ -161,32 +170,27 @@ namespace EtiquetaFORNew.Forms
             template.Altura = configuracao.AlturaEtiqueta;
 
             ConfigurarFormulario();
+            CriarInterface();
         }
 
         private void FormDesignNovo_Load(object sender, EventArgs e)
         {
             VersaoHelper.DefinirTituloComVersao(this, "Designer de Etiquetas");
-            CriarInterface();
             CarregarDadosNaInterface();
-
-            if (btnToggleConfig != null && panelConfiguracao != null)
-            {
-                btnToggleConfig.Location = new Point(
-                    this.ClientSize.Width - panelConfiguracao.Width - btnToggleConfig.Width,
-                    (this.ClientSize.Height - btnToggleConfig.Height) / 2
-                );
-            }
+            AjustarLayoutResponsivo();
         }
 
         private void ConfigurarFormulario()
         {
             SalvarEstadoHistorico();
-            this.WindowState = FormWindowState.Maximized;
-            this.MinimumSize = new Size(1000, 700);
+            this.StartPosition = FormStartPosition.Manual;
             this.DoubleBuffered = true;
             this.BackColor = Color.FromArgb(240, 240, 240);
             this.KeyPreview = true;
             this.KeyDown += FormDesignNovo_KeyDown;
+            this.Shown += FormDesignNovo_Shown;
+            this.FormClosed += (s, e) => RemoverFiltroMouse();
+            this.DpiChanged += (s, e) => AjustarLayoutResponsivo();
             
         }
 
@@ -197,7 +201,7 @@ namespace EtiquetaFORNew.Forms
         private void CriarInterface()
         {
             // ==================== BARRA SUPERIOR ====================
-            Panel panelTop = new Panel
+            panelTop = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 60,
@@ -227,7 +231,7 @@ namespace EtiquetaFORNew.Forms
             panelTop.Controls.Add(lblTitulo);
 
             // ==================== BOTÕES DE AÇÃO ====================
-            Panel panelBotoes = new Panel
+            panelBotoes = new Panel
             {
                 Dock = DockStyle.Right,
                 Width = 560,
@@ -361,22 +365,7 @@ namespace EtiquetaFORNew.Forms
 
             this.Resize += (s, e) =>
             {
-                if (btnToggleConfig == null) return;
-
-                if (panelConfiguracao.Width > 0)
-                {
-                    btnToggleConfig.Location = new Point(
-                        this.ClientSize.Width - panelConfiguracao.Width - btnToggleConfig.Width,
-                        (this.ClientSize.Height - btnToggleConfig.Height) / 2
-                    );
-                }
-                else
-                {
-                    btnToggleConfig.Location = new Point(
-                        this.ClientSize.Width - btnToggleConfig.Width - 5,
-                        (this.ClientSize.Height - btnToggleConfig.Height) / 2
-                    );
-                }
+                AjustarLayoutResponsivo();
             };
 
             btnToggleConfig.Click += (s, e) =>
@@ -393,7 +382,7 @@ namespace EtiquetaFORNew.Forms
                 }
                 else
                 {
-                    panelConfiguracao.Width = 350;
+                    panelConfiguracao.Width = ObterLarguraPainelDireito();
                     btnToggleConfig.Text = "▶";
                     btnToggleConfig.BackColor = Color.FromArgb(46, 204, 113);
                     btnToggleConfig.Location = new Point(
@@ -436,7 +425,7 @@ namespace EtiquetaFORNew.Forms
             CriarToolbox();
 
             // ==================== CANVAS CENTRAL ====================
-            panelCanvas = new Panel
+            panelCanvas = new DoubleBufferedPanel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(189, 195, 199),
@@ -445,7 +434,7 @@ namespace EtiquetaFORNew.Forms
             panelCanvas.Resize += (s, e) => AtualizarTamanhoCanvas();
             this.Controls.Add(panelCanvas);
 
-            pbCanvas = new PictureBox
+            pbCanvas = new DoubleBufferedPictureBox
             {
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -457,8 +446,11 @@ namespace EtiquetaFORNew.Forms
             pbCanvas.MouseMove += PbCanvas_MouseMove;
             pbCanvas.MouseUp += PbCanvas_MouseUp;
             pbCanvas.MouseWheel += PbCanvas_MouseWheel;
+            pbCanvas.MouseEnter += (s, e) => pbCanvas.Focus();
 
             panelCanvas.Controls.Add(pbCanvas);
+
+            CriarMenuContextoCanvas();
 
             AtualizarTamanhoCanvas();
         }
@@ -666,6 +658,48 @@ namespace EtiquetaFORNew.Forms
             };
             panelConfiguracao.Controls.Add(linha6);
             yPos += 15;
+
+            Label lblZoom = CriarLabelSecao("🔍 Zoom", yPos);
+            panelConfiguracao.Controls.Add(lblZoom);
+            yPos += 28;
+
+            btnZoomMenos = CriarBotaoZoom("−", new Point(75, yPos));
+            btnZoomMenos.Click += (s, e) => AlterarZoom(-0.1f);
+            panelConfiguracao.Controls.Add(btnZoomMenos);
+
+            lblZoomPercentual = new Label
+            {
+                Text = "100%",
+                Location = new Point(125, yPos + 5),
+                Size = new Size(70, 25),
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            panelConfiguracao.Controls.Add(lblZoomPercentual);
+
+            btnZoomMais = CriarBotaoZoom("+", new Point(205, yPos));
+            btnZoomMais.Click += (s, e) => AlterarZoom(0.1f);
+            panelConfiguracao.Controls.Add(btnZoomMais);
+
+            panelConfiguracao.AutoScrollMinSize = new Size(0, yPos + 55);
+            AtualizarControleZoom();
+        }
+
+        private static Button CriarBotaoZoom(string texto, Point localizacao)
+        {
+            var botao = new Button
+            {
+                Text = texto,
+                Location = localizacao,
+                Size = new Size(42, 32),
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                BackColor = Color.FromArgb(52, 152, 219),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            botao.FlatAppearance.BorderSize = 0;
+            return botao;
         }
 
         private Label CriarLabelSecao(string texto, int yPos)
@@ -1132,6 +1166,8 @@ namespace EtiquetaFORNew.Forms
                 AutoCompleteSource = AutoCompleteSource.CustomSource
             };
             txtExpressaoFormula.AutoCompleteCustomSource.AddRange(CampoEtiquetaResolver.ObterCamposDisponiveis().ToArray());
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+                txtExpressaoFormula.AutoCompleteCustomSource.AddRange(EtiquetaDistribuidoraResolver.ObterNovosCamposExpressao());
             txtExpressaoFormula.TextChanged += (s, e) => AlterarExpressao();
             txtExpressaoFormula.Leave += (s, e) => ValidarExpressaoSelecionada(true);
             panelPropriedades.Controls.Add(txtExpressaoFormula);
@@ -2475,7 +2511,7 @@ namespace EtiquetaFORNew.Forms
             if (atualizandoPropriedades) return true;
             if (elementoSelecionado == null || elementoSelecionado.Tipo != TipoElemento.Expressao) return true;
 
-            ResultadoExpressao resultado = ExpressionEngine.Validar(elementoSelecionado.Conteudo);
+            ResultadoExpressao resultado = ValidarExpressaoDesigner(elementoSelecionado.Conteudo);
             bool valida = resultado.Sucesso;
 
             if (txtExpressaoFormula != null)
@@ -2499,7 +2535,11 @@ namespace EtiquetaFORNew.Forms
                 return;
 
             ContextMenuStrip menu = new ContextMenuStrip();
-            foreach (string campo in CampoEtiquetaResolver.ObterCamposDisponiveis())
+            IEnumerable<string> campos = CampoEtiquetaResolver.ObterCamposDisponiveis();
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+                campos = campos.Concat(EtiquetaDistribuidoraResolver.ObterNovosCamposExpressao());
+
+            foreach (string campo in campos.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 ToolStripMenuItem item = new ToolStripMenuItem(campo);
                 item.Click += (s, e) => InserirTextoNaExpressao(campo);
@@ -2549,7 +2589,11 @@ namespace EtiquetaFORNew.Forms
                 lstCampos.Location = new Point(365, 12);
                 lstCampos.Size = new Size(140, 230);
                 lstCampos.Font = new Font("Segoe UI", 9);
-                foreach (string campo in CampoEtiquetaResolver.ObterCamposDisponiveis())
+                IEnumerable<string> campos = CampoEtiquetaResolver.ObterCamposDisponiveis();
+                if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
+                    campos = campos.Concat(EtiquetaDistribuidoraResolver.ObterNovosCamposExpressao());
+
+                foreach (string campo in campos.Distinct(StringComparer.OrdinalIgnoreCase))
                     lstCampos.Items.Add(campo);
                 lstCampos.DoubleClick += (s, e) =>
                 {
@@ -2580,7 +2624,7 @@ namespace EtiquetaFORNew.Forms
                 if (editor.ShowDialog(this) != DialogResult.OK)
                     return;
 
-                ResultadoExpressao validacao = ExpressionEngine.Validar(txtFormula.Text);
+                ResultadoExpressao validacao = ValidarExpressaoDesigner(txtFormula.Text);
                 if (!validacao.Sucesso)
                 {
                     MessageBox.Show(
@@ -3396,6 +3440,9 @@ namespace EtiquetaFORNew.Forms
 
         private string ObterValorCampo(string campo, Produto produto, ElementoEtiqueta elemento = null)
         {
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb() && EtiquetaDistribuidoraResolver.CampoExiste(campo))
+                return $"[{campo}]";
+
             if (produto == null) return $"[{CalculadoraCamposEtiqueta.ObterDescricaoCalculo(campo, elemento)}]";
 
             decimal valorCalculado;
@@ -3446,11 +3493,23 @@ namespace EtiquetaFORNew.Forms
 
         private string ObterValorExpressao(string expressao, Produto produto)
         {
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb() && EtiquetaDistribuidoraResolver.NovoCampoTextualEmExpressao(expressao))
+                return $"[{expressao}]";
+
             if (produto == null)
                 return $"[{(string.IsNullOrWhiteSpace(expressao) ? "Expressão" : expressao)}]";
 
             ResultadoExpressao resultado = ExpressionEngine.Calcular(expressao, produto);
             return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : "[Erro]";
+        }
+
+        private static ResultadoExpressao ValidarExpressaoDesigner(string expressao)
+        {
+            string campo = (expressao ?? string.Empty).Trim();
+            if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb() && EtiquetaDistribuidoraResolver.NovoCampoTextualEmExpressao(campo))
+                return ResultadoExpressao.Ok(0m, new[] { campo });
+
+            return ExpressionEngine.Validar(expressao);
         }
 
         private void DesenharCodigoBarras(Graphics g, string codigo, Rectangle bounds)
@@ -3621,7 +3680,13 @@ namespace EtiquetaFORNew.Forms
 
         private void PbCanvas_MouseDown(object sender, MouseEventArgs e)
         {
-            
+            if (e.Button == MouseButtons.Right)
+            {
+                SelecionarElementoParaMenuContexto(e.Location);
+                menuContextoCanvas?.Show(pbCanvas, e.Location);
+                return;
+            }
+
             if (e.Button != MouseButtons.Left) return;
             SalvarEstadoHistorico();
             RectangleF rectEtiqueta = new RectangleF(25, 25,
@@ -4063,14 +4128,12 @@ namespace EtiquetaFORNew.Forms
 
         private void PbCanvas_MouseWheel(object sender, MouseEventArgs e)
         {
-            
             if (ModifierKeys == Keys.Control)
             {
-                zoom += e.Delta > 0 ? 0.1f : -0.1f;
-                zoom = Math.Max(0.3f, Math.Min(3.0f, zoom));
-                AtualizarTamanhoCanvas();
-                pbCanvas.Invalidate();
-                ((HandledMouseEventArgs)e).Handled = true;
+                AlterarZoom(e.Delta > 0 ? 0.1f : -0.1f);
+                HandledMouseEventArgs handled = e as HandledMouseEventArgs;
+                if (handled != null)
+                    handled.Handled = true;
             }
         }
         private void FormEtiqueta_KeyDown(object sender, KeyEventArgs e)
@@ -4213,6 +4276,26 @@ namespace EtiquetaFORNew.Forms
                 return;
             }
 
+            if (e.Control && !ControleEditavelComFoco())
+            {
+                if (e.KeyCode == Keys.C)
+                    CopiarElementosSelecionados();
+                else if (e.KeyCode == Keys.V)
+                    ColarElementosCopiados();
+                else if (e.KeyCode == Keys.X)
+                    RecortarElementosSelecionados();
+                else if (e.KeyCode == Keys.D)
+                    DuplicarElementosSelecionados();
+                else
+                    goto ProcessarMovimento;
+
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+        ProcessarMovimento:
+
             List<ElementoEtiqueta> elementosParaMover = new List<ElementoEtiqueta>();
 
             if (elementosSelecionados.Count > 0) elementosParaMover.AddRange(elementosSelecionados);
@@ -4230,12 +4313,7 @@ namespace EtiquetaFORNew.Forms
                 case Keys.Up:    foreach (var el in elementosParaMover) { var p = el.Bounds; p.Y -= passo; el.Bounds = p; } houveAlteracao = true; break;
                 case Keys.Down:  foreach (var el in elementosParaMover) { var p = el.Bounds; p.Y += passo; el.Bounds = p; } houveAlteracao = true; break;
                 case Keys.Delete:
-                    foreach (var el in elementosParaMover) template.Elementos.Remove(el);
-                    elementoSelecionado = null;
-                    elementosSelecionados.Clear();
-                    SalvarEstadoHistorico();
-                    AtualizarPainelPropriedades();
-                    pbCanvas.Invalidate();
+                    ExcluirElementosSelecionados();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                     return;
@@ -4333,7 +4411,7 @@ namespace EtiquetaFORNew.Forms
             }
 
             FormPreview formPreview = new FormPreview(template, configuracao, nomePapel, larguraPapel, alturaPapel);
-            formPreview.ShowDialog();
+            formPreview.ShowDialog(this);
         }
 
         private void BtnFechar_Click(object sender, EventArgs e)
@@ -4399,6 +4477,396 @@ namespace EtiquetaFORNew.Forms
             catch (Exception ex)
             {
                 Console.WriteLine("Erro ao restaurar snapshot: " + ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region Responsividade e produtividade
+
+        private void FormDesignNovo_Shown(object sender, EventArgs e)
+        {
+            Screen tela = Owner != null ? Screen.FromControl(Owner) : Screen.PrimaryScreen;
+            Rectangle area = tela == null ? Screen.PrimaryScreen.WorkingArea : tela.WorkingArea;
+
+            int largura = Math.Min(EscalarDpi(1400), (int)(area.Width * 0.94f));
+            int altura = Math.Min(EscalarDpi(850), (int)(area.Height * 0.92f));
+            int centroX = Owner != null ? Owner.Bounds.Left + Owner.Bounds.Width / 2 : area.Left + area.Width / 2;
+            int centroY = Owner != null ? Owner.Bounds.Top + Owner.Bounds.Height / 2 : area.Top + area.Height / 2;
+
+            MinimumSize = new Size(
+                Math.Min(EscalarDpi(900), (int)(area.Width * 0.75f)),
+                Math.Min(EscalarDpi(600), (int)(area.Height * 0.75f)));
+
+            Bounds = new Rectangle(
+                Math.Max(area.Left, Math.Min(centroX - largura / 2, area.Right - largura)),
+                Math.Max(area.Top, Math.Min(centroY - altura / 2, area.Bottom - altura)),
+                largura,
+                altura);
+
+            if (!filtroMouseAtivo)
+            {
+                Application.AddMessageFilter(this);
+                filtroMouseAtivo = true;
+            }
+
+            AjustarLayoutResponsivo();
+        }
+
+        private void RemoverFiltroMouse()
+        {
+            if (!filtroMouseAtivo)
+                return;
+
+            Application.RemoveMessageFilter(this);
+            filtroMouseAtivo = false;
+        }
+
+        public bool PreFilterMessage(ref Message m)
+        {
+            const int WmMouseWheel = 0x020A;
+            if (m.Msg != WmMouseWheel || ModifierKeys != Keys.Control || pbCanvas == null || !ContainsFocus)
+                return false;
+
+            if (!pbCanvas.RectangleToScreen(pbCanvas.ClientRectangle).Contains(Cursor.Position))
+                return false;
+
+            short delta = unchecked((short)((m.WParam.ToInt64() >> 16) & 0xffff));
+            AlterarZoom(delta > 0 ? 0.1f : -0.1f);
+            return true;
+        }
+
+        private int EscalarDpi(int valor)
+        {
+            return Math.Max(1, (int)Math.Round(valor * DeviceDpi / 96f));
+        }
+
+        private int ObterLarguraPainelDireito()
+        {
+            int desejada = EscalarDpi(350);
+            int minima = EscalarDpi(260);
+            return Math.Min(desejada, Math.Max(minima, (int)(ClientSize.Width * 0.26f)));
+        }
+
+        private void AjustarLayoutResponsivo()
+        {
+            if (panelConfiguracao == null || panelToolbox == null)
+                return;
+
+            SuspendLayout();
+            try
+            {
+                if (panelConfiguracao.Width > 0)
+                    panelConfiguracao.Width = ObterLarguraPainelDireito();
+
+                int larguraToolbox = Math.Min(
+                    EscalarDpi(390),
+                    Math.Max(EscalarDpi(220), (int)(ClientSize.Width * 0.28f)));
+                panelToolbox.Width = larguraToolbox;
+
+                if (panelPropriedades != null)
+                {
+                    panelPropriedades.Width = Math.Max(EscalarDpi(190), panelToolbox.ClientSize.Width - EscalarDpi(12));
+                    panelPropriedades.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+                }
+
+                if (btnToggleConfig != null)
+                {
+                    int margem = EscalarDpi(5);
+                    int x = panelConfiguracao.Width > 0
+                        ? ClientSize.Width - panelConfiguracao.Width - btnToggleConfig.Width
+                        : ClientSize.Width - btnToggleConfig.Width - margem;
+                    btnToggleConfig.Location = new Point(Math.Max(0, x), Math.Max(0, (ClientSize.Height - btnToggleConfig.Height) / 2));
+                }
+
+                AtualizarTamanhoCanvas();
+            }
+            finally
+            {
+                ResumeLayout(true);
+            }
+        }
+
+        private void AlterarZoom(float variacao)
+        {
+            float novoZoom = Math.Max(0.3f, Math.Min(3.0f, zoom + variacao));
+            if (Math.Abs(novoZoom - zoom) < 0.001f)
+                return;
+
+            zoom = novoZoom;
+            AtualizarControleZoom();
+            AtualizarTamanhoCanvas();
+            pbCanvas?.Invalidate();
+        }
+
+        private void AtualizarControleZoom()
+        {
+            if (lblZoomPercentual != null)
+                lblZoomPercentual.Text = string.Format("{0:0}%", zoom * 100f);
+
+            if (btnZoomMenos != null)
+                btnZoomMenos.Enabled = zoom > 0.3f;
+            if (btnZoomMais != null)
+                btnZoomMais.Enabled = zoom < 3.0f;
+        }
+
+        private void CriarMenuContextoCanvas()
+        {
+            menuContextoCanvas = new ContextMenuStrip();
+            menuContextoCanvas.Items.Add("Copiar", null, (s, e) => CopiarElementosSelecionados());
+            menuContextoCanvas.Items.Add("Colar", null, (s, e) => ColarElementosCopiados());
+            menuContextoCanvas.Items.Add("Recortar", null, (s, e) => RecortarElementosSelecionados());
+            menuContextoCanvas.Items.Add("Duplicar", null, (s, e) => DuplicarElementosSelecionados());
+            menuContextoCanvas.Items.Add("Excluir", null, (s, e) => ExcluirElementosSelecionados());
+            menuContextoCanvas.Items.Add(new ToolStripSeparator());
+            menuContextoCanvas.Items.Add("Trazer para Frente", null, (s, e) => AlterarCamada(CamadaAcao.TrazerFrente));
+            menuContextoCanvas.Items.Add("Enviar para Trás", null, (s, e) => AlterarCamada(CamadaAcao.EnviarTras));
+            menuContextoCanvas.Items.Add("Avançar uma Camada", null, (s, e) => AlterarCamada(CamadaAcao.Avancar));
+            menuContextoCanvas.Items.Add("Recuar uma Camada", null, (s, e) => AlterarCamada(CamadaAcao.Recuar));
+            menuContextoCanvas.Opening += (s, e) =>
+            {
+                bool possuiSelecao = ObterElementosSelecionadosOrdenados().Count > 0;
+                foreach (ToolStripItem item in menuContextoCanvas.Items)
+                {
+                    if (!(item is ToolStripSeparator) && !string.Equals(item.Text, "Colar", StringComparison.OrdinalIgnoreCase))
+                        item.Enabled = possuiSelecao;
+                }
+            };
+        }
+
+        private void SelecionarElementoParaMenuContexto(Point ponto)
+        {
+            ElementoEtiqueta clicado = ObterElementoNoPonto(ponto);
+            if (clicado == null || ObterElementosSelecionadosOrdenados().Contains(clicado))
+                return;
+
+            elementoSelecionado = clicado;
+            elementosSelecionados.Clear();
+            AtualizarPainelPropriedades();
+            pbCanvas.Invalidate();
+        }
+
+        private ElementoEtiqueta ObterElementoNoPonto(Point ponto)
+        {
+            RectangleF rectEtiqueta = new RectangleF(25, 25,
+                configuracao.LarguraEtiqueta * MM_PARA_PIXEL * zoom,
+                configuracao.AlturaEtiqueta * MM_PARA_PIXEL * zoom);
+
+            for (int i = template.Elementos.Count - 1; i >= 0; i--)
+            {
+                ElementoEtiqueta elemento = template.Elementos[i];
+                if (PontoEmRetanguloRotacionado(ponto, ConverterParaPixels(elemento.Bounds, rectEtiqueta), elemento.Rotacao))
+                    return elemento;
+            }
+
+            return null;
+        }
+
+        private List<ElementoEtiqueta> ObterElementosSelecionadosOrdenados()
+        {
+            var selecionados = new HashSet<ElementoEtiqueta>(ObterElementosParaEdicao());
+            return template.Elementos.Where(selecionados.Contains).ToList();
+        }
+
+        private bool CopiarElementosSelecionados()
+        {
+            List<ElementoEtiqueta> selecionados = ObterElementosSelecionadosOrdenados();
+            if (selecionados.Count == 0)
+                return false;
+
+            var temporario = new TemplateEtiqueta
+            {
+                Largura = template.Largura,
+                Altura = template.Altura,
+                Elementos = selecionados
+            };
+            elementosCopiados = temporario.SalvarParaXml();
+            sequenciaColagem = 0;
+
+            try
+            {
+                Clipboard.SetData("SmartPrint.ElementosEtiqueta", elementosCopiados);
+            }
+            catch
+            {
+                // O clipboard interno continua disponível em sessões remotas ou bloqueadas.
+            }
+
+            return true;
+        }
+
+        private string ObterElementosCopiados()
+        {
+            try
+            {
+                if (Clipboard.ContainsData("SmartPrint.ElementosEtiqueta"))
+                    return Clipboard.GetData("SmartPrint.ElementosEtiqueta") as string ?? elementosCopiados;
+            }
+            catch
+            {
+            }
+
+            return elementosCopiados;
+        }
+
+        private void ColarElementosCopiados()
+        {
+            string snapshot = ObterElementosCopiados();
+            if (string.IsNullOrWhiteSpace(snapshot))
+                return;
+
+            TemplateEtiqueta origem;
+            try
+            {
+                origem = TemplateEtiqueta.CarregarDeSnapshot(snapshot);
+            }
+            catch
+            {
+                return;
+            }
+
+            if (origem?.Elementos == null || origem.Elementos.Count == 0)
+                return;
+
+            SalvarEstadoHistorico();
+            sequenciaColagem++;
+            int deslocamento = Math.Max(1, sequenciaColagem * 2);
+            var novos = new List<ElementoEtiqueta>();
+
+            foreach (ElementoEtiqueta elemento in origem.Elementos)
+            {
+                Rectangle limites = elemento.Bounds;
+                limites.X = Math.Max(0, Math.Min((int)template.Largura - limites.Width, limites.X + deslocamento));
+                limites.Y = Math.Max(0, Math.Min((int)template.Altura - limites.Height, limites.Y + deslocamento));
+                elemento.Bounds = limites;
+                template.Elementos.Add(elemento);
+                novos.Add(elemento);
+            }
+
+            DefinirSelecao(novos);
+            SalvarEstadoHistorico();
+            AtualizarPainelPropriedades();
+            pbCanvas.Invalidate();
+        }
+
+        private void RecortarElementosSelecionados()
+        {
+            if (CopiarElementosSelecionados())
+                ExcluirElementosSelecionados();
+        }
+
+        private void DuplicarElementosSelecionados()
+        {
+            if (CopiarElementosSelecionados())
+                ColarElementosCopiados();
+        }
+
+        private void ExcluirElementosSelecionados()
+        {
+            List<ElementoEtiqueta> selecionados = ObterElementosSelecionadosOrdenados();
+            if (selecionados.Count == 0)
+                return;
+
+            SalvarEstadoHistorico();
+            foreach (ElementoEtiqueta elemento in selecionados)
+                template.Elementos.Remove(elemento);
+
+            elementoSelecionado = null;
+            elementosSelecionados.Clear();
+            SalvarEstadoHistorico();
+            AtualizarPainelPropriedades();
+            pbCanvas.Invalidate();
+        }
+
+        private void DefinirSelecao(List<ElementoEtiqueta> elementos)
+        {
+            elementoSelecionado = elementos.Count == 1 ? elementos[0] : null;
+            elementosSelecionados.Clear();
+            if (elementos.Count > 1)
+                elementosSelecionados.AddRange(elementos);
+        }
+
+        private enum CamadaAcao
+        {
+            TrazerFrente,
+            EnviarTras,
+            Avancar,
+            Recuar
+        }
+
+        private void AlterarCamada(CamadaAcao acao)
+        {
+            List<ElementoEtiqueta> selecionados = ObterElementosSelecionadosOrdenados();
+            if (selecionados.Count == 0)
+                return;
+
+            SalvarEstadoHistorico();
+            var conjunto = new HashSet<ElementoEtiqueta>(selecionados);
+
+            if (acao == CamadaAcao.TrazerFrente || acao == CamadaAcao.EnviarTras)
+            {
+                template.Elementos.RemoveAll(conjunto.Contains);
+                if (acao == CamadaAcao.TrazerFrente)
+                    template.Elementos.AddRange(selecionados);
+                else
+                    template.Elementos.InsertRange(0, selecionados);
+            }
+            else if (acao == CamadaAcao.Avancar)
+            {
+                for (int i = template.Elementos.Count - 2; i >= 0; i--)
+                {
+                    if (conjunto.Contains(template.Elementos[i]) && !conjunto.Contains(template.Elementos[i + 1]))
+                    {
+                        ElementoEtiqueta temporario = template.Elementos[i];
+                        template.Elementos[i] = template.Elementos[i + 1];
+                        template.Elementos[i + 1] = temporario;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 1; i < template.Elementos.Count; i++)
+                {
+                    if (conjunto.Contains(template.Elementos[i]) && !conjunto.Contains(template.Elementos[i - 1]))
+                    {
+                        ElementoEtiqueta temporario = template.Elementos[i];
+                        template.Elementos[i] = template.Elementos[i - 1];
+                        template.Elementos[i - 1] = temporario;
+                    }
+                }
+            }
+
+            SalvarEstadoHistorico();
+            pbCanvas.Invalidate();
+        }
+
+        private bool ControleEditavelComFoco()
+        {
+            Control controle = ActiveControl;
+            while (controle is ContainerControl container && container.ActiveControl != null)
+                controle = container.ActiveControl;
+
+            return controle is TextBoxBase || controle is ComboBox || controle is NumericUpDown;
+        }
+
+        private sealed class DoubleBufferedPictureBox : PictureBox
+        {
+            public DoubleBufferedPictureBox()
+            {
+                SetStyle(ControlStyles.AllPaintingInWmPaint |
+                         ControlStyles.UserPaint |
+                         ControlStyles.OptimizedDoubleBuffer |
+                         ControlStyles.ResizeRedraw, true);
+                UpdateStyles();
+            }
+        }
+
+        private sealed class DoubleBufferedPanel : Panel
+        {
+            public DoubleBufferedPanel()
+            {
+                DoubleBuffered = true;
+                ResizeRedraw = true;
             }
         }
 

@@ -382,10 +382,14 @@
     <Compile Include="Forms\Carregamento\FormSincronizacaoSoftcomShop.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\Carregamento\FormBuscarPedidoDistribuidora.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\Carregamento\FormSincronizacaoSoftcomShop.Designer.cs">
       <DependentUpon>FormSincronizacaoSoftcomShop.cs</DependentUpon>
     </Compile>
     <Compile Include="SmartPrint\Etiqueta\EtiquetaDistribuidora.cs" />
+    <Compile Include="SmartPrint\Etiqueta\DocumentoLogisticoPorPedido.cs" />
     <Compile Include="SmartPrint\Etiqueta\EtiquetaDistribuidoraResolver.cs" />
     <Compile Include="SmartPrint\Volumes\EtiquetaVolumeDistribuidora.cs" />
     <Compile Include="SmartPrint\Volumes\EtiquetaVolumeDistribuidoraResolver.cs" />
