@@ -6,6 +6,7 @@ using System.Drawing.Printing;
 using System.Linq;
 using System.Windows.Forms;
 using System.Xml.Linq;
+using EtiquetaFORNew.UI;
 
 namespace EtiquetaFORNew.Forms
 {
@@ -29,6 +30,8 @@ namespace EtiquetaFORNew.Forms
         private Button btnZoomMais;
         private Label lblZoomPercentual;
         private ContextMenuStrip menuContextoCanvas;
+        private DesignerToolbar toolbarInferior;
+        private StatusBarManager statusBarManager;
 
         // Controles do painel de configuração
         private Panel panelConfiguracao;
@@ -179,6 +182,8 @@ namespace EtiquetaFORNew.Forms
             VersaoHelper.DefinirTituloComVersao(this, "Designer de Etiquetas");
             CarregarDadosNaInterface();
             AjustarLayoutResponsivo();
+            AtualizarStatusDocumento();
+            AtualizarStatusBarSelecao();
         }
 
         private void ConfigurarFormulario()
@@ -186,7 +191,7 @@ namespace EtiquetaFORNew.Forms
             SalvarEstadoHistorico();
             this.StartPosition = FormStartPosition.Manual;
             this.DoubleBuffered = true;
-            this.BackColor = Color.FromArgb(240, 240, 240);
+            this.BackColor = ThemeManager.WorkspaceBackground;
             this.KeyPreview = true;
             this.KeyDown += FormDesignNovo_KeyDown;
             this.Shown += FormDesignNovo_Shown;
@@ -205,29 +210,29 @@ namespace EtiquetaFORNew.Forms
             panelTop = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 60,
-                BackColor = Color.FromArgb(94, 97, 99),
-                BorderStyle = BorderStyle.FixedSingle
+                Height = 48,
+                BackColor = ThemeManager.HeaderBackground,
+                BorderStyle = BorderStyle.None
             };
             this.Controls.Add(panelTop);
 
             Label lblEmoji = new Label
             {
-                Text = "🎨",
-                Location = new Point(20, 15),
+                Text = "◆",
+                Location = new Point(18, 9),
                 Size = new Size(30, 30),
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                ForeColor = Color.FromArgb(231, 129, 39)
+                ForeColor = ThemeManager.SmartPrintOrange
             };
             panelTop.Controls.Add(lblEmoji);
 
             Label lblTitulo = new Label
             {
-                Text = "DESIGNER DE ETIQUETAS",
-                Location = new Point(50, 15),
+                Text = "SmartPrint Designer",
+                Location = new Point(50, 9),
                 Size = new Size(270, 30),
-                Font = new Font("Segoe UI", 14, FontStyle.Bold | FontStyle.Underline),
-                ForeColor = Color.FromArgb(231, 129, 39)
+                Font = ThemeManager.HeaderFont,
+                ForeColor = Color.White
             };
             panelTop.Controls.Add(lblTitulo);
 
@@ -334,6 +339,20 @@ namespace EtiquetaFORNew.Forms
             };
             btnToggleSnap.Visible = false;
             panelBotoes.Controls.Add(btnToggleSnap);
+            panelBotoes.Visible = false;
+
+            // Barra de comandos inferior: os mesmos handlers existentes são reutilizados.
+            toolbarInferior = ToolbarManager.Create(
+                () => BtnNovo_Click(this, EventArgs.Empty),
+                () => BtnSalvar_Click(this, EventArgs.Empty),
+                () => BtnPreview_Click(this, EventArgs.Empty),
+                Desfazer,
+                () => AlterarZoom(-0.1f),
+                () => AlterarZoom(0.1f),
+                () => BtnFechar_Click(this, EventArgs.Empty));
+            this.Controls.Add(toolbarInferior.Container);
+            statusBarManager = new StatusBarManager(toolbarInferior.StatusStrip);
+            toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
             // =========================================================
 
             // ==================== PAINEL LATERAL DIREITO - CONFIGURAÇÃO ====================
@@ -341,7 +360,7 @@ namespace EtiquetaFORNew.Forms
             {
                 Dock = DockStyle.Right,
                 Width = 350,
-                BackColor = Color.White,
+                BackColor = ThemeManager.PanelBackground,
                 Padding = new Padding(10),
                 AutoScroll = true
             };
@@ -401,7 +420,7 @@ namespace EtiquetaFORNew.Forms
                 {
                     Dock = DockStyle.Left,
                     Width = 390,
-                    BackColor = Color.FromArgb(236, 240, 241),
+                    BackColor = ThemeManager.PanelBackground,
                     Padding = new Padding(10),
                     AutoScroll = true,
                     AutoScrollMinSize = new Size(0, 800)
@@ -429,7 +448,7 @@ namespace EtiquetaFORNew.Forms
             panelCanvas = new DoubleBufferedPanel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(189, 195, 199),
+                BackColor = ThemeManager.CanvasBackground,
                 AutoScroll = true
             };
             panelCanvas.Resize += (s, e) => AtualizarTamanhoCanvas();
@@ -451,9 +470,13 @@ namespace EtiquetaFORNew.Forms
             pbCanvas.MouseLeave += PbCanvas_MouseLeave;
 
             panelCanvas.Controls.Add(pbCanvas);
+            LayoutManager.EnableCanvasShadow(panelCanvas, pbCanvas);
 
             CriarMenuContextoCanvas();
 
+            // Cabeçalho e toolbar ocupam toda a largura; painéis laterais ficam entre ambos.
+            panelTop.SendToBack();
+            toolbarInferior.Container.SendToBack();
             AtualizarTamanhoCanvas();
         }
 
@@ -685,6 +708,7 @@ namespace EtiquetaFORNew.Forms
 
             panelConfiguracao.AutoScrollMinSize = new Size(0, yPos + 55);
             AtualizarControleZoom();
+            LayoutManager.ConvertConfigurationToAccordion(panelConfiguracao);
         }
 
         private static Button CriarBotaoZoom(string texto, Point localizacao)
@@ -854,16 +878,16 @@ namespace EtiquetaFORNew.Forms
             if (ModuloAppHelper.EstaEmModuloDistribuidoraWeb())
             {
                 Button btnTexto = CriarBotaoElemento("📝 Texto", yPos, () => AdicionarElemento(TipoElemento.Texto));
-                yPos += 40;
+                yPos += 56;
 
                 Button btnExpressao = CriarBotaoElemento("∑ Expressão", yPos, () => AdicionarElemento(TipoElemento.Expressao));
-                yPos += 40;
+                yPos += 56;
 
                 Button btnImagem = CriarBotaoElemento("🖼️ Imagem", yPos, () => AdicionarImagem());
-                yPos += 40;
+                yPos += 56;
 
                 Button btnRemover = CriarBotaoElemento("🗑️ Remover", yPos, () => RemoverElementoSelecionado());
-                btnRemover.BackColor = Color.FromArgb(231, 76, 60);
+                ThemeManager.StyleToolCard(btnRemover, true);
                 CriarPainelPropriedades();
             }
             else
@@ -871,16 +895,16 @@ namespace EtiquetaFORNew.Forms
                 {
                     int yPos2 = 48;
                     Button btnTexto = CriarBotaoElemento("📝 Texto", yPos2, () => AdicionarElemento(TipoElemento.Texto));
-                    yPos2 += 40;
+                    yPos2 += 56;
 
                     Button btnExpressao = CriarBotaoElemento("∑ Expressão", yPos2, () => AdicionarElemento(TipoElemento.Expressao));
-                    yPos2 += 40;
+                    yPos2 += 56;
 
                     Button btnImagem = CriarBotaoElemento("🖼️ Imagem", yPos2, () => AdicionarImagem());
-                    yPos2 += 40;
+                    yPos2 += 56;
 
                     Button btnRemover = CriarBotaoElemento("🗑️ Remover", yPos2, () => RemoverElementoSelecionado());
-                    btnRemover.BackColor = Color.FromArgb(231, 76, 60);
+                    ThemeManager.StyleToolCard(btnRemover, true);
                     CriarPainelPropriedades();
                 }
 
@@ -2091,6 +2115,7 @@ namespace EtiquetaFORNew.Forms
                 };
                 btn.FlatAppearance.BorderSize = 0;
                 btn.Click += (s, e) => onClick();
+                ThemeManager.StyleToolCard(btn);
                 panelToolbox.Controls.Add(btn);
                 return btn;
             }
@@ -2113,6 +2138,7 @@ namespace EtiquetaFORNew.Forms
                 };
                 btn.FlatAppearance.BorderSize = 0;
                 btn.Click += (s, e) => onClick();
+                ThemeManager.StyleToolCard(btn);
                 panelToolbox.Controls.Add(btn);
                 return btn;
 
@@ -2284,6 +2310,7 @@ namespace EtiquetaFORNew.Forms
         private void AtualizarPainelPropriedades()
         {
             var elementosEdicao = ObterElementosParaEdicao();
+            AtualizarStatusBarSelecao();
             if (elementosEdicao.Count == 0)
             {
                 panelPropriedades.Visible = false;
@@ -3780,6 +3807,7 @@ namespace EtiquetaFORNew.Forms
 
         private void PbCanvas_MouseLeave(object sender, EventArgs e)
         {
+            statusBarManager?.SetCursor(0, 0, false);
             if (rotacionando)
                 return;
 
@@ -3925,6 +3953,11 @@ namespace EtiquetaFORNew.Forms
             RectangleF rectEtiqueta = new RectangleF(25, 25,
                 configuracao.LarguraEtiqueta * MM_PARA_PIXEL * zoom,
                 configuracao.AlturaEtiqueta * MM_PARA_PIXEL * zoom);
+            bool cursorNaEtiqueta = rectEtiqueta.Contains(e.Location);
+            statusBarManager?.SetCursor(
+                (e.X - rectEtiqueta.X) / (MM_PARA_PIXEL * zoom),
+                (e.Y - rectEtiqueta.Y) / (MM_PARA_PIXEL * zoom),
+                cursorNaEtiqueta);
 
             if (selecionandoComRetangulo)
             {
@@ -4253,6 +4286,7 @@ namespace EtiquetaFORNew.Forms
                 linhasGuiaAtivas.Clear();
 
                 pbCanvas.Invalidate();
+                AtualizarStatusBarSelecao();
             }
 
             if (finalizouRedimensionamentoOuRotacao)
@@ -4405,6 +4439,7 @@ namespace EtiquetaFORNew.Forms
 
             AtualizarTamanhoCanvas();
             pbCanvas?.Invalidate();
+            AtualizarStatusDocumento();
         }
 
         private void AtualizarTamanhoCanvas()
@@ -4428,6 +4463,14 @@ namespace EtiquetaFORNew.Forms
 
         private void FormDesignNovo_KeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Control && e.KeyCode == Keys.S)
+            {
+                BtnSalvar_Click(this, EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
             if (e.Control && e.KeyCode == Keys.Z)
             {
                 Desfazer();
@@ -4483,6 +4526,7 @@ namespace EtiquetaFORNew.Forms
             {
                 SalvarEstadoHistorico();
                 pbCanvas.Invalidate();
+                AtualizarStatusBarSelecao();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
@@ -4589,6 +4633,8 @@ namespace EtiquetaFORNew.Forms
                     return;
 
                 historicoUndo.Push(snapshot);
+                if (toolbarInferior?.UndoButton != null)
+                    toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
 
                 if (historicoUndo.Count > Max_Undo_Steps)
                 {
@@ -4633,6 +4679,8 @@ namespace EtiquetaFORNew.Forms
                 pbCanvas.Invalidate();
                 AtualizarPainelPropriedades();
                 CarregarDadosNaInterface();
+                if (toolbarInferior?.UndoButton != null)
+                    toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
             }
             catch (Exception ex)
             {
@@ -4770,6 +4818,45 @@ namespace EtiquetaFORNew.Forms
                 btnZoomMenos.Enabled = zoom > 0.3f;
             if (btnZoomMais != null)
                 btnZoomMais.Enabled = zoom < 3.0f;
+
+            if (toolbarInferior != null)
+            {
+                toolbarInferior.ZoomLabel.Text = string.Format("{0:0}%", zoom * 100f);
+                toolbarInferior.ZoomOutButton.Enabled = zoom > 0.3f;
+                toolbarInferior.ZoomInButton.Enabled = zoom < 3.0f;
+            }
+            statusBarManager?.SetZoom(zoom);
+        }
+
+        private void AtualizarStatusDocumento()
+        {
+            if (configuracao == null) return;
+            statusBarManager?.SetDocument(configuracao.LarguraEtiqueta, configuracao.AlturaEtiqueta);
+            statusBarManager?.SetZoom(zoom);
+        }
+
+        private void AtualizarStatusBarSelecao()
+        {
+            if (statusBarManager == null) return;
+            var selecionados = ObterElementosParaEdicao();
+            if (selecionados.Count == 0)
+            {
+                statusBarManager.SetSelection(string.Empty, Rectangle.Empty, 0);
+                return;
+            }
+
+            ElementoEtiqueta elemento = selecionados[0];
+            string tipo;
+            switch (elemento.Tipo)
+            {
+                case TipoElemento.Texto: tipo = "Texto"; break;
+                case TipoElemento.Expressao: tipo = "Expressão"; break;
+                case TipoElemento.Imagem: tipo = "Imagem"; break;
+                case TipoElemento.Campo: tipo = "Campo"; break;
+                case TipoElemento.CodigoBarras: tipo = "Código de barras"; break;
+                default: tipo = elemento.Tipo.ToString(); break;
+            }
+            statusBarManager.SetSelection(tipo, elemento.Bounds, selecionados.Count);
         }
 
         private void CriarMenuContextoCanvas()

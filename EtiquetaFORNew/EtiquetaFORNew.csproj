@@ -305,6 +305,10 @@
     <Compile Include="Forms\Design\FormDesignNovo.Designer.cs">
       <DependentUpon>FormDesignNovo.cs</DependentUpon>
     </Compile>
+    <Compile Include="UI\LayoutManager.cs" />
+    <Compile Include="UI\StatusBarManager.cs" />
+    <Compile Include="UI\ThemeManager.cs" />
+    <Compile Include="UI\ToolbarManager.cs" />
     <Compile Include="Forms\Impressao\FormImpressao.cs">
       <SubType>Form</SubType>
     </Compile>
