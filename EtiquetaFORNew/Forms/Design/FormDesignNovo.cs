@@ -77,6 +77,7 @@ namespace EtiquetaFORNew.Forms
 
         // Toolbox de elementos
         private Panel panelToolbox;
+        private bool? toolboxDistribuidoraAtiva;
         private RectangleF boundsIniciaisEmMM;
 
         private bool rotacionando = false;
@@ -196,6 +197,7 @@ namespace EtiquetaFORNew.Forms
             this.KeyDown += FormDesignNovo_KeyDown;
             this.Shown += FormDesignNovo_Shown;
             this.FormClosed += (s, e) => RemoverFiltroMouse();
+            this.Activated += (s, e) => AplicarLayoutToolboxResponsivo();
             this.DpiChanged += (s, e) => AjustarLayoutResponsivo();
             
         }
@@ -443,6 +445,7 @@ namespace EtiquetaFORNew.Forms
 
 
             CriarToolbox();
+            AplicarLayoutToolboxResponsivo();
 
             // ==================== CANVAS CENTRAL ====================
             panelCanvas = new DoubleBufferedPanel
@@ -908,6 +911,41 @@ namespace EtiquetaFORNew.Forms
                     CriarPainelPropriedades();
                 }
 
+            }
+        }
+
+        private void AplicarLayoutToolboxResponsivo()
+        {
+            if (panelToolbox == null) return;
+
+            bool modoDistribuidora = ModuloAppHelper.EstaEmModuloDistribuidoraWeb();
+            if (toolboxDistribuidoraAtiva.HasValue
+                && toolboxDistribuidoraAtiva.Value == modoDistribuidora)
+                return;
+
+            panelToolbox.SuspendLayout();
+            try
+            {
+                if (toolboxDistribuidoraAtiva.HasValue)
+                {
+                    Control[] controlesAnteriores = panelToolbox.Controls.Cast<Control>().ToArray();
+                    panelToolbox.Controls.Clear();
+                    foreach (Control controle in controlesAnteriores)
+                        controle.Dispose();
+
+                    panelPropriedades = null;
+                    CriarToolbox();
+                }
+
+                ToolboxLayoutManager.Apply(panelToolbox, panelPropriedades, modoDistribuidora);
+                toolboxDistribuidoraAtiva = modoDistribuidora;
+
+                if (elementoSelecionado != null || elementosSelecionados.Count > 0)
+                    AtualizarPainelPropriedades();
+            }
+            finally
+            {
+                panelToolbox.ResumeLayout(true);
             }
         }
 
@@ -1563,6 +1601,8 @@ namespace EtiquetaFORNew.Forms
 
 
             }
+
+            PropertyPanelLayoutManager.Configure(panelPropriedades);
         }
         //    else 
         //    { 
