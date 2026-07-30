@@ -89,6 +89,7 @@ namespace EtiquetaFORNew.Forms
         private Point deltaArrasto;
         private int handleSelecionado = -1;
         private int handleSobMouse = -1;
+        private ElementoEtiqueta elementoHoverRotacao;
 
         private List<ElementoEtiqueta> elementosSelecionados = new List<ElementoEtiqueta>();
         private bool selecionandoComRetangulo = false;
@@ -447,6 +448,7 @@ namespace EtiquetaFORNew.Forms
             pbCanvas.MouseUp += PbCanvas_MouseUp;
             pbCanvas.MouseWheel += PbCanvas_MouseWheel;
             pbCanvas.MouseEnter += (s, e) => pbCanvas.Focus();
+            pbCanvas.MouseLeave += PbCanvas_MouseLeave;
 
             panelCanvas.Controls.Add(pbCanvas);
 
@@ -3548,20 +3550,96 @@ namespace EtiquetaFORNew.Forms
             return bounds.Contains((int)pontoRotacionadoX, (int)pontoRotacionadoY);
         }
 
-        private void DesenharSetaRotacao(Graphics g, PointF centro, float raio, bool sentidoHorario, Color cor)
+        private float ObterEscalaAlcaRotacao()
         {
-            using (Pen pen = new Pen(cor, 1.5f))
-            {
-                pen.EndCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
-                float anguloInicio = sentidoHorario ? -45 : 45;
-                float anguloFim    = sentidoHorario ? -135 : 135;
+            float escalaDpi = Math.Max(1f, DeviceDpi / 96f);
+            float escalaZoom = (float)Math.Sqrt(Math.Max(0.3f, Math.Min(3f, zoom)));
+            escalaZoom = Math.Max(0.8f, Math.Min(1.65f, escalaZoom));
+            return escalaDpi * escalaZoom;
+        }
 
-                RectangleF rect = new RectangleF(centro.X - raio, centro.Y - raio, raio * 2, raio * 2);
-                using (System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath())
+        private void ObterGeometriaAlcasRotacao(
+            Rectangle bounds,
+            out PointF[] posicoes,
+            out float raioVisual,
+            out float raioAtivacao)
+        {
+            float escala = ObterEscalaAlcaRotacao();
+            float afastamento = 12f * escala;
+            raioVisual = 8f * escala;
+            raioAtivacao = 10f * escala;
+
+            posicoes = new[]
+            {
+                new PointF(bounds.Left  - afastamento, bounds.Top    - afastamento),
+                new PointF(bounds.Right + afastamento, bounds.Top    - afastamento),
+                new PointF(bounds.Right + afastamento, bounds.Bottom + afastamento),
+                new PointF(bounds.Left  - afastamento, bounds.Bottom + afastamento)
+            };
+        }
+
+        private void DesenharAlcaRotacao(
+            Graphics g,
+            PointF centro,
+            float raio,
+            bool sentidoHorario,
+            bool emOperacao)
+        {
+            GraphicsState estado = g.Save();
+            try
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.CompositingQuality = CompositingQuality.HighQuality;
+
+                float escala = ObterEscalaAlcaRotacao();
+                float deslocamentoSombra = Math.Max(1f, escala);
+                RectangleF circulo = new RectangleF(
+                    centro.X - raio,
+                    centro.Y - raio,
+                    raio * 2f,
+                    raio * 2f);
+                RectangleF sombra = circulo;
+                sombra.Offset(deslocamentoSombra, deslocamentoSombra);
+
+                Color corDestaque = emOperacao
+                    ? Color.FromArgb(0, 92, 184)
+                    : Color.FromArgb(0, 120, 215);
+                Color corFundo = emOperacao
+                    ? Color.FromArgb(226, 240, 253)
+                    : Color.White;
+
+                using (SolidBrush brushSombra = new SolidBrush(Color.FromArgb(45, Color.Black)))
+                using (SolidBrush brushFundo = new SolidBrush(corFundo))
+                using (Pen penContorno = new Pen(Color.FromArgb(185, corDestaque), Math.Max(1f, escala)))
                 {
-                    path.AddArc(rect, anguloInicio, anguloFim - anguloInicio);
-                    g.DrawPath(pen, path);
+                    g.FillEllipse(brushSombra, sombra);
+                    g.FillEllipse(brushFundo, circulo);
+                    g.DrawEllipse(penContorno, circulo);
                 }
+
+                float raioArco = raio * 0.53f;
+                RectangleF arco = new RectangleF(
+                    centro.X - raioArco,
+                    centro.Y - raioArco,
+                    raioArco * 2f,
+                    raioArco * 2f);
+                float inicio = sentidoHorario ? -55f : 235f;
+                float varredura = sentidoHorario ? 255f : -255f;
+
+                using (GraphicsPath caminho = new GraphicsPath())
+                using (Pen penSeta = new Pen(corDestaque, Math.Max(1.6f, 1.65f * escala)))
+                {
+                    caminho.AddArc(arco, inicio, varredura);
+                    penSeta.StartCap = LineCap.Round;
+                    penSeta.EndCap = LineCap.ArrowAnchor;
+                    penSeta.LineJoin = LineJoin.Round;
+                    g.DrawPath(penSeta, caminho);
+                }
+            }
+            finally
+            {
+                g.Restore(estado);
             }
         }
 
@@ -3569,9 +3647,6 @@ namespace EtiquetaFORNew.Forms
         {
             const int handleSize = 6;
             Color handleColor    = Color.FromArgb(0, 120, 215);
-            Color rotateHandleColor = Color.Black;
-
-            Brush handleBrush = new SolidBrush(handleColor);
 
             Point[] handlePositions = new Point[]
             {
@@ -3585,29 +3660,33 @@ namespace EtiquetaFORNew.Forms
                 new Point(bounds.Left,                        bounds.Top + bounds.Height / 2)
             };
 
-            foreach (var pos in handlePositions)
+            using (Brush handleBrush = new SolidBrush(handleColor))
             {
-                g.FillRectangle(handleBrush, pos.X - handleSize / 2, pos.Y - handleSize / 2, handleSize, handleSize);
-                g.DrawRectangle(Pens.White,  pos.X - handleSize / 2, pos.Y - handleSize / 2, handleSize, handleSize);
+                foreach (var pos in handlePositions)
+                {
+                    g.FillRectangle(handleBrush, pos.X - handleSize / 2, pos.Y - handleSize / 2, handleSize, handleSize);
+                    g.DrawRectangle(Pens.White, pos.X - handleSize / 2, pos.Y - handleSize / 2, handleSize, handleSize);
+                }
             }
 
-            if (handleSobMouse >= 8 && handleSobMouse <= 11)
+            bool exibirAlcaRotacao = handleSobMouse >= 8 && handleSobMouse <= 11 &&
+                (rotacionando || ReferenceEquals(elementoHoverRotacao, elementoSelecionado));
+
+            if (exibirAlcaRotacao)
             {
-                int rotateOffset = 12;
-                PointF[] rotatePositions = new PointF[]
-                {
-                    new PointF(bounds.Left  - rotateOffset, bounds.Top    - rotateOffset),
-                    new PointF(bounds.Right + rotateOffset, bounds.Top    - rotateOffset),
-                    new PointF(bounds.Right + rotateOffset, bounds.Bottom + rotateOffset),
-                    new PointF(bounds.Left  - rotateOffset, bounds.Bottom + rotateOffset)
-                };
+                PointF[] rotatePositions;
+                float raioVisual;
+                float raioAtivacao;
+                ObterGeometriaAlcasRotacao(bounds, out rotatePositions, out raioVisual, out raioAtivacao);
                 bool[] sentidosHorarios = new bool[] { false, true, false, true };
                 int indexSeta = handleSobMouse - 8;
-                DesenharSetaRotacao(g, rotatePositions[indexSeta], 8f, sentidosHorarios[indexSeta], rotateHandleColor);
+                DesenharAlcaRotacao(
+                    g,
+                    rotatePositions[indexSeta],
+                    raioVisual,
+                    sentidosHorarios[indexSeta],
+                    rotacionando);
             }
-
-            handleBrush.Dispose();
-            
         }
 
         private int ObterHandleClicado(Point mouse, Rectangle bounds, float rotacao = 0)
@@ -3628,16 +3707,10 @@ namespace EtiquetaFORNew.Forms
                 );
             }
 
-            int rotateOffset      = 12;
-            int rotateClickRadius = 10;
-
-            PointF[] rotatePositions = new PointF[]
-            {
-                new PointF(bounds.Left  - rotateOffset, bounds.Top    - rotateOffset),
-                new PointF(bounds.Right + rotateOffset, bounds.Top    - rotateOffset),
-                new PointF(bounds.Right + rotateOffset, bounds.Bottom + rotateOffset),
-                new PointF(bounds.Left  - rotateOffset, bounds.Bottom + rotateOffset)
-            };
+            PointF[] rotatePositions;
+            float raioVisual;
+            float rotateClickRadius;
+            ObterGeometriaAlcasRotacao(bounds, out rotatePositions, out raioVisual, out rotateClickRadius);
 
             for (int i = 0; i < rotatePositions.Length; i++)
             {
@@ -3674,6 +3747,57 @@ namespace EtiquetaFORNew.Forms
 
         }
 
+        private static bool EhHandleRotacao(int handle)
+        {
+            return handle >= 8 && handle <= 11;
+        }
+
+        private Rectangle ObterRegiaoFeedbackRotacao(Rectangle bounds, float rotacao)
+        {
+            double angulo = rotacao * Math.PI / 180d;
+            float larguraRotacionada = (float)(
+                Math.Abs(bounds.Width * Math.Cos(angulo)) +
+                Math.Abs(bounds.Height * Math.Sin(angulo)));
+            float alturaRotacionada = (float)(
+                Math.Abs(bounds.Width * Math.Sin(angulo)) +
+                Math.Abs(bounds.Height * Math.Cos(angulo)));
+            float centroX = bounds.Left + bounds.Width / 2f;
+            float centroY = bounds.Top + bounds.Height / 2f;
+            float margem = 26f * ObterEscalaAlcaRotacao();
+
+            RectangleF regiao = new RectangleF(
+                centroX - larguraRotacionada / 2f - margem,
+                centroY - alturaRotacionada / 2f - margem,
+                larguraRotacionada + margem * 2f,
+                alturaRotacionada + margem * 2f);
+            return Rectangle.Ceiling(regiao);
+        }
+
+        private void InvalidarFeedbackRotacao(Rectangle bounds, float rotacao)
+        {
+            pbCanvas?.Invalidate(ObterRegiaoFeedbackRotacao(bounds, rotacao));
+        }
+
+        private void PbCanvas_MouseLeave(object sender, EventArgs e)
+        {
+            if (rotacionando)
+                return;
+
+            if (elementoHoverRotacao != null && elementoSelecionado != null)
+            {
+                RectangleF rectEtiqueta = new RectangleF(25, 25,
+                    configuracao.LarguraEtiqueta * MM_PARA_PIXEL * zoom,
+                    configuracao.AlturaEtiqueta * MM_PARA_PIXEL * zoom);
+                Rectangle bounds = ConverterParaPixels(elementoSelecionado.Bounds, rectEtiqueta);
+                InvalidarFeedbackRotacao(bounds, elementoSelecionado.Rotacao);
+            }
+
+            elementoHoverRotacao = null;
+            handleSobMouse = -1;
+            if (!arrastando && !redimensionando)
+                pbCanvas.Cursor = Cursors.Default;
+        }
+
         #endregion
 
         #region Eventos do Mouse
@@ -3703,6 +3827,8 @@ namespace EtiquetaFORNew.Forms
                     if (handleSelecionado >= 8 && handleSelecionado <= 11)
                     {
                         rotacionando = true;
+                        handleSobMouse = handleSelecionado;
+                        elementoHoverRotacao = elementoSelecionado;
                         pontoInicialMouse = e.Location;
                         anguloInicial = elementoSelecionado.Rotacao;
                         centroRotacao = new PointF(bounds.X + bounds.Width / 2f, bounds.Y + bounds.Height / 2f);
@@ -3764,6 +3890,8 @@ namespace EtiquetaFORNew.Forms
                 {
                     elementoSelecionado = elementoClicado;
                     elementosSelecionados.Clear();
+                    elementoHoverRotacao = null;
+                    handleSobMouse = -1;
                     pontoInicialMouse = e.Location;
 
                     Rectangle bounds = ConverterParaPixels(elementoClicado.Bounds, rectEtiqueta);
@@ -3781,6 +3909,8 @@ namespace EtiquetaFORNew.Forms
 
             elementoSelecionado = null;
             elementosSelecionados.Clear();
+            elementoHoverRotacao = null;
+            handleSobMouse = -1;
             selecionandoComRetangulo = true;
             pontoInicialSelecao = e.Location;
             retanguloSelecao = new Rectangle(e.Location, Size.Empty);
@@ -3864,6 +3994,7 @@ namespace EtiquetaFORNew.Forms
             }
             else if (rotacionando && elementoSelecionado != null)
             {
+                pbCanvas.Cursor = Cursors.Hand;
                 float dx = e.X - centroRotacao.X;
                 float dy = e.Y - centroRotacao.Y;
                 float anguloAtual = (float)(Math.Atan2(dy, dx) * 180 / Math.PI);
@@ -3887,12 +4018,23 @@ namespace EtiquetaFORNew.Forms
                 {
                     Rectangle bounds = ConverterParaPixels(elementoSelecionado.Bounds, rectEtiqueta);
                     int handle = ObterHandleClicado(e.Location, bounds, elementoSelecionado.Rotacao);
+                    bool alterouFeedbackRotacao =
+                        EhHandleRotacao(handleSobMouse) ||
+                        EhHandleRotacao(handle) ||
+                        !ReferenceEquals(
+                            elementoHoverRotacao,
+                            EhHandleRotacao(handle) ? elementoSelecionado : null);
 
                     if (handleSobMouse != handle)
                     {
                         handleSobMouse = handle;
-                        pbCanvas.Invalidate();
+                        if (alterouFeedbackRotacao)
+                            InvalidarFeedbackRotacao(bounds, elementoSelecionado.Rotacao);
                     }
+
+                    elementoHoverRotacao = EhHandleRotacao(handle)
+                        ? elementoSelecionado
+                        : null;
 
                     if (handle >= 8 && handle <= 11)
                         pbCanvas.Cursor = Cursors.Hand;
@@ -3913,7 +4055,10 @@ namespace EtiquetaFORNew.Forms
                 }
                 else
                 {
-                    if (handleSobMouse != -1) { handleSobMouse = -1; pbCanvas.Invalidate(); }
+                    if (elementoHoverRotacao != null)
+                        pbCanvas.Invalidate();
+                    elementoHoverRotacao = null;
+                    handleSobMouse = -1;
                     pbCanvas.Cursor = Cursors.Cross;
                 }
             }
@@ -4122,7 +4267,22 @@ namespace EtiquetaFORNew.Forms
             redimensionando = false;
             rotacionando = false;
             handleSelecionado = -1;
+            elementoHoverRotacao = null;
+            handleSobMouse = -1;
             pbCanvas.Cursor = Cursors.Default;
+
+            if (elementoSelecionado != null)
+            {
+                Rectangle boundsAtuais = ConverterParaPixels(elementoSelecionado.Bounds, rectEtiqueta);
+                int handleAtual = ObterHandleClicado(e.Location, boundsAtuais, elementoSelecionado.Rotacao);
+                if (EhHandleRotacao(handleAtual))
+                {
+                    handleSobMouse = handleAtual;
+                    elementoHoverRotacao = elementoSelecionado;
+                    pbCanvas.Cursor = Cursors.Hand;
+                }
+            }
+
             pbCanvas.Invalidate();
         }
 
@@ -4593,6 +4753,8 @@ namespace EtiquetaFORNew.Forms
             if (Math.Abs(novoZoom - zoom) < 0.001f)
                 return;
 
+            elementoHoverRotacao = null;
+            handleSobMouse = -1;
             zoom = novoZoom;
             AtualizarControleZoom();
             AtualizarTamanhoCanvas();
