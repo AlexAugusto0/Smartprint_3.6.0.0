@@ -338,6 +338,10 @@
     <Compile Include="Forms\Carregamento\FormPrincipal.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\Carregamento\FormPrincipal.Layout.cs">
+      <DependentUpon>FormPrincipal.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\Carregamento\FormPrincipal.Designer.cs">
       <DependentUpon>FormPrincipal.cs</DependentUpon>
     </Compile>

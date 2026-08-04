@@ -7,15 +7,19 @@ namespace EtiquetaFORNew.UI
     public static class ThemeManager
     {
         public static Color PanelBackground => Color.White;
-        public static Color CanvasBackground => Color.FromArgb(244, 245, 247);
-        public static Color WorkspaceBackground => Color.FromArgb(230, 231, 234);
+        //public static Color CanvasBackground => Color.FromArgb(244, 245, 247);
+
+        public static Color CanvasBackground => Color.FromArgb(240, 235, 255);
+        //public static Color WorkspaceBackground => Color.FromArgb(230, 231, 234);
+        public static Color WorkspaceBackground => Color.FromArgb(240, 235, 255);
         public static Color SmartPrintOrange => Color.FromArgb(245, 124, 0);
         public static Color SmartPrintOrangeDark => Color.FromArgb(230, 103, 0);
-        public static Color TextPrimary => Color.FromArgb(51, 51, 51);
+        public static Color TextPrimary => Color.FromArgb(51, 51, 51);        
         public static Color TextSecondary => Color.FromArgb(100, 106, 115);
         public static Color HoverBackground => Color.FromArgb(255, 224, 178);
         public static Color Border => Color.FromArgb(218, 221, 226);
         public static Color HeaderBackground => Color.FromArgb(70, 73, 76);
+        public static Color HeaderText => Color.White;
         public static Color ToolbarBackground => Color.White;
         public static Color StatusBackground => Color.FromArgb(248, 249, 250);
         public static Color Danger => Color.FromArgb(211, 47, 47);

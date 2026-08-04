@@ -100,6 +100,8 @@ namespace EtiquetaFORNew
 
             InitializeComponent();
 
+            InitializeResponsiveLayout();
+
 
             TemplatesPreDefinidos.InstalarSeNecessario();
 
@@ -2382,55 +2384,6 @@ namespace EtiquetaFORNew
             // Suspendemos o layout para evitar o efeito de "controles pulando" na tela
             this.SuspendLayout();
 
-            if (isConfeccao)
-            {
-                // 1. Definimos o tamanho total do formulário e containers
-                this.Width = 1200;
-                groupProduto.Width = 1160;
-                panel1.Width = 1160;
-                panel2.Width = 1160;
-                panelTop.Width = 1160;
-                dgvProdutos.Width = 1160;
-                groupProduto.Width = 1160;
-
-                // 2. Ajuste dos campos de busca para caber tudo na mesma linha
-                // Reduzimos a Mercadoria (cmbBuscaNome) para abrir espaço para Tam e Cor
-                cmbBuscaNome.Width = 580;
-
-                // 3. Posicionamento relativo (Tam e Cor aparecem após a Mercadoria)
-                lblTamanho.Left = cmbBuscaNome.Right + 15;
-                cmbTamanho.Left = lblTamanho.Left;
-                cmbTamanho.Width = 80;
-
-                lblCor.Left = cmbTamanho.Right + 15;
-                cmbCor.Left = lblCor.Left;
-                cmbCor.Width = 100;
-
-                // 4. Garante que o botão Adicionar e Qtd fiquem no final do cabeçalho
-                BtnAdicionar2.Left = groupProduto.Width - BtnAdicionar2.Width - 15;
-                numQtd.Left = BtnAdicionar2.Left - numQtd.Width - 10;
-                lblQtd.Left = numQtd.Left;
-
-                //5. Ajuste dos demais botões para alinhar à direita
-                btnConfig.Left = panelTop.Width - btnConfig.Width - 15;
-                btnSincronizar.Left = btnConfig.Left - btnSincronizar.Width - 10;
-                btnCalibracao.Left = btnSincronizar.Left - btnCalibracao.Width - 10;
-                btnDesigner.Left = btnCalibracao.Left - btnDesigner.Width - 10;
-                btnLimparTodos.Left = this.Width - btnLimparTodos.Width - 30;
-                btnImprimir.Left = this.Width - btnImprimir.Width - 30;
-                btnCarregar.Left = btnLimparTodos.Left - btnCarregar.Width - 10;
-            }
-            else
-            {
-                // Modo Padrão: Restaurar layout original
-                this.Width = 1039;
-                dgvProdutos.Width = 1004;
-                groupProduto.Width = 1004;
-
-                // No modo padrão, a Mercadoria pode ocupar o espaço que era do Tam/Cor
-                cmbBuscaNome.Width = 550;
-            }
-
             // Controle de Visibilidade
             bool mostrarConfeccao = isConfeccao;
             if (cmbTamanho != null) cmbTamanho.Visible = mostrarConfeccao;
@@ -2442,8 +2395,9 @@ namespace EtiquetaFORNew
             if (dgvProdutos.Columns.Contains("colTam")) dgvProdutos.Columns["colTam"].Visible = mostrarConfeccao;
             if (dgvProdutos.Columns.Contains("colCor")) dgvProdutos.Columns["colCor"].Visible = mostrarConfeccao;
 
-            this.ResumeLayout();
-            this.PerformLayout();
+            UpdateResponsiveLayoutForModule();
+
+            this.ResumeLayout(true);
         }
         private void CentralizarControles()
         {
