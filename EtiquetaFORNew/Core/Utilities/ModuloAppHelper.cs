@@ -17,6 +17,12 @@ namespace EtiquetaFORNew
             return EhModuloDistribuidora(config?.ModuloAppWeb);
         }
 
+        public static bool EstaEmModuloConfeccaoWeb()
+        {
+            var config = DatabaseConfig.LoadConfiguration();
+            return EhModuloConfeccao(config?.ModuloAppWeb);
+        }
+
         public static bool EhModuloDistribuidora(string modulo)
         {
             return string.Equals(Normalizar(modulo), "DISTRIBUIDORA", StringComparison.OrdinalIgnoreCase);

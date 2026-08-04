@@ -735,6 +735,10 @@ namespace EtiquetaFORNew.Data
                     throw new Exception("SoftcomShop nao esta configurado como conexao ativa.");
                 }
 
+                // ⭐ VERIFICAR MÓDULO
+                string moduloApp = (DatabaseConfig.LoadConfiguration()?.ModuloApp ?? "").ToUpper();
+                bool isConfeccao = moduloApp.Equals("CONFECCAO");                                
+
                 var dataManager = new SoftcomShopDataManager(config.SoftcomShop, LocalDatabaseManager.GetConnectionString());
 
                 var syncResult = await dataManager.BuscarPorNotaFiscalAsync(dataEntrada.Value, numeroNota);

@@ -1,12 +1,13 @@
+using EtiquetaFORNew.Data;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace EtiquetaFORNew
 {
@@ -470,9 +471,128 @@ namespace EtiquetaFORNew
             return result;
         }
 
+        //private int ProcessarProdutosNotaFiscal(JArray produtos, string versao)
+        //{
+        //    int count = 0;
+
+        //    using (var conn = new SQLiteConnection(_connectionString))
+        //    {
+        //        conn.Open();
+
+        //        foreach (var produto in produtos)
+        //        {
+        //            // Verificar se produto já existe
+        //            long produtoId = LerLong(produto["produto_id"]);
+        //            string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
+        //            string codBarras = ObterTexto(produto["codigo_barras"]);
+        //            string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
+        //            int quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+
+        //            if (!TemIdentificacaoProduto(produtoId, codigoMercadoria, codBarras, codBarrasGrade))
+        //            {
+        //                System.Diagnostics.Debug.WriteLine("[ProcessarProdutosNotaFiscal] Item ignorado: sem produto_id, codigo de mercadoria ou codigo de barras.");
+        //                continue;
+        //            }
+
+        //            if (ProdutoExiste(conn, produtoId, codBarrasGrade, codigoMercadoria, codBarras))
+        //            {
+        //                // Atualizar e marcar para impressão
+        //                AtualizarProdutoNF(conn, produto, versao);
+        //            }
+        //            else
+        //            {
+        //                // Inserir novo produto
+        //                InserirProduto(conn, produto, versao);
+        //                MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade, codigoMercadoria, codBarras);
+        //            }
+
+        //            count++;
+        //        }
+        //    }
+
+        //    return count;
+        //}
+
+        // ADICIONAR APÓS O MÉTODO BuscarPorNotaFiscalAsync (linha ~450)
+
+        //private int ProcessarProdutosNotaFiscal(JArray produtos, string versao)
+        //{
+        //    int count = 0;
+
+        //    // ⭐ OBTER MÓDULO CONFIGURADO
+        //    string moduloApp = "";
+        //    try
+        //    {
+        //        var config = DatabaseConfig.LoadConfiguration();
+        //        moduloApp = config?.ModuloApp ?? "";
+        //    }
+        //    catch { }
+
+        //    bool isConfeccao = moduloApp.Equals("CONFECCAO", StringComparison.OrdinalIgnoreCase);
+
+        //    using (var conn = new SQLiteConnection(_connectionString))
+        //    {
+        //        conn.Open();
+
+        //        foreach (var produto in produtos)
+        //        {
+        //            long produtoId = LerLong(produto["produto_id"]);
+        //            string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
+        //            string codBarras = ObterTexto(produto["codigo_barras"]);
+        //            string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
+
+        //            // ⭐ QUANTIDADE: Depende do módulo
+        //            int quantidade = 1;
+        //            if (isConfeccao)
+        //            {
+        //                // CONFECÇÃO: Cada grade (tamanho+cor) tem sua própria quantidade
+        //                quantidade = Math.Max(1, LerInteiro(produto["quantidade_grade"], 1));
+        //            }
+        //            else
+        //            {
+        //                // PADRÃO: Quantidade total do produto
+        //                quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+        //            }
+
+        //            if (!TemIdentificacaoProduto(produtoId, codigoMercadoria, codBarras, codBarrasGrade))
+        //            {
+        //                System.Diagnostics.Debug.WriteLine("[ProcessarProdutosNotaFiscal] Item ignorado: sem identificação.");
+        //                continue;
+        //            }
+
+        //            if (ProdutoExiste(conn, produtoId, codBarrasGrade, codigoMercadoria, codBarras))
+        //            {
+        //                AtualizarProdutoNF(conn, produto, versao, quantidade); // ⭐ NOVO PARÂMETRO
+        //            }
+        //            else
+        //            {
+        //                InserirProduto(conn, produto, versao);
+        //                MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade, codigoMercadoria, codBarras);
+        //            }
+
+        //            count++;
+        //        }
+        //    }
+
+        //    return count;
+        //}
+
         private int ProcessarProdutosNotaFiscal(JArray produtos, string versao)
         {
             int count = 0;
+
+            // ⭐ OBTER MÓDULO CONFIGURADO
+            string moduloApp = "";            
+            try
+            {
+                var config = DatabaseConfig.LoadConfiguration();
+                moduloApp = config?.ModuloApp ?? "";
+            }
+            catch { }
+
+            //bool isConfeccao = moduloApp.Equals("Confeccao", StringComparison.OrdinalIgnoreCase);
+            //bool isConfeccao = ModuloAppHelper.EhModuloConfeccao(moduloApp);
+            bool isConfeccao =  ModuloAppHelper.EstaEmModuloConfeccaoWeb();
 
             using (var conn = new SQLiteConnection(_connectionString))
             {
@@ -480,27 +600,46 @@ namespace EtiquetaFORNew
 
                 foreach (var produto in produtos)
                 {
-                    // Verificar se produto já existe
                     long produtoId = LerLong(produto["produto_id"]);
                     string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
                     string codBarras = ObterTexto(produto["codigo_barras"]);
                     string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
-                    int quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+
+                    // ⭐ CORRIGIDO: Usar o campo CORRETO da API
+                    int quantidade = 1;
+                    if (isConfeccao)
+                    {
+                        // ⭐ CONFECÇÃO: Tentar PRIMEIRO "compra_item_quantidade", depois "quantidade"
+                        // A API pode usar ambos os nomes
+                        int qtdBuscada = LerInteiro(produto["compra_item_quantidade"], 0);
+                        if (qtdBuscada <= 0)
+                        {
+                            qtdBuscada = LerInteiro(produto["quantidade"], 0);
+                        }
+                        if (qtdBuscada <= 0)
+                        {
+                            qtdBuscada = LerInteiro(produto["quantidade_item"], 0);
+                        }
+                        quantidade = Math.Max(1, qtdBuscada);
+                    }
+                    else
+                    {
+                        // PADRÃO: Quantidade total do produto
+                        quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+                    }
 
                     if (!TemIdentificacaoProduto(produtoId, codigoMercadoria, codBarras, codBarrasGrade))
                     {
-                        System.Diagnostics.Debug.WriteLine("[ProcessarProdutosNotaFiscal] Item ignorado: sem produto_id, codigo de mercadoria ou codigo de barras.");
+                        System.Diagnostics.Debug.WriteLine("[ProcessarProdutosNotaFiscal] Item ignorado: sem identificação.");
                         continue;
                     }
 
                     if (ProdutoExiste(conn, produtoId, codBarrasGrade, codigoMercadoria, codBarras))
                     {
-                        // Atualizar e marcar para impressão
-                        AtualizarProdutoNF(conn, produto, versao);
+                        AtualizarProdutoNF(conn, produto, versao, quantidade);
                     }
                     else
                     {
-                        // Inserir novo produto
                         InserirProduto(conn, produto, versao);
                         MarcarParaImpressao(conn, produtoId, codBarrasGrade, quantidade, codigoMercadoria, codBarras);
                     }
@@ -722,7 +861,7 @@ namespace EtiquetaFORNew
         }
 
         /// <summary>
-        /// Busca produtos por numero da nota fiscal de entrada no SoftcomShop.
+        /// Busca produtos por nota fiscal de entrada no SoftcomShop.
         /// Usado pelo fluxo principal de carregamento para retornar dados ao painel de impressao.
         /// </summary>
         public async Task<SyncResult> BuscarPorNumeroNotaFiscalAsync(int numeroNota, IProgress<string> progress = null)
@@ -1771,8 +1910,7 @@ namespace EtiquetaFORNew
                     ChaveAcesso = TextoCampoDistribuidora(venda,
                         "chave", "chave_acesso", "chave_nfe", "nfe.chave", "nfe.chave_acesso"),
                     DataEmissao = DataCampoDistribuidora(venda, "api_data_hora_venda", "data_hora_venda", "created_at"),
-                    Observacao = TextoCampoDistribuidora(venda, "observacao"),
-                    NfeId = LerLong(PrimeiroCampoDistribuidora(venda, "nfe_id"))
+                    Observacao = TextoCampoDistribuidora(venda, "observacao")
                 },
                 Empresa = MontarEmpresaDistribuidora(ObterEmpresaEmitenteDistribuidora(venda), venda),
                 Destinatario = MontarDestinatarioEtiquetaDistribuidora(cliente),
@@ -2211,12 +2349,13 @@ namespace EtiquetaFORNew
                         TextoCampoDistribuidora(item, "codigo", "codigo_mercadoria", "codigo_produto", "produto_id"),
                         TextoCampoDistribuidora(produto, "codigo", "codigo_mercadoria", "codigo_produto", "produto_id")),
                     Descricao = PrimeiroTextoValor(
-                        TextoCampoDistribuidora(item, "descricao", "produto_nome", "nome", "mercadoria"),
-                        TextoCampoDistribuidora(produto, "descricao", "produto_nome", "nome", "mercadoria")),
+                        TextoCampoDistribuidora(item, "descricao", "produto_nome", "nome"),
+                        TextoCampoDistribuidora(produto, "descricao", "produto_nome", "nome")),
                     Quantidade = quantidade <= 0 ? 1m : quantidade,
                     QuantidadeVolumes = quantidadeVolumes,
                     Peso = DecimalCampoDistribuidora(item, "peso_volume", "peso_bruto", "peso_liquido", "peso", "peso_total")
                            ?? DecimalCampoDistribuidora(produto, "peso_volume", "peso_bruto", "peso_liquido", "peso", "peso_total")
+                           ?? 0m
                 });
             }
 
@@ -2765,9 +2904,6 @@ namespace EtiquetaFORNew
             string codBarras = ObterTexto(produto["codigo_barras"]);
             string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
             int quantidade = Math.Max(1, LerInteiro(produto[campoQuantidade], 1));
-            string textoPreco = ObterTexto(produto["preco_venda"]);
-            bool temPreco = !string.IsNullOrWhiteSpace(textoPreco);
-            decimal preco = LerDecimal(produto["preco_venda"], 0m);
 
             using (var cmd = new SQLiteCommand(conn))
             {
@@ -2785,14 +2921,6 @@ namespace EtiquetaFORNew
                     "QuantidadeEtiqueta = @qtd"
                 };
 
-                if (temPreco)
-                {
-                    campos.Insert(0, "PrecoVenda = @preco");
-                    cmd.Parameters.AddWithValue("@preco", preco);
-                }
-
-                AdicionarCamposClassificacaoProduto(cmd, campos, produto);
-
                 cmd.CommandText = @"
                 UPDATE Mercadorias 
                 SET " + string.Join(", ", campos) + @"
@@ -2804,14 +2932,20 @@ namespace EtiquetaFORNew
                 return cmd.ExecuteNonQuery();
             }
         }
-
-        private int AtualizarProdutoNF(SQLiteConnection conn, JToken produto, string versao)
+            
+        private int AtualizarProdutoNF(SQLiteConnection conn, JToken produto, string versao, int quantidade = 0)
         {
             long produtoId = LerLong(produto["produto_id"]);
             string codigoMercadoria = ObterCodigoMercadoria(produto, produtoId);
             string codBarras = ObterTexto(produto["codigo_barras"]);
             string codBarrasGrade = ObterTexto(produto["codigo_barras_grade"]);
-            int quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+            
+            // ⭐ Se quantidade não foi passada, tentar obter do JSON
+            if (quantidade <= 0)
+            {
+                quantidade = Math.Max(1, LerInteiro(produto["compra_item_quantidade"], 1));
+            }
+            
             decimal preco = LerDecimal(produto["preco_venda"], 0m);
 
             using (var cmd = new SQLiteCommand(conn))
@@ -2827,7 +2961,7 @@ namespace EtiquetaFORNew
                     "PrecoVenda = @preco",
                     "UltimaAtualizacao = @data",
                     "GerarEtiqueta = 1",
-                    "QuantidadeEtiqueta = @qtd"
+                    "QuantidadeEtiqueta = @qtd"  // ⭐ USA QUANTIDADE DA GRADE
                 };
 
                 AdicionarCamposClassificacaoProduto(cmd, campos, produto);
@@ -2839,7 +2973,7 @@ namespace EtiquetaFORNew
 
                 cmd.Parameters.AddWithValue("@preco", preco);
                 cmd.Parameters.AddWithValue("@data", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                cmd.Parameters.AddWithValue("@qtd", quantidade);
+                cmd.Parameters.AddWithValue("@qtd", Math.Max(1, quantidade)); // ⭐ QUANTIDADE CORRETA
 
                 return cmd.ExecuteNonQuery();
             }
@@ -3216,6 +3350,7 @@ namespace EtiquetaFORNew
         //                            {
         //                                cmdUpd.Parameters.AddWithValue("@p", preco);
         //                                cmdUpd.Parameters.AddWithValue("@id", idProdApi);
+        //                                cmdUpd.Parameters.AddWithValue("@idPromo", promoId); // <-- Vínculo corrigido
         //                                await cmdUpd.ExecuteNonQueryAsync();
         //                            }
         //                        }
@@ -3339,40 +3474,6 @@ namespace EtiquetaFORNew
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("Erro Sincronização: " + ex.Message);
-            }
-        }
-
-        public async Task SincronizarPromocoesAsync()
-        {
-            string json = await _service.GetPromocoesAsync();
-            var response = JObject.Parse(json);
-            var promocoes = response["data"] as JArray;
-
-            using (var conn = new SQLiteConnection(_connectionString))
-            {
-                conn.Open();
-
-                using (var cmd = conn.CreateCommand())
-                {
-                    // Limpa promoções antigas
-                    cmd.CommandText = "DELETE FROM Promocoes";
-                    cmd.ExecuteNonQuery();
-                }
-
-                foreach (var promo in promocoes)
-                {
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.CommandText = @"
-                    INSERT INTO Promocoes (ID_Promocao, Descricao)
-                    VALUES (@id, @desc)";
-
-                        cmd.Parameters.AddWithValue("@id", promo["id"]?.ToObject<int>() ?? 0);
-                        cmd.Parameters.AddWithValue("@desc", promo["descricao"]?.ToString() ?? "");
-
-                        cmd.ExecuteNonQuery();
-                    }
-                }
             }
         }
 
