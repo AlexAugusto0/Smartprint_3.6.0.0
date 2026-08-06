@@ -2644,6 +2644,7 @@ namespace EtiquetaFORNew
                     string subGrupo = formFiltros.SubGrupoSelecionado;
                     string fabricante = formFiltros.FabricanteSelecionado;
                     string fornecedor = formFiltros.FornecedorSelecionado;
+                    string empresa = formFiltros.EmpresaSelecionada;
                     string produto = formFiltros.ProdutoSelecionado;
                     string documento = formFiltros.DocumentoInformado;
                     DateTime? dataInicial = formFiltros.DataInicial;
@@ -2693,7 +2694,8 @@ namespace EtiquetaFORNew
                         fornecedor: fornecedor,
                         produto: produto,
                         isConfeccao: isConfeccao,
-                        idPromocao: idPromocao // ⭐ NOVO parâmetro
+                        idPromocao: idPromocao, // ⭐ NOVO parâmetro
+                        loja: empresa
                     );
 
                     if (mercadoriasFiltradas != null)

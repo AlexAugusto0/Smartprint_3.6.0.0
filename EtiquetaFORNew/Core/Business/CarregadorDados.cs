@@ -41,7 +41,8 @@ namespace EtiquetaFORNew.Data
             string produto = null,
             bool isConfeccao = false,
             int? idPromocao = null, // ÃƒÂ¢Ã‚Â­Ã‚Â NOVO parÃƒÆ’Ã‚Â¢metro
-            bool usarQuantidadeEstoque = false)
+            bool usarQuantidadeEstoque = false,
+            string loja = null)
         {
             if (TipoRequerCarregamentoSoftcomShopAsync(tipo))
             {
@@ -51,10 +52,10 @@ namespace EtiquetaFORNew.Data
             switch (tipo.ToUpper())
             {
                 case "AJUSTES":
-                    return CarregarAjustes(documento, dataInicial, dataFinal);
+                    return CarregarAjustes(documento, dataInicial, dataFinal, loja);
 
                 case "BALANÇOS":
-                    return CarregarBalancos(documento, dataInicial, dataFinal);
+                    return CarregarBalancos(documento, dataInicial, dataFinal, loja);
 
                 case "NOTAS ENTRADA":
                     if (EstaEmModoSoftcomShop())
@@ -76,7 +77,7 @@ namespace EtiquetaFORNew.Data
                     if (!dataFinal.HasValue)
                         throw new Exception("Informe o período para carregar preços alterados.");
 
-                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque);
+                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque, loja);
 
                 case "VENDAS":
                     if (!EstaEmModoSoftcomShop())
@@ -117,7 +118,7 @@ namespace EtiquetaFORNew.Data
                     // Adicionamos o isConfeccao no final da assinatura para não quebrar a lógica
                     return PromocoesManager.BuscarProdutosDaPromocao(
                         idPromocao.Value,
-                        null, // loja (usa padrão)
+                        ObterLojaCarregamento(loja),
                         produto,
                         grupo,
                         subGrupo,
@@ -161,7 +162,8 @@ namespace EtiquetaFORNew.Data
             string produto = null,
             bool isConfeccao = false,
             int? idPromocao = null,
-            bool usarQuantidadeEstoque = false)
+            bool usarQuantidadeEstoque = false,
+            string loja = null)
         {
             switch (tipo.ToUpper())
             {
@@ -185,7 +187,7 @@ namespace EtiquetaFORNew.Data
                     if (!dataFinal.HasValue)
                         throw new Exception("Informe o período para carregar preços alterados.");
 
-                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque);
+                    return CarregarPrecosAlterados(dataInicial.Value, dataFinal.Value, usarQuantidadeEstoque, loja);
 
                 case "VENDAS":
                     if (!EstaEmModoSoftcomShop())
@@ -208,7 +210,8 @@ namespace EtiquetaFORNew.Data
                         produto,
                         isConfeccao,
                         idPromocao,
-                        usarQuantidadeEstoque);
+                        usarQuantidadeEstoque,
+                        loja);
             }
         }
 
@@ -232,7 +235,7 @@ namespace EtiquetaFORNew.Data
         /// Carrega produtos de ajustes de estoque
         /// Equivalente: GeradordeEtiquetas_CarregarAjustes
         /// </summary>
-        private static DataTable CarregarAjustes(string numeroAjuste, DateTime? dataInicial, DateTime? dataFinal)
+        private static DataTable CarregarAjustes(string numeroAjuste, DateTime? dataInicial, DateTime? dataFinal, string lojaSelecionada)
         {
             try
             {
@@ -257,7 +260,8 @@ namespace EtiquetaFORNew.Data
                     {
                         "Data", "Data da Compra", "Data Compra", "Data do Inventário", "Data do Inventario",
                         "Data do Ajuste", "DataAjuste", "Emissão", "Emissao"
-                    });
+                    },
+                    lojaSelecionada: lojaSelecionada);
             }
             catch (Exception ex)
             {
@@ -272,7 +276,7 @@ namespace EtiquetaFORNew.Data
         /// Carrega produtos de balanÃ§os de estoque
         /// Equivalente: GeradordeEtiquetas_CarregarBalancos
         /// </summary>
-        private static DataTable CarregarBalancos(string numeroBalanco, DateTime? dataInicial, DateTime? dataFinal)
+        private static DataTable CarregarBalancos(string numeroBalanco, DateTime? dataInicial, DateTime? dataFinal, string lojaSelecionada)
         {
             try
             {
@@ -297,7 +301,8 @@ namespace EtiquetaFORNew.Data
                     {
                         "Data", "Data da Compra", "Data Compra", "Data do Balanço", "Data do Balanco",
                         "DataBalanco", "Emissão", "Emissao"
-                    });
+                    },
+                    lojaSelecionada: lojaSelecionada);
             }
             catch (Exception ex)
             {
@@ -325,13 +330,14 @@ namespace EtiquetaFORNew.Data
             string[] tabelasItens,
             string[] colunasDocumentoCabecalho,
             string[] colunasDocumentoItens,
-            string[] colunasData)
+            string[] colunasData,
+            string lojaSelecionada)
         {
             string connectionStringSQLServer = DatabaseConfig.GetConnectionString();
             if (string.IsNullOrEmpty(connectionStringSQLServer))
                 throw new Exception("Conexão SQL Server não configurada!");
 
-            string loja = ObterLojaConfigurada();
+            string loja = ObterLojaCarregamento(lojaSelecionada);
 
             using (var conn = new SqlConnection(connectionStringSQLServer))
             {
@@ -521,8 +527,11 @@ namespace EtiquetaFORNew.Data
             }
         }
 
-        private static string ObterLojaConfigurada()
+        private static string ObterLojaCarregamento(string lojaSelecionada)
         {
+            if (!string.IsNullOrWhiteSpace(lojaSelecionada))
+                return lojaSelecionada.Trim();
+
             try
             {
                 var config = DatabaseConfig.LoadConfiguration();
@@ -1104,7 +1113,11 @@ namespace EtiquetaFORNew.Data
         /// Carrega produtos com preÃ§os alterados no perÃƒÆ’Ã‚Â­odo
         /// Equivalente: GeradordeEtiquetas_CarregarAlteracaoPrecos
         /// </summary>
-        private static DataTable CarregarPrecosAlterados(DateTime dataInicial, DateTime dataFinal, bool usarQuantidadeEstoque = false)
+        private static DataTable CarregarPrecosAlterados(
+            DateTime dataInicial,
+            DateTime dataFinal,
+            bool usarQuantidadeEstoque = false,
+            string lojaSelecionada = null)
         {
             try
             {
@@ -1112,7 +1125,7 @@ namespace EtiquetaFORNew.Data
                 if (string.IsNullOrEmpty(connectionStringSQLServer))
                     throw new Exception("Conexão SQL Server não configurada!");
 
-                string loja = ObterLojaConfigurada();
+                string loja = ObterLojaCarregamento(lojaSelecionada);
 
                 using (var conn = new SqlConnection(connectionStringSQLServer))
                 {

@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -151,6 +153,41 @@ namespace EtiquetaFORNew.Data
             {
                 return new ConfigData();
             }
+        }
+
+        public static List<string> ListarLojas(string connectionString = null)
+        {
+            string conexao = string.IsNullOrWhiteSpace(connectionString)
+                ? GetConnectionString()
+                : connectionString;
+
+            if (string.IsNullOrWhiteSpace(conexao))
+                throw new Exception("Conexao SQL Server nao configurada!");
+
+            var lojas = new List<string>();
+
+            using (var conn = new SqlConnection(conexao))
+            {
+                conn.Open();
+
+                const string query = @"
+                    SELECT Loja
+                    FROM Integrar_Lojas
+                    WHERE Desativado = 0
+                    ORDER BY Loja";
+
+                using (var cmd = new SqlCommand(query, conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (!reader.IsDBNull(0))
+                            lojas.Add(reader.GetString(0));
+                    }
+                }
+            }
+
+            return lojas;
         }
 
         public static string GetConfigFilePath()

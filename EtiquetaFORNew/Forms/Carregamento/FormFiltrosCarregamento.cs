@@ -457,11 +457,68 @@ namespace EtiquetaFORNew
         private void ConfigurarFormulario()
         {
             CarregarTiposCarregamento();
-
-            cmbEmpresa.Items.Add("MATRIZ");
-            cmbEmpresa.SelectedIndex = 0;
+            CarregarEmpresas();
 
             cmbTipo.SelectedIndexChanged += CmbTipo_SelectedIndexChanged;
+        }
+
+        private void CarregarEmpresas()
+        {
+            cmbEmpresa.Items.Clear();
+
+            if (!EstaEmModoSqlServer())
+            {
+                cmbEmpresa.Items.Add("MATRIZ");
+                cmbEmpresa.SelectedIndex = 0;
+                cmbEmpresa.Enabled = true;
+                return;
+            }
+
+            DatabaseConfig.ConfigData config = DatabaseConfig.LoadConfiguration();
+            string lojaConfigurada = config?.Loja?.Trim() ?? "";
+
+            try
+            {
+                foreach (string loja in DatabaseConfig.ListarLojas())
+                    cmbEmpresa.Items.Add(loja);
+            }
+            catch
+            {
+                // Mantem a empresa configurada disponivel como fallback legado.
+            }
+
+            int indiceConfigurado = string.IsNullOrWhiteSpace(lojaConfigurada)
+                ? -1
+                : cmbEmpresa.FindStringExact(lojaConfigurada);
+
+            if (indiceConfigurado >= 0)
+            {
+                cmbEmpresa.SelectedIndex = indiceConfigurado;
+            }
+            else if (!string.IsNullOrWhiteSpace(lojaConfigurada))
+            {
+                cmbEmpresa.Items.Add(lojaConfigurada);
+                cmbEmpresa.SelectedItem = lojaConfigurada;
+            }
+            else if (cmbEmpresa.Items.Count > 0)
+            {
+                cmbEmpresa.SelectedIndex = 0;
+            }
+
+            cmbEmpresa.Enabled = true;
+        }
+
+        private static bool EstaEmModoSqlServer()
+        {
+            try
+            {
+                ConfiguracaoSistema config = ConfiguracaoSistema.Carregar();
+                return config == null || config.TipoConexaoAtiva == TipoConexao.SqlServer;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         private void FormFiltrosCarregamento_Activated(object sender, EventArgs e)

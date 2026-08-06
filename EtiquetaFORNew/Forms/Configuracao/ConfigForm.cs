@@ -398,26 +398,9 @@ namespace EtiquetaFORNew
                 cmbLoja.Items.Clear();
                 cmbLoja.Enabled = false;
 
-                using (System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(connectionString))
+                foreach (string loja in DatabaseConfig.ListarLojas(connectionString))
                 {
-                    conn.Open();
-
-                    string query = @"
-                        SELECT Loja
-                        FROM Integrar_Lojas 
-                        WHERE Desativado = 0
-                        ORDER BY Loja";
-
-                    using (System.Data.SqlClient.SqlCommand cmd = new System.Data.SqlClient.SqlCommand(query, conn))
-                    {
-                        using (System.Data.SqlClient.SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                cmbLoja.Items.Add(reader.GetString(0));
-                            }
-                        }
-                    }
+                    cmbLoja.Items.Add(loja);
                 }
 
                 if (cmbLoja.Items.Count > 0)
