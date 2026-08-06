@@ -65,6 +65,14 @@ namespace EtiquetaFORNew.Forms
         private Button btnFundoTransparente;
         private ComboBox cmbBordaElemento;
         private NumericUpDown numEspessuraBorda;
+        private Label lblNumeracaoAgrupada;
+        private CheckBox chkNumeracaoAgrupada;
+        private Label lblSimbologiaCodigoBarras;
+        private ComboBox cmbSimbologiaCodigoBarras;
+        private Label lblExibirNumeracaoCodigoBarras;
+        private CheckBox chkExibirNumeracaoCodigoBarras;
+        private Label lblRenderizacaoLinear1D;
+        private CheckBox chkRenderizacaoLinear1D;
         private Label lblPropriedadesElemento;
         private ComboBox cmbFonte;
         private Label lblCalculoPreco;
@@ -124,7 +132,7 @@ namespace EtiquetaFORNew.Forms
         // =========================================================
 
         // Constantes
-        private const float MM_PARA_PIXEL = 3.78f;
+        private const float MM_PARA_PIXEL = 96f / 25.4f;
         private float zoom = 1.0f;
         private string elementosCopiados;
         private int sequenciaColagem;
@@ -1340,6 +1348,7 @@ namespace EtiquetaFORNew.Forms
 
                 cmbFonte = new ComboBox
                 {
+                    Name = "cmbFonte",
                     Location = new Point(190, yPos2),
                     Size = new Size(160, 23),
                     DropDownStyle = ComboBoxStyle.DropDownList,
@@ -1564,6 +1573,7 @@ namespace EtiquetaFORNew.Forms
 
                 cmbBordaElemento = new ComboBox
                 {
+                    Name = "cmbBordaElemento",
                     Location = new Point(190, yPos2),
                     Size = new Size(160, 23),
                     DropDownStyle = ComboBoxStyle.DropDownList,
@@ -1599,8 +1609,107 @@ namespace EtiquetaFORNew.Forms
                 numEspessuraBorda.ValueChanged += (s, e) => AlterarEspessuraBordaElementosSelecionados();
                 panelPropriedades.Controls.Add(numEspessuraBorda);
 
-
             }
+
+            lblSimbologiaCodigoBarras = new Label
+            {
+                Name = "lblSimbologiaCodigoBarras",
+                Text = "Tipo do Código:",
+                Location = new Point(10, 470),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+            panelPropriedades.Controls.Add(lblSimbologiaCodigoBarras);
+
+            cmbSimbologiaCodigoBarras = new ComboBox
+            {
+                Name = "cmbSimbologiaCodigoBarras",
+                Location = new Point(190, 470),
+                Size = new Size(120, 23),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8),
+                Visible = false
+            };
+            cmbSimbologiaCodigoBarras.Items.AddRange(new object[] { "Code128", "EAN-13" });
+            cmbSimbologiaCodigoBarras.SelectedIndexChanged +=
+                (s, e) => AlterarSimbologiaCodigoBarras();
+            panelPropriedades.Controls.Add(cmbSimbologiaCodigoBarras);
+
+            lblExibirNumeracaoCodigoBarras = new Label
+            {
+                Name = "lblExibirNumeracaoCodigoBarras",
+                Text = "Exibir Numeração:",
+                Location = new Point(10, 495),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+            panelPropriedades.Controls.Add(lblExibirNumeracaoCodigoBarras);
+
+            chkExibirNumeracaoCodigoBarras = new CheckBox
+            {
+                Name = "chkExibirNumeracaoCodigoBarras",
+                Text = "Sim",
+                Location = new Point(190, 495),
+                Size = new Size(80, 22),
+                Font = new Font("Segoe UI", 8),
+                Checked = true,
+                Visible = false
+            };
+            chkExibirNumeracaoCodigoBarras.CheckedChanged +=
+                (s, e) => AlterarExibicaoNumeracaoCodigoBarras();
+            panelPropriedades.Controls.Add(chkExibirNumeracaoCodigoBarras);
+
+            lblNumeracaoAgrupada = new Label
+            {
+                Name = "lblNumeracaoAgrupada",
+                Text = "Numeração Desagrupada:",
+                Location = new Point(10, 500),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+            panelPropriedades.Controls.Add(lblNumeracaoAgrupada);
+
+            chkNumeracaoAgrupada = new CheckBox
+            {
+                Name = "chkNumeracaoAgrupada",
+                Text = "Sim",
+                Location = new Point(190, 500),
+                Size = new Size(80, 22),
+                Font = new Font("Segoe UI", 8),
+                Visible = false
+            };
+            chkNumeracaoAgrupada.CheckedChanged += (s, e) => AlterarNumeracaoAgrupada();
+            panelPropriedades.Controls.Add(chkNumeracaoAgrupada);
+
+            lblRenderizacaoLinear1D = new Label
+            {
+                Name = "lblRenderizacaoLinear1D",
+                Text = "Renderização:",
+                Location = new Point(10, 530),
+                Size = new Size(160, 20),
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                ForeColor = Color.Gray,
+                Visible = false
+            };
+            panelPropriedades.Controls.Add(lblRenderizacaoLinear1D);
+
+            chkRenderizacaoLinear1D = new CheckBox
+            {
+                Name = "chkRenderizacaoLinear1D",
+                Text = "Linear (1D)",
+                Location = new Point(190, 530),
+                Size = new Size(100, 22),
+                Font = new Font("Segoe UI", 8),
+                Visible = false
+            };
+            chkRenderizacaoLinear1D.CheckedChanged += (s, e) => AlterarRenderizacaoLinear1D();
+            panelPropriedades.Controls.Add(chkRenderizacaoLinear1D);
 
             PropertyPanelLayoutManager.Configure(panelPropriedades);
         }
@@ -2452,6 +2561,48 @@ namespace EtiquetaFORNew.Forms
                 {
                     DefinirValorNumerico(numEspessuraBorda, (decimal)Math.Max(0.1f, elementoReferencia.EspessuraBorda));
                     numEspessuraBorda.Enabled = elementoReferencia.Borda == TipoBordaElemento.SolidaPreta;
+                }
+
+                bool codigoBarrasIndividual = edicaoIndividual &&
+                    elementoReferencia.Tipo == TipoElemento.CodigoBarras;
+                bool ean13Selecionado = codigoBarrasIndividual &&
+                    elementoReferencia.SimbologiaCodigoBarras == TipoSimbologiaCodigoBarras.Ean13;
+                if (lblSimbologiaCodigoBarras != null)
+                    lblSimbologiaCodigoBarras.Visible = codigoBarrasIndividual;
+                if (cmbSimbologiaCodigoBarras != null)
+                {
+                    cmbSimbologiaCodigoBarras.Visible = codigoBarrasIndividual;
+                    cmbSimbologiaCodigoBarras.SelectedIndex = ean13Selecionado ? 1 : 0;
+                }
+                bool code128Selecionado = codigoBarrasIndividual && !ean13Selecionado;
+                if (lblExibirNumeracaoCodigoBarras != null)
+                    lblExibirNumeracaoCodigoBarras.Visible = code128Selecionado;
+                if (chkExibirNumeracaoCodigoBarras != null)
+                {
+                    chkExibirNumeracaoCodigoBarras.Visible = code128Selecionado;
+                    chkExibirNumeracaoCodigoBarras.Checked = code128Selecionado &&
+                        elementoReferencia.ExibirNumeracaoCodigoBarras;
+                }
+                bool exibirConfiguracaoAgrupamento = codigoBarrasIndividual &&
+                    (ean13Selecionado || elementoReferencia.ExibirNumeracaoCodigoBarras);
+                if (lblNumeracaoAgrupada != null)
+                    lblNumeracaoAgrupada.Visible = exibirConfiguracaoAgrupamento;
+                if (chkNumeracaoAgrupada != null)
+                {
+                    chkNumeracaoAgrupada.Visible = exibirConfiguracaoAgrupamento;
+                    chkNumeracaoAgrupada.Checked = codigoBarrasIndividual &&
+                        (elementoReferencia.NumeracaoAgrupada ||
+                         elementoReferencia.RenderizacaoLinear1D || ean13Selecionado);
+                    chkNumeracaoAgrupada.Enabled = codigoBarrasIndividual &&
+                        !elementoReferencia.RenderizacaoLinear1D && !ean13Selecionado;
+                }
+                if (lblRenderizacaoLinear1D != null)
+                    lblRenderizacaoLinear1D.Visible = false;
+                if (chkRenderizacaoLinear1D != null)
+                {
+                    chkRenderizacaoLinear1D.Visible = false;
+                    chkRenderizacaoLinear1D.Checked = codigoBarrasIndividual &&
+                        elementoReferencia.RenderizacaoLinear1D;
                 }
 
                 AtualizarBotoesAlinhamento();
@@ -3442,8 +3593,42 @@ namespace EtiquetaFORNew.Forms
                     break;
 
                 case TipoElemento.CodigoBarras:
-                    string codigoBarras = ObterValorCampo(elem.Conteudo, produto);
-                    DesenharCodigoBarras(g, codigoBarras, bounds);
+                    // No canvas ainda nao existe um produto real. Uma amostra
+                    // numerica evita enviar nomes descritivos (inclusive com
+                    // acentos) ao codificador Code128.
+                    string codigoBarras = produto == null
+                        ? "7891222153918"
+                        : ObterValorCampo(elem.Conteudo, produto);
+                    if (elem.SimbologiaCodigoBarras == TipoSimbologiaCodigoBarras.Ean13)
+                    {
+                        string codigoPreparado;
+                        string mensagemErro;
+                        if (!CodigoBarrasRenderer.TryPrepararCodigo(
+                            codigoBarras,
+                            TipoSimbologiaCodigoBarras.Ean13,
+                            out codigoPreparado,
+                            out mensagemErro))
+                        {
+                            codigoBarras = "7891222153918";
+                        }
+                    }
+                    using (Font fonteComZoom = new Font(
+                        elem.Fonte.FontFamily,
+                        elem.Fonte.Size * zoom,
+                        elem.Fonte.Style))
+                    {
+                        CodigoBarrasRenderer.Renderizar(
+                            g,
+                            codigoBarras,
+                            bounds,
+                            false,
+                            elem.SimbologiaCodigoBarras,
+                            elem.ExibirNumeracaoCodigoBarras,
+                            elem.RenderizacaoLinear1D,
+                            elem.NumeracaoAgrupada,
+                            fonteComZoom,
+                            elem.Cor);
+                    }
                     break;
 
                 case TipoElemento.Imagem:
@@ -3572,6 +3757,85 @@ namespace EtiquetaFORNew.Forms
             return resultado.Sucesso ? FormatadorMonetario.Formatar(resultado.Valor) : "[Erro]";
         }
 
+        private void AlterarNumeracaoAgrupada()
+        {
+            if (atualizandoPropriedades || elementoSelecionado == null ||
+                elementoSelecionado.Tipo != TipoElemento.CodigoBarras ||
+                chkNumeracaoAgrupada == null)
+            {
+                return;
+            }
+
+            bool novoValor = chkNumeracaoAgrupada.Checked;
+            if (elementoSelecionado.NumeracaoAgrupada == novoValor)
+                return;
+
+            elementoSelecionado.NumeracaoAgrupada = novoValor;
+            SalvarEstadoHistorico();
+            pbCanvas.Invalidate();
+        }
+
+        private void AlterarSimbologiaCodigoBarras()
+        {
+            if (atualizandoPropriedades || elementoSelecionado == null ||
+                elementoSelecionado.Tipo != TipoElemento.CodigoBarras ||
+                cmbSimbologiaCodigoBarras == null ||
+                cmbSimbologiaCodigoBarras.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            TipoSimbologiaCodigoBarras novaSimbologia =
+                cmbSimbologiaCodigoBarras.SelectedIndex == 1
+                    ? TipoSimbologiaCodigoBarras.Ean13
+                    : TipoSimbologiaCodigoBarras.Code128;
+            if (elementoSelecionado.SimbologiaCodigoBarras == novaSimbologia)
+                return;
+
+            elementoSelecionado.SimbologiaCodigoBarras = novaSimbologia;
+            SalvarEstadoHistorico();
+            AtualizarPainelPropriedades();
+            pbCanvas.Invalidate();
+        }
+
+        private void AlterarExibicaoNumeracaoCodigoBarras()
+        {
+            if (atualizandoPropriedades || elementoSelecionado == null ||
+                elementoSelecionado.Tipo != TipoElemento.CodigoBarras ||
+                elementoSelecionado.SimbologiaCodigoBarras != TipoSimbologiaCodigoBarras.Code128 ||
+                chkExibirNumeracaoCodigoBarras == null)
+            {
+                return;
+            }
+
+            bool novoValor = chkExibirNumeracaoCodigoBarras.Checked;
+            if (elementoSelecionado.ExibirNumeracaoCodigoBarras == novoValor)
+                return;
+
+            elementoSelecionado.ExibirNumeracaoCodigoBarras = novoValor;
+            SalvarEstadoHistorico();
+            pbCanvas.Invalidate();
+        }
+
+        private void AlterarRenderizacaoLinear1D()
+        {
+            if (atualizandoPropriedades || elementoSelecionado == null ||
+                elementoSelecionado.Tipo != TipoElemento.CodigoBarras ||
+                chkRenderizacaoLinear1D == null)
+            {
+                return;
+            }
+
+            bool novoValor = chkRenderizacaoLinear1D.Checked;
+            if (elementoSelecionado.RenderizacaoLinear1D == novoValor)
+                return;
+
+            elementoSelecionado.RenderizacaoLinear1D = novoValor;
+            SalvarEstadoHistorico();
+            AtualizarPainelPropriedades();
+            pbCanvas.Invalidate();
+        }
+
         private static ResultadoExpressao ValidarExpressaoDesigner(string expressao)
         {
             string campo = (expressao ?? string.Empty).Trim();
@@ -3579,27 +3843,6 @@ namespace EtiquetaFORNew.Forms
                 return ResultadoExpressao.Ok(0m, new[] { campo });
 
             return ExpressionEngine.Validar(expressao);
-        }
-
-        private void DesenharCodigoBarras(Graphics g, string codigo, Rectangle bounds)
-        {
-            string codigoLimpo = new string(Array.FindAll(codigo.ToCharArray(), c => char.IsDigit(c)));
-            if (string.IsNullOrEmpty(codigoLimpo)) codigoLimpo = "0000000000";
-            if (codigoLimpo.Length < 8) codigoLimpo = codigoLimpo.PadLeft(8, '0');
-
-            float larguraBarra = (float)bounds.Width / (codigoLimpo.Length * 2);
-            float alturaBarras = bounds.Height;
-
-            for (int i = 0; i < codigoLimpo.Length; i++)
-            {
-                int digito = int.Parse(codigoLimpo[i].ToString());
-                float larguraAtual = (digito % 2 == 0) ? larguraBarra : larguraBarra * 1.5f;
-                float x = bounds.X + (i * larguraBarra * 2);
-
-                using (SolidBrush brush = new SolidBrush(Color.Black))
-                    g.FillRectangle(brush, x, bounds.Y, larguraAtual, alturaBarras);
-            }
-            
         }
 
         private bool PontoEmRetanguloRotacionado(Point ponto, Rectangle bounds, float rotacao)

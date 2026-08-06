@@ -260,6 +260,8 @@
     <Compile Include="Core\Business\CarregadorDados.cs" />
     <Compile Include="Printing\Elements\CalculadoraCamposEtiqueta.cs" />
     <Compile Include="Printing\Elements\CampoEtiquetaResolver.cs" />
+    <Compile Include="Printing\Elements\CodigoBarrasHumanReadableHelper.cs" />
+    <Compile Include="Printing\Elements\CodigoBarrasRenderer.cs" />
     <Compile Include="Core\Models\Classes.cs" />
     <Compile Include="Core\Configuration\ConfiguracaoManager.cs" />
     <Compile Include="Printing\Elements\DescricaoMercadoriaDisplayHelper.cs" />

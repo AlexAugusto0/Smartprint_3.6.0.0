@@ -53,6 +53,12 @@ namespace EtiquetaFORNew
         SolidaPreta
     }
 
+    public enum TipoSimbologiaCodigoBarras
+    {
+        Code128 = 0,
+        Ean13 = 1
+    }
+
     // Classe de Elemento da Etiqueta
     public class ElementoEtiqueta
     {
@@ -80,6 +86,10 @@ namespace EtiquetaFORNew
         public decimal ValorCalculoPreco { get; set; }
         public TipoBordaElemento Borda { get; set; }
         public float EspessuraBorda { get; set; }
+        public bool NumeracaoAgrupada { get; set; }
+        public bool RenderizacaoLinear1D { get; set; }
+        public TipoSimbologiaCodigoBarras SimbologiaCodigoBarras { get; set; }
+        public bool ExibirNumeracaoCodigoBarras { get; set; }
 
         public ElementoEtiqueta()
         {
@@ -91,6 +101,10 @@ namespace EtiquetaFORNew
             ValorCalculoPreco = 0m;
             Borda = TipoBordaElemento.Transparente;
             EspessuraBorda = 1;
+            NumeracaoAgrupada = false;
+            RenderizacaoLinear1D = false;
+            SimbologiaCodigoBarras = TipoSimbologiaCodigoBarras.Code128;
+            ExibirNumeracaoCodigoBarras = true;
         }
     }
 

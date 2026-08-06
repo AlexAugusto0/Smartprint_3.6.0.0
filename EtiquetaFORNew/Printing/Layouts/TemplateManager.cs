@@ -214,7 +214,11 @@ namespace EtiquetaFORNew
                     OperadorCalculoPreco = elem.OperadorCalculoPreco,
                     ValorCalculoPreco = elem.ValorCalculoPreco,
                     Borda = elem.Borda.ToString(),
-                    EspessuraBorda = Math.Max(0.1f, elem.EspessuraBorda)
+                    EspessuraBorda = Math.Max(0.1f, elem.EspessuraBorda),
+                    NumeracaoAgrupada = elem.NumeracaoAgrupada,
+                    RenderizacaoLinear1D = elem.RenderizacaoLinear1D,
+                    SimbologiaCodigoBarras = elem.SimbologiaCodigoBarras.ToString(),
+                    ExibirNumeracaoCodigoBarras = elem.ExibirNumeracaoCodigoBarras
                 };
 
                 // ⭐ NOVA: Salvar cor de fundo se definida
@@ -264,7 +268,11 @@ namespace EtiquetaFORNew
                     OperadorCalculoPreco = elemSer.OperadorCalculoPreco,
                     ValorCalculoPreco = elemSer.ValorCalculoPreco,
                     Borda = ObterTipoBorda(elemSer.Borda),
-                    EspessuraBorda = elemSer.EspessuraBorda > 0 ? Math.Max(0.1f, elemSer.EspessuraBorda) : 1
+                    EspessuraBorda = elemSer.EspessuraBorda > 0 ? Math.Max(0.1f, elemSer.EspessuraBorda) : 1,
+                    NumeracaoAgrupada = elemSer.NumeracaoAgrupada,
+                    RenderizacaoLinear1D = elemSer.RenderizacaoLinear1D,
+                    SimbologiaCodigoBarras = ObterSimbologiaCodigoBarras(elemSer.SimbologiaCodigoBarras),
+                    ExibirNumeracaoCodigoBarras = elemSer.ExibirNumeracaoCodigoBarras ?? true
                 };
 
                 // Alinhamento
@@ -341,6 +349,14 @@ namespace EtiquetaFORNew
 
             return TipoBordaElemento.Transparente;
         }
+
+        private static TipoSimbologiaCodigoBarras ObterSimbologiaCodigoBarras(string simbologia)
+        {
+            TipoSimbologiaCodigoBarras resultado;
+            return Enum.TryParse(simbologia, true, out resultado)
+                ? resultado
+                : TipoSimbologiaCodigoBarras.Code128;
+        }
     }
 
     // Classes para serialização JSON
@@ -380,5 +396,9 @@ namespace EtiquetaFORNew
         public decimal ValorCalculoPreco { get; set; }
         public string Borda { get; set; }
         public float EspessuraBorda { get; set; }
+        public bool NumeracaoAgrupada { get; set; }
+        public bool RenderizacaoLinear1D { get; set; }
+        public string SimbologiaCodigoBarras { get; set; }
+        public bool? ExibirNumeracaoCodigoBarras { get; set; }
     }
 }

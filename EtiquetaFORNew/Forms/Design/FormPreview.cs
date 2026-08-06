@@ -4,8 +4,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Printing;
 using System.Windows.Forms;
-using BarcodeStandard;
-using SkiaSharp;
 using EtiquetaFORNew.Data;
 
 namespace EtiquetaFORNew
@@ -15,7 +13,7 @@ namespace EtiquetaFORNew
         private TemplateEtiqueta template;
         private ConfiguracaoEtiqueta configuracao;
         private PictureBox pbPreview;
-        private const float PIXELS_POR_MM = 3.0f;
+        private const float PIXELS_POR_MM = 96f / 25.4f;
         private string nomePapel;
         private float larguraPapelMM;
         private float alturaPapelMM;
@@ -364,7 +362,13 @@ namespace EtiquetaFORNew
             DesenharElementoEscalado(g, elem, rectEtiqueta, produto, PIXELS_POR_MM);
         }
 
-        private void DesenharElementoEscalado(Graphics g, ElementoEtiqueta elem, RectangleF rectEtiqueta, Produto produto, float escala)
+        private void DesenharElementoEscalado(
+            Graphics g,
+            ElementoEtiqueta elem,
+            RectangleF rectEtiqueta,
+            Produto produto,
+            float escala,
+            bool areaEmMilimetros = false)
         {
             // Calcular escala correta (MM para pixels)
             RectangleF bounds = new RectangleF(
@@ -397,7 +401,9 @@ namespace EtiquetaFORNew
             }
 
             // Desenhar conteúdo
-            float tamanhoFonte = elem.Fonte.Size * escala / PIXELS_POR_MM;
+            // Font usa pontos; o próprio Graphics converte pontos conforme seu DPI.
+            // A escala altera apenas as coordenadas físicas do elemento.
+            float tamanhoFonte = elem.Fonte.Size;
             using (Font fonte = new Font(elem.Fonte.FontFamily, tamanhoFonte, elem.Fonte.Style))
             using (SolidBrush brush = new SolidBrush(elem.Cor))
             {
@@ -427,7 +433,17 @@ namespace EtiquetaFORNew
 
                     case TipoElemento.CodigoBarras:
                         string codigoBarras = ObterCodigoBarras(elem.Conteudo, produto);
-                        DesenharCodigoBarras(g, codigoBarras, bounds);
+                        CodigoBarrasRenderer.Renderizar(
+                            g,
+                            codigoBarras,
+                            bounds,
+                            areaEmMilimetros,
+                            elem.SimbologiaCodigoBarras,
+                            elem.ExibirNumeracaoCodigoBarras,
+                            elem.RenderizacaoLinear1D,
+                            elem.NumeracaoAgrupada,
+                            fonte,
+                            elem.Cor);
                         break;
 
                     case TipoElemento.Imagem:
@@ -567,73 +583,6 @@ namespace EtiquetaFORNew
             }
         }
 
-        private void DesenharCodigoBarras(Graphics g, string codigo, RectangleF bounds)
-        {
-            string codigoLimpo = new string(Array.FindAll(codigo.ToCharArray(), c => char.IsDigit(c)));
-
-            if (string.IsNullOrEmpty(codigoLimpo))
-            {
-                g.DrawString("[SEM CÓDIGO]", new Font("Arial", bounds.Height * 0.15f), Brushes.Gray, bounds);
-                return;
-            }
-
-            try
-            {
-                Barcode b = new Barcode();
-
-                int larguraPixels = (int)Math.Round(bounds.Width * 2.0f);
-                int alturaPixels = (int)Math.Round(bounds.Height * 2.0f);
-
-                if (larguraPixels <= 1 || alturaPixels <= 1)
-                {
-                    throw new Exception("Dimensões inválidas.");
-                }
-
-                b.Width = larguraPixels;
-                b.Height = alturaPixels;
-                b.IncludeLabel = false;
-                b.Alignment = AlignmentPositions.Center;
-                b.ForeColor = SKColors.Black;
-                b.BackColor = SKColors.White;
-
-                using (SKImage skImage = b.Encode(BarcodeStandard.Type.Code128, codigoLimpo))
-                {
-                    if (skImage != null)
-                    {
-                        using (SKData skData = skImage.Encode(SKEncodedImageFormat.Png, 100))
-                        {
-                            if (skData != null)
-                            {
-                                using (System.IO.MemoryStream ms = new System.IO.MemoryStream())
-                                {
-                                    skData.SaveTo(ms);
-                                    ms.Seek(0, System.IO.SeekOrigin.Begin);
-
-                                    using (System.Drawing.Image barcodeImage = System.Drawing.Image.FromStream(ms))
-                                    {
-                                        g.DrawImage(barcodeImage, bounds);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                using (Font fontErro = new Font("Arial", bounds.Height * 0.10f))
-                {
-                    StringFormat sf = new StringFormat
-                    {
-                        Alignment = StringAlignment.Center,
-                        LineAlignment = StringAlignment.Center
-                    };
-                    g.DrawString($"ERRO: {codigoLimpo}",
-                                 fontErro, Brushes.Red, bounds, sf);
-                }
-            }
-        }
-
         private void BtnImprimir_Click(object sender, EventArgs e)
         {
             try
@@ -683,40 +632,42 @@ namespace EtiquetaFORNew
         private void PrintDoc_PrintPage(object sender, PrintPageEventArgs e)
         {
             Graphics g = e.Graphics;
+            g.PageUnit = GraphicsUnit.Millimeter;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
-            const float PIXELS_POR_MM_IMPRESSAO = 100f / 25.4f;
+            const float escalaEmMilimetros = 1f;
 
             for (int linha = 0; linha < configuracao.NumLinhas; linha++)
             {
                 for (int coluna = 0; coluna < configuracao.NumColunas; coluna++)
                 {
-                    DesenharEtiquetaImpressao(g, linha, coluna, PIXELS_POR_MM_IMPRESSAO);
+                    DesenharEtiquetaImpressao(g, linha, coluna, escalaEmMilimetros);
                 }
             }
 
             e.HasMorePages = false;
         }
 
-        private void DesenharEtiquetaImpressao(Graphics g, int linha, int coluna, float pixelsPorMM)
+        private void DesenharEtiquetaImpressao(Graphics g, int linha, int coluna, float escala)
         {
             float xMM = configuracao.MargemEsquerda +
                        (coluna * (configuracao.LarguraEtiqueta + configuracao.EspacamentoColunas));
             float yMM = configuracao.MargemSuperior +
                        (linha * (configuracao.AlturaEtiqueta + configuracao.EspacamentoLinhas));
 
-            float x = xMM * pixelsPorMM;
-            float y = yMM * pixelsPorMM;
-            float largura = configuracao.LarguraEtiqueta * pixelsPorMM;
-            float altura = configuracao.AlturaEtiqueta * pixelsPorMM;
+            float x = xMM * escala;
+            float y = yMM * escala;
+            float largura = configuracao.LarguraEtiqueta * escala;
+            float altura = configuracao.AlturaEtiqueta * escala;
 
             RectangleF rectEtiqueta = new RectangleF(x, y, largura, altura);
 
             if (template.Elementos.Count > 0)
             {
                 foreach (var elem in template.Elementos)
-                    DesenharElementoEscalado(g, elem, rectEtiqueta, produtoExemplo, pixelsPorMM);
+                    DesenharElementoEscalado(
+                        g, elem, rectEtiqueta, produtoExemplo, escala, true);
             }
             else
             {

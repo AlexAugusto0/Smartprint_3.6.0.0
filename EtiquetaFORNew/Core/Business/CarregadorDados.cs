@@ -52,10 +52,10 @@ namespace EtiquetaFORNew.Data
             switch (tipo.ToUpper())
             {
                 case "AJUSTES":
-                    return CarregarAjustes(documento, dataInicial, dataFinal, loja);
+                    return CarregarAjustes(documento, dataInicial, dataFinal, loja, isConfeccao);
 
                 case "BALANÇOS":
-                    return CarregarBalancos(documento, dataInicial, dataFinal, loja);
+                    return CarregarBalancos(documento, dataInicial, dataFinal, loja, isConfeccao);
 
                 case "NOTAS ENTRADA":
                     if (EstaEmModoSoftcomShop())
@@ -235,7 +235,7 @@ namespace EtiquetaFORNew.Data
         /// Carrega produtos de ajustes de estoque
         /// Equivalente: GeradordeEtiquetas_CarregarAjustes
         /// </summary>
-        private static DataTable CarregarAjustes(string numeroAjuste, DateTime? dataInicial, DateTime? dataFinal, string lojaSelecionada)
+        private static DataTable CarregarAjustes(string numeroAjuste, DateTime? dataInicial, DateTime? dataFinal, string lojaSelecionada, bool isConfeccao)
         {
             try
             {
@@ -261,7 +261,8 @@ namespace EtiquetaFORNew.Data
                         "Data", "Data da Compra", "Data Compra", "Data do Inventário", "Data do Inventario",
                         "Data do Ajuste", "DataAjuste", "Emissão", "Emissao"
                     },
-                    lojaSelecionada: lojaSelecionada);
+                    lojaSelecionada: lojaSelecionada,
+                    isConfeccao: isConfeccao);
             }
             catch (Exception ex)
             {
@@ -276,7 +277,7 @@ namespace EtiquetaFORNew.Data
         /// Carrega produtos de balanÃ§os de estoque
         /// Equivalente: GeradordeEtiquetas_CarregarBalancos
         /// </summary>
-        private static DataTable CarregarBalancos(string numeroBalanco, DateTime? dataInicial, DateTime? dataFinal, string lojaSelecionada)
+        private static DataTable CarregarBalancos(string numeroBalanco, DateTime? dataInicial, DateTime? dataFinal, string lojaSelecionada, bool isConfeccao)
         {
             try
             {
@@ -302,7 +303,8 @@ namespace EtiquetaFORNew.Data
                         "Data", "Data da Compra", "Data Compra", "Data do Balanço", "Data do Balanco",
                         "DataBalanco", "Emissão", "Emissao"
                     },
-                    lojaSelecionada: lojaSelecionada);
+                    lojaSelecionada: lojaSelecionada,
+                    isConfeccao: isConfeccao);
             }
             catch (Exception ex)
             {
@@ -331,7 +333,8 @@ namespace EtiquetaFORNew.Data
             string[] colunasDocumentoCabecalho,
             string[] colunasDocumentoItens,
             string[] colunasData,
-            string lojaSelecionada)
+            string lojaSelecionada,
+            bool isConfeccao)
         {
             string connectionStringSQLServer = DatabaseConfig.GetConnectionString();
             if (string.IsNullOrEmpty(connectionStringSQLServer))
@@ -422,6 +425,31 @@ namespace EtiquetaFORNew.Data
                     ? "WHERE " + string.Join(" AND ", condicoes)
                     : "";
 
+                string origemMovimento = @"
+                        FROM " + tabelaCabecalho.NomeQualificado + @" h
+                        INNER JOIN " + tabelaItens.NomeQualificado + @" s
+                            ON h." + DelimitarIdentificador(docCabecalho) + @" = s." + DelimitarIdentificador(docItens) + @"
+                        " + whereMovimento;
+
+                if (isConfeccao)
+                {
+                    string filtrosCabecalho = condicoes.Count > 0
+                        ? " AND " + string.Join(" AND ", condicoes)
+                        : "";
+
+                    // EXISTS preserva cada linha real do movimento uma unica
+                    // vez, mesmo que haja cabecalhos repetidos para o documento.
+                    origemMovimento = @"
+                        FROM " + tabelaItens.NomeQualificado + @" s
+                        WHERE EXISTS
+                        (
+                            SELECT 1
+                            FROM " + tabelaCabecalho.NomeQualificado + @" h
+                            WHERE h." + DelimitarIdentificador(docCabecalho) + @" = s." + DelimitarIdentificador(docItens) + @"
+                                " + filtrosCabecalho + @"
+                        )";
+                }
+
                 string codigoMovimento = "CAST(s." + DelimitarIdentificador(itemCodigo) + " AS NVARCHAR(50))";
                 string codBarrasMovimento = string.IsNullOrEmpty(itemCodBarras)
                     ? "CAST('' AS NVARCHAR(100))"
@@ -432,6 +460,21 @@ namespace EtiquetaFORNew.Data
                 string coresMovimento = string.IsNullOrEmpty(itemCores)
                     ? "CAST('' AS NVARCHAR(50))"
                     : "ISNULL(CAST(s." + DelimitarIdentificador(itemCores) + " AS NVARCHAR(50)), '')";
+
+                bool agruparConfeccaoPorTamCor = isConfeccao &&
+                    (!string.IsNullOrEmpty(itemTam) || !string.IsNullOrEmpty(itemCores));
+                string codBarrasResultadoMovimento = agruparConfeccaoPorTamCor
+                    ? "ISNULL(MAX(NULLIF(" + codBarrasMovimento + ", '')), '')"
+                    : codBarrasMovimento;
+
+                List<string> agrupamentosMovimento = new List<string>
+                {
+                    codigoMovimento
+                };
+                if (!agruparConfeccaoPorTamCor)
+                    agrupamentosMovimento.Add(codBarrasMovimento);
+                agrupamentosMovimento.Add(tamMovimento);
+                agrupamentosMovimento.Add(coresMovimento);
 
                 string quantidadeMovimento = "CAST(1 AS INT)";
                 if (!string.IsNullOrEmpty(itemQuantidade))
@@ -454,24 +497,90 @@ namespace EtiquetaFORNew.Data
                     produtoAtivoFiltro = " AND ISNULL(p." + DelimitarIdentificador(prodDesativado) + ", 0) = 0";
                 }
 
+                string origemProdutos = @"
+                    INNER JOIN " + tabelaProdutos.NomeQualificado + @" p
+                        ON CAST(p." + DelimitarIdentificador(prodCodigo) + @" AS NVARCHAR(50)) = mv.CodigoMercadoria
+                        " + produtoLojaFiltro + @"
+                        " + produtoAtivoFiltro;
+
+                if (isConfeccao)
+                {
+                    string produtoLojaFiltroGrade = "";
+                    if (!string.IsNullOrWhiteSpace(loja) && !string.IsNullOrEmpty(prodLoja))
+                    {
+                        produtoLojaFiltroGrade = " AND CAST(pc." + DelimitarIdentificador(prodLoja) +
+                                                  " AS NVARCHAR(50)) = @loja";
+                    }
+
+                    string produtoAtivoFiltroGrade = "";
+                    if (!string.IsNullOrEmpty(prodDesativado))
+                    {
+                        produtoAtivoFiltroGrade = " AND ISNULL(pc." +
+                                                  DelimitarIdentificador(prodDesativado) + ", 0) = 0";
+                    }
+
+                    List<string> ordenacaoVariacao = new List<string>();
+                    List<string> codigosGradeProduto = new[] { prodCodBarrasGrade, prodCodBarras }
+                        .Where(coluna => !string.IsNullOrEmpty(coluna))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Select(coluna =>
+                            "LTRIM(RTRIM(ISNULL(CAST(pc." + DelimitarIdentificador(coluna) +
+                            " AS NVARCHAR(100)), ''))) = LTRIM(RTRIM(mv.CodBarras))")
+                        .ToList();
+
+                    if (!string.IsNullOrEmpty(itemCodBarras) && codigosGradeProduto.Count > 0)
+                    {
+                        ordenacaoVariacao.Add(
+                            "CASE WHEN NULLIF(LTRIM(RTRIM(mv.CodBarras)), '') IS NOT NULL AND (" +
+                            string.Join(" OR ", codigosGradeProduto) +
+                            ") THEN 0 WHEN NULLIF(LTRIM(RTRIM(mv.CodBarras)), '') IS NULL THEN 1 ELSE 2 END");
+                    }
+
+                    if (!string.IsNullOrEmpty(itemTam) && !string.IsNullOrEmpty(prodTam))
+                    {
+                        ordenacaoVariacao.Add(
+                            "CASE WHEN NULLIF(LTRIM(RTRIM(mv.Tam)), '') IS NOT NULL AND " +
+                            "LTRIM(RTRIM(ISNULL(CAST(pc." + DelimitarIdentificador(prodTam) +
+                            " AS NVARCHAR(50)), ''))) = LTRIM(RTRIM(mv.Tam)) " +
+                            "THEN 0 WHEN NULLIF(LTRIM(RTRIM(mv.Tam)), '') IS NULL THEN 1 ELSE 2 END");
+                    }
+
+                    if (!string.IsNullOrEmpty(itemCores) && !string.IsNullOrEmpty(prodCores))
+                    {
+                        ordenacaoVariacao.Add(
+                            "CASE WHEN NULLIF(LTRIM(RTRIM(mv.Cores)), '') IS NOT NULL AND " +
+                            "LTRIM(RTRIM(ISNULL(CAST(pc." + DelimitarIdentificador(prodCores) +
+                            " AS NVARCHAR(50)), ''))) = LTRIM(RTRIM(mv.Cores)) " +
+                            "THEN 0 WHEN NULLIF(LTRIM(RTRIM(mv.Cores)), '') IS NULL THEN 1 ELSE 2 END");
+                    }
+
+                    ordenacaoVariacao.Add(
+                        "CAST(pc." + DelimitarIdentificador(prodCodigo) + " AS NVARCHAR(50))");
+
+                    origemProdutos = @"
+                    CROSS APPLY
+                    (
+                        SELECT TOP (1) pc.*
+                        FROM " + tabelaProdutos.NomeQualificado + @" pc
+                        WHERE CAST(pc." + DelimitarIdentificador(prodCodigo) + @" AS NVARCHAR(50)) = mv.CodigoMercadoria
+                            " + produtoLojaFiltroGrade + @"
+                            " + produtoAtivoFiltroGrade + @"
+                        ORDER BY " + string.Join(", ", ordenacaoVariacao) + @"
+                    ) p";
+                }
+
                 string query = @"
                     WITH Movimento AS
                     (
                         SELECT
                             " + codigoMovimento + @" AS CodigoMercadoria,
-                            " + codBarrasMovimento + @" AS CodBarras,
+                            " + codBarrasResultadoMovimento + @" AS CodBarras,
                             " + tamMovimento + @" AS Tam,
                             " + coresMovimento + @" AS Cores,
                             " + quantidadeMovimento + @" AS Quantidade
-                        FROM " + tabelaCabecalho.NomeQualificado + @" h
-                        INNER JOIN " + tabelaItens.NomeQualificado + @" s
-                            ON h." + DelimitarIdentificador(docCabecalho) + @" = s." + DelimitarIdentificador(docItens) + @"
-                        " + whereMovimento + @"
+                        " + origemMovimento + @"
                         GROUP BY
-                            " + codigoMovimento + @",
-                            " + codBarrasMovimento + @",
-                            " + tamMovimento + @",
-                            " + coresMovimento + @"
+                            " + string.Join("," + Environment.NewLine + "                            ", agrupamentosMovimento) + @"
                     )
                     SELECT
                         mv.CodigoMercadoria,
@@ -496,10 +605,7 @@ namespace EtiquetaFORNew.Data
                         " + TextoSql("p", prodPrateleira) + @" AS Prateleira,
                         " + TextoSql("p", prodGarantia) + @" AS Garantia
                     FROM Movimento mv
-                    INNER JOIN " + tabelaProdutos.NomeQualificado + @" p
-                        ON CAST(p." + DelimitarIdentificador(prodCodigo) + @" AS NVARCHAR(50)) = mv.CodigoMercadoria
-                        " + produtoLojaFiltro + @"
-                        " + produtoAtivoFiltro + @"
+                    " + origemProdutos + @"
                     ORDER BY Mercadoria";
 
                 using (var cmd = new SqlCommand(query, conn))

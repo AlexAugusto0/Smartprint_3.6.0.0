@@ -31,6 +31,14 @@ namespace EtiquetaFORNew.UI
             public TextBox Expression;
             public Button InsertExpression;
             public Button ExpressionEditor;
+            public Label BarcodeTypeLabel;
+            public ComboBox BarcodeType;
+            public Label BarcodeNumberVisibilityLabel;
+            public CheckBox BarcodeNumberVisibility;
+            public Label GroupedNumberLabel;
+            public CheckBox GroupedNumber;
+            public Label LinearRenderingLabel;
+            public CheckBox LinearRendering;
             public Label AlignmentLabel;
             public List<Button> AlignmentButtons;
             public Label FontFamilyLabel;
@@ -134,17 +142,34 @@ namespace EtiquetaFORNew.UI
                 Expression = textBoxes.FirstOrDefault(textBox => textBox.Name != "txtConteudoElemento"),
                 InsertExpression = FindButton(buttons, "Inserir Campo"),
                 ExpressionEditor = FindButton(buttons, "..."),
+                BarcodeTypeLabel = labels.FirstOrDefault(label => label.Name == "lblSimbologiaCodigoBarras"),
+                BarcodeType = comboBoxes.FirstOrDefault(combo => combo.Name == "cmbSimbologiaCodigoBarras"),
+                BarcodeNumberVisibilityLabel = labels.FirstOrDefault(
+                    label => label.Name == "lblExibirNumeracaoCodigoBarras"),
+                BarcodeNumberVisibility = panel.Controls.OfType<CheckBox>()
+                    .FirstOrDefault(check => check.Name == "chkExibirNumeracaoCodigoBarras"),
+                GroupedNumberLabel = labels.FirstOrDefault(label => label.Name == "lblNumeracaoAgrupada"),
+                GroupedNumber = panel.Controls.OfType<CheckBox>()
+                    .FirstOrDefault(check => check.Name == "chkNumeracaoAgrupada"),
+                LinearRenderingLabel = labels.FirstOrDefault(label => label.Name == "lblRenderizacaoLinear1D"),
+                LinearRendering = panel.Controls.OfType<CheckBox>()
+                    .FirstOrDefault(check => check.Name == "chkRenderizacaoLinear1D"),
                 AlignmentLabel = FindLabel(labels, "Alinhamento:"),
                 AlignmentButtons = buttons
                     .Where(button => button.Text == "←" || button.Text == "←→" || button.Text == "→")
                     .OrderBy(button => button.Left)
                     .ToList(),
                 FontFamilyLabel = FindLabel(labels, "Família da Fonte:"),
-                FontFamily = comboBoxes.ElementAtOrDefault(0),
+                FontFamily = comboBoxes.FirstOrDefault(combo => combo.Name == "cmbFonte"),
                 FontSizeLabel = FindLabel(labels, "Tamanho da Fonte:"),
                 FontSize = numericControls.ElementAtOrDefault(2),
                 StyleLabel = FindLabel(labels, "Estilo:"),
-                StyleChecks = panel.Controls.OfType<CheckBox>().OrderBy(check => check.Left).ToList(),
+                StyleChecks = panel.Controls.OfType<CheckBox>()
+                    .Where(check => check.Name != "chkNumeracaoAgrupada" &&
+                                    check.Name != "chkRenderizacaoLinear1D" &&
+                                    check.Name != "chkExibirNumeracaoCodigoBarras")
+                    .OrderBy(check => check.Left)
+                    .ToList(),
                 TextColorLabel = FindLabel(labels, "Cor do Texto:"),
                 TextColor = FindButton(buttons, "Escolher Cor"),
                 TextShortcutsLabel = shortcutLabels.ElementAtOrDefault(0),
@@ -160,7 +185,7 @@ namespace EtiquetaFORNew.UI
                     .OrderBy(button => button.Left)
                     .ToList(),
                 BorderLabel = FindLabel(labels, "Borda:"),
-                Border = comboBoxes.ElementAtOrDefault(1),
+                Border = comboBoxes.FirstOrDefault(combo => combo.Name == "cmbBordaElemento"),
                 BorderWidthLabel = FindLabel(labels, "Espessura da Borda:"),
                 BorderWidth = numericControls.ElementAtOrDefault(3),
                 Separators = panel.Controls.OfType<Panel>().ToList()
@@ -282,6 +307,31 @@ namespace EtiquetaFORNew.UI
                 y = PlaceExpressionButtons(
                     controls.InsertExpression,
                     controls.ExpressionEditor,
+                    y,
+                    fieldLeft,
+                    fieldWidth);
+                y = PlaceStandardRow(
+                    controls.BarcodeTypeLabel,
+                    controls.BarcodeType,
+                    y,
+                    fieldLeft,
+                    fieldWidth,
+                    true);
+                y = PlaceCheckBoxRow(
+                    controls.BarcodeNumberVisibilityLabel,
+                    new[] { controls.BarcodeNumberVisibility },
+                    y,
+                    fieldLeft,
+                    fieldWidth);
+                y = PlaceCheckBoxRow(
+                    controls.GroupedNumberLabel,
+                    new[] { controls.GroupedNumber },
+                    y,
+                    fieldLeft,
+                    fieldWidth);
+                y = PlaceCheckBoxRow(
+                    controls.LinearRenderingLabel,
+                    new[] { controls.LinearRendering },
                     y,
                     fieldLeft,
                     fieldWidth);
