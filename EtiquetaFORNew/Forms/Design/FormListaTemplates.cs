@@ -1,6 +1,7 @@
 ﻿using EtiquetaFORNew.Forms;
 using System;
 using System.Collections.Generic;
+using EtiquetaFORNew.UI;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -29,6 +30,8 @@ namespace EtiquetaFORNew
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
+
+            
 
             Label lblInstrucao = new Label
             {
@@ -82,38 +85,30 @@ namespace EtiquetaFORNew
             {
                 Text = "Nova Etiqueta",
                 Location = new Point(20, 355),
-                Size = new Size(100, 30),
-                BackColor = Color.FromArgb(255, 143, 0),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat
+                Size = new Size(100, 30)
             };
-            btnNovo.FlatAppearance.BorderSize = 0;
+            ThemeManager.StylePrimaryActionButton(btnNovo);
             btnNovo.Click += (s, e) => NovaEtiqueta();
 
             Button btnExcluir = new Button
             {
                 Text = "Excluir",
-                Location = new Point(130, 355),
-                Size = new Size(100, 30),
-                BackColor = Color.FromArgb(231, 76, 60),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat
+                //Location = new Point(130, 355),
+                Location = new Point(240, 355),
+                Size = new Size(100, 30)
             };
-            btnExcluir.FlatAppearance.BorderSize = 0;
+            ThemeManager.StylePrimaryActionButton(btnExcluir);
             btnExcluir.Click += BtnExcluir_Click;
 
             Button btnRenomear = new Button
             {
                 Text = "Renomear",
-                Location = new Point(240, 355),
-                Size = new Size(100, 30),
-                //BackColor = Color.FromArgb(52, 152, 219)
-                BackColor = Color.FromArgb(237, 222, 31),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat
+                //Location = new Point(240, 355),
+                Location = new Point(130, 355),
+                Size = new Size(100, 30)
             };
 
-            btnRenomear.FlatAppearance.BorderSize = 0;
+            ThemeManager.StylePrimaryActionButton(btnRenomear);
             btnRenomear.Click += BtnRenomear_Click;
 
             Button btnCarregar = new Button
@@ -122,12 +117,9 @@ namespace EtiquetaFORNew
                 //Location = new Point(260, 355),
                 Location = new Point(370, 355),
                 Size = new Size(100, 30),
-                BackColor = Color.FromArgb(161, 179, 179),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat,
                 DialogResult = DialogResult.OK
             };
-            btnCarregar.FlatAppearance.BorderSize = 0;
+            ThemeManager.StylePrimaryActionButton(btnCarregar);
             btnCarregar.Click += (s, e) => CarregarSelecionado();
 
             //Button btnCancelar = new Button
@@ -146,12 +138,9 @@ namespace EtiquetaFORNew
             {
                 Text = "Nuvem API",
                 Location = new Point(370, 15),
-                Size = new Size(100, 30),
-                BackColor = Color.FromArgb(0, 162, 232),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat                
+                Size = new Size(100, 30)
             };
-            btnTemplateApi.FlatAppearance.BorderSize = 0;
+            ThemeManager.StylePrimaryActionButton(btnTemplateApi);
             btnTemplateApi.Click += (s, e) =>
             {
                 using (var formNuvem = new FormTemplateApi())
@@ -164,6 +153,20 @@ namespace EtiquetaFORNew
                 lblInstrucao, lblInstrucao2, lstTemplates, chkDefinirPadrao, lblInfo,
                 btnNovo, btnExcluir, btnRenomear, btnCarregar, btnTemplateApi, // btnCancelar
             });
+
+            Panel panelBackground = new Panel();
+
+            panelBackground.Location = new Point(5, 5); // X = 10, Y = 20
+            panelBackground.Size = new Size(475, 400);
+
+            panelBackground.BorderStyle = BorderStyle.FixedSingle;
+            panelBackground.BackColor = Color.FromArgb(240, 235, 255);
+
+            this.Controls.Add(panelBackground);
+            panelBackground.SendToBack();
+
+            this.Controls.Add(panelBackground);
+            panelBackground.SendToBack();
         }
 
         private void LstTemplates_DrawItem(object sender, DrawItemEventArgs e)
@@ -485,6 +488,7 @@ namespace EtiquetaFORNew
                     MessageBoxIcon.Information);
             }
         }
+
 
     }
 }

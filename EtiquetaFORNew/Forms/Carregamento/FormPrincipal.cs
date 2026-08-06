@@ -4,6 +4,8 @@ using EtiquetaFORNew.Data;
 
 using EtiquetaFORNew.Forms;
 
+using EtiquetaFORNew.UI;
+
 using System;
 
 using System.Collections.Generic;
@@ -11,8 +13,6 @@ using System.Collections.Generic;
 using System.Data;
 
 using System.Drawing;
-
-using System.Drawing.Drawing2D;
 
 using System.IO;
 
@@ -251,11 +251,9 @@ namespace EtiquetaFORNew
 
             // ========================================
 
-            ArredondarBotao(btnDesigner, 12);
+            ThemeManager.EnableRoundedRendering(btnDesigner, 12);
 
-            ArredondarBotao(btnImprimir, 12);
-
-            ArredondarBotao(BtnAdicionar2, 12);
+            ThemeManager.EnableRoundedRendering(BtnAdicionar2, 12);
 
             if (_modoImportacao && _dadosImportacao != null)
             {
@@ -846,38 +844,6 @@ namespace EtiquetaFORNew
         //    }
 
         //}
-
-
-
-        public static void ArredondarBotao(Button botao, int raio)
-
-        {
-
-            GraphicsPath path = new GraphicsPath();
-
-            Rectangle rect = botao.ClientRectangle;
-
-
-
-            int d = raio * 2;
-
-
-
-            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-
-            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
-
-            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-
-            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
-
-            path.CloseFigure();
-
-
-
-            botao.Region = new Region(path);
-
-        }
 
 
 

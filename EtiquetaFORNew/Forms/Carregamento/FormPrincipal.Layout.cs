@@ -264,8 +264,7 @@ namespace EtiquetaFORNew
             btnImprimir.Size = new Size(168, 34);
             btnImprimir.Anchor = AnchorStyles.Right;
             btnImprimir.Margin = Padding.Empty;
-            ThemeManager.StyleActionButton(btnImprimir, true);
-            btnImprimir.ForeColor = ThemeManager.TextPrimary;
+            ThemeManager.StylePrimaryActionButton(btnImprimir);
             footerLayout.Controls.Add(btnImprimir, 1, 0);
             responsiveRoot.Controls.Add(footerLayout, 0, 4);
         }

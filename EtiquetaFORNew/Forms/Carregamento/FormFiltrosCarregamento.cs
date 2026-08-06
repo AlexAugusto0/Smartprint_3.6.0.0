@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using EtiquetaFORNew.Data;
+using EtiquetaFORNew.UI;
 
 namespace EtiquetaFORNew
 {
@@ -276,7 +277,7 @@ namespace EtiquetaFORNew
             panelFiltros = new Panel
             {
                 Location = new Point(10, 60),
-                Size = new Size(480, 400),
+                Size = new Size(480, 405),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle
             };
@@ -383,39 +384,27 @@ namespace EtiquetaFORNew
             {
                 Text = "Limpar",
                 Location = new Point(30, 475),
-                Size = new Size(100, 45),
-                BackColor = Color.FromArgb(161, 179, 179),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand
+                Size = new Size(100, 45)
             };
+            ThemeManager.StylePrimaryActionButton(btnLimparFiltros);
             btnLimparFiltros.Click += BtnLimparFiltros_Click;
 
             btnCancelar = new Button
             {
                 Text = "Cancelar",
                 Location = new Point(150, 475),
-                Size = new Size(130, 45),
-                BackColor = Color.FromArgb(220, 53, 69),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand
+                Size = new Size(130, 45)
             };
+            ThemeManager.StylePrimaryActionButton(btnCancelar);
             btnCancelar.Click += BtnCancelar_Click;
 
             btnConfirmar = new Button
             {
                 Text = "Carregar",
                 Location = new Point(300, 475),
-                Size = new Size(170, 45),
-                BackColor = Color.FromArgb(255, 165, 0),
-                ForeColor = Color.Black,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand
+                Size = new Size(170, 45)
             };
+            ThemeManager.StylePrimaryActionButton(btnConfirmar);
             btnConfirmar.Click += BtnConfirmar_Click;
 
             this.Controls.Add(lblTitulo);
@@ -429,6 +418,20 @@ namespace EtiquetaFORNew
             this.CancelButton = btnCancelar;
 
             this.ResumeLayout(false);
+
+            Panel panelBackground = new Panel();
+
+            panelBackground.Location = new Point(5, 53); // X = 10, Y = 20
+            panelBackground.Size = new Size(490, 480);
+
+            panelBackground.BorderStyle = BorderStyle.FixedSingle;
+            panelBackground.BackColor = Color.FromArgb(240, 235, 255);
+
+            this.Controls.Add(panelBackground);
+            panelBackground.SendToBack();
+
+            this.Controls.Add(panelBackground);
+            panelBackground.SendToBack();
         }
 
         private Label CriarLabel(string texto, int x, int y)
