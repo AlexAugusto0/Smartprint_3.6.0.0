@@ -141,6 +141,9 @@ namespace EtiquetaFORNew.Forms
         //Pilha que armazena os estados para desfazer do template
         private Stack<string> historicoUndo = new Stack<string>();
 
+        //Pilha que armazena os estados removidos pelo desfazer
+        private Stack<string> historicoRedo = new Stack<string>();
+
         //Limite para não consumir memória infinita
         private const int Max_Undo_Steps = 50;
 
@@ -362,7 +365,8 @@ namespace EtiquetaFORNew.Forms
                 () => BtnFechar_Click(this, EventArgs.Empty));
             this.Controls.Add(toolbarInferior.Container);
             statusBarManager = new StatusBarManager(toolbarInferior.StatusStrip);
-            toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
+            toolbarInferior.RedoButton.Click += (s, e) => Refazer();
+            AtualizarBotoesHistorico();
             // =========================================================
 
             // ==================== PAINEL LATERAL DIREITO - CONFIGURAÇÃO ====================
@@ -4916,8 +4920,7 @@ namespace EtiquetaFORNew.Forms
                     return;
 
                 historicoUndo.Push(snapshot);
-                if (toolbarInferior?.UndoButton != null)
-                    toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
+                historicoRedo.Clear();
 
                 if (historicoUndo.Count > Max_Undo_Steps)
                 {
@@ -4927,6 +4930,8 @@ namespace EtiquetaFORNew.Forms
 
                     historicoUndo = new Stack<string>(snapshots);
                 }
+
+                AtualizarBotoesHistorico();
             }
             catch (Exception ex)
             {
@@ -4941,7 +4946,7 @@ namespace EtiquetaFORNew.Forms
             if (historicoUndo.Count <= 1) return;
 
             // 2. Removemos o estado ATUAL da pilha (o que está na tela agora)
-            historicoUndo.Pop();
+            string snapshotAtual = historicoUndo.Pop();
 
             // 3. Pegamos o estado ANTERIOR sem removê-lo (usando Peek)
             // Assim, se apertar Ctrl+Z de novo, o processo se repete
@@ -4950,25 +4955,57 @@ namespace EtiquetaFORNew.Forms
             try
             {
                 // 4. Restauramos o template com o estado recuperado
-                this.template = TemplateEtiqueta.CarregarDeSnapshot(snapshotAnterior);
-
-                // 5. IMPORTANTE: Limpar seleções
-                // Como o objeto 'template' mudou, as referências antigas de 'elementoSelecionado' 
-                // agora são de um objeto que não existe mais na memória ativa.
-                elementoSelecionado = null;
-                elementosSelecionados.Clear();
-
-                // 6. Atualizar a interface
-                pbCanvas.Invalidate();
-                AtualizarPainelPropriedades();
-                CarregarDadosNaInterface();
-                if (toolbarInferior?.UndoButton != null)
-                    toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
+                RestaurarSnapshotHistorico(snapshotAnterior);
+                historicoRedo.Push(snapshotAtual);
+                AtualizarBotoesHistorico();
             }
             catch (Exception ex)
             {
+                historicoUndo.Push(snapshotAtual);
+                AtualizarBotoesHistorico();
                 Console.WriteLine("Erro ao restaurar snapshot: " + ex.Message);
             }
+        }
+
+        private void Refazer()
+        {
+            if (historicoRedo.Count == 0) return;
+
+            string snapshotRefazer = historicoRedo.Peek();
+
+            try
+            {
+                RestaurarSnapshotHistorico(snapshotRefazer);
+                historicoRedo.Pop();
+                historicoUndo.Push(snapshotRefazer);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            AtualizarBotoesHistorico();
+        }
+
+        private void RestaurarSnapshotHistorico(string snapshot)
+        {
+            TemplateEtiqueta templateRestaurado = TemplateEtiqueta.CarregarDeSnapshot(snapshot);
+            this.template = templateRestaurado;
+
+            elementoSelecionado = null;
+            elementosSelecionados.Clear();
+
+            pbCanvas.Invalidate();
+            AtualizarPainelPropriedades();
+            CarregarDadosNaInterface();
+        }
+
+        private void AtualizarBotoesHistorico()
+        {
+            if (toolbarInferior?.UndoButton != null)
+                toolbarInferior.UndoButton.Enabled = historicoUndo.Count > 1;
+            if (toolbarInferior?.RedoButton != null)
+                toolbarInferior.RedoButton.Enabled = historicoRedo.Count > 0;
         }
 
         #endregion

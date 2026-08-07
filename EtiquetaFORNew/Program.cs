@@ -48,7 +48,9 @@ namespace EtiquetaFORNew
             {
                 case IntegracaoExterna.TipoImportacao.Nenhuma:
                     // ✅ USO NORMAL - Abre tela de login (comportamento original)
-                    Application.Run(new Main());
+                    // Removido abertura da tela de Login, fixo abertura no formPrincipal
+                    //Application.Run(new Main());
+                    Application.Run(new FormPrincipal());
                     break;
 
                 case IntegracaoExterna.TipoImportacao.ArquivoJSON:
